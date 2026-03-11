@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { UserPlus, Trash2, Loader2, Users, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { UserPlus, Trash2, Loader2, Users, Eye, EyeOff, ShieldCheck, Mail, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { format, parseISO } from 'date-fns';
@@ -12,8 +12,9 @@ export default function Teachers() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [form, setForm] = useState({ name: '', email: '', password: '' });
+    const [form, setForm] = useState({ name: '', email: '', password: '', role: 'TEACHER' });
     const [deletingId, setDeletingId] = useState(null);
+    const [sendingNotifications, setSendingNotifications] = useState(false);
 
     useEffect(() => { fetchTeachers(); }, []);
 
@@ -28,13 +29,36 @@ export default function Teachers() {
         }
     };
 
+    const handleSendNotifications = async () => {
+        if (!confirm('¿Deseas enviar las notificaciones de inasistencias a todos los estudiantes con faltas esta semana?')) return;
+
+        setSendingNotifications(true);
+        const toastId = toast.loading('Procesando envío de correos...');
+
+        try {
+            const res = await api.post('/notifications/send-weekly');
+            const { results } = res.data;
+            toast.success(
+                `Proceso completado: ${results.sent} enviados, ${results.skipped} omitidos.`,
+                { id: toastId, duration: 5000 }
+            );
+        } catch (err) {
+            toast.error(
+                err.response?.data?.error || 'Error al ejecutar el proceso de notificación',
+                { id: toastId }
+            );
+        } finally {
+            setSendingNotifications(false);
+        }
+    };
+
     const handleCreate = async (e) => {
         e.preventDefault();
         setSaving(true);
         try {
             const newTeacher = await api.post('/teachers', form).then(r => r.data);
             setTeachers(prev => [...prev, newTeacher]);
-            setForm({ name: '', email: '', password: '' });
+            setForm({ name: '', email: '', password: '', role: 'TEACHER' });
             toast.success('Profesor creado exitosamente');
         } catch (err) {
             toast.error(err.response?.data?.error || 'Error al crear profesor');
@@ -119,6 +143,17 @@ export default function Teachers() {
                                 </button>
                             </div>
                         </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-600 mb-1.5">Rol del Sistema</label>
+                            <select
+                                value={form.role}
+                                onChange={e => setForm(p => ({ ...p, role: e.target.value }))}
+                                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 bg-white outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent transition"
+                            >
+                                <option value="TEACHER">Profesor (Solo sus materias)</option>
+                                <option value="ADMIN">Administrador (Gestión total)</option>
+                            </select>
+                        </div>
                         <button
                             type="submit"
                             disabled={saving}
@@ -129,6 +164,32 @@ export default function Teachers() {
                         </button>
                     </form>
                 </div>
+
+                {user?.role === 'ADMIN' && (
+                    <div className="lg:col-span-2 bg-gradient-to-br from-brand-purple to-purple-800 rounded-2xl shadow-lg border border-purple-700/50 p-6 self-start text-white">
+                        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+                            <ShieldCheck size={20} />
+                            Acciones del Sistema
+                        </h2>
+                        <p className="text-purple-100 text-sm mb-6 leading-relaxed">
+                            Control manual de las tareas automáticas del servidor.
+                        </p>
+
+                        <div className="space-y-4">
+                            <button
+                                onClick={handleSendNotifications}
+                                disabled={sendingNotifications}
+                                className="w-full flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50"
+                            >
+                                {sendingNotifications ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                                {sendingNotifications ? 'Enviando...' : 'Enviar Reportes Semanales Ahora'}
+                            </button>
+                            <p className="text-[10px] text-purple-200/70 text-center italic">
+                                * Esto enviará correos solo a estudiantes con faltas que NO hayan recibido el correo esta semana.
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Teachers List */}
                 <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -153,11 +214,16 @@ export default function Teachers() {
                                             {teacher.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 mb-0.5">
                                                 <p className="font-semibold text-gray-800">{teacher.name}</p>
+                                                {teacher.role === 'ADMIN' && (
+                                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                                        <ShieldCheck size={11} /> Admin
+                                                    </span>
+                                                )}
                                                 {teacher.id === user?.id && (
                                                     <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-purple bg-brand-purple/10 px-2 py-0.5 rounded-full">
-                                                        <ShieldCheck size={11} /> Tú
+                                                        Tú
                                                     </span>
                                                 )}
                                             </div>

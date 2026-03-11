@@ -25,17 +25,26 @@ api.interceptors.response.use(
     }
 );
 
-export const getStudents = () => api.get('/students').then(res => res.data);
-export const createStudent = (data) => api.post('/students', data).then(res => res.data);
+// Courses API
+export const getCourses = () => api.get('/courses').then(res => res.data);
+export const createCourse = (data) => api.post('/courses', data).then(res => res.data);
+export const updateCourse = (id, data) => api.put(`/courses/${id}`, data).then(res => res.data);
+export const deleteCourse = (id) => api.delete(`/courses/${id}`).then(res => res.data);
+
+// Students API
+export const getStudents = (courseId) => api.get('/students', { params: { courseId } }).then(res => res.data);
+export const createStudent = (courseId, data) => api.post('/students', data, { params: { courseId } }).then(res => res.data);
 export const updateStudent = (id, data) => api.put(`/students/${id}`, data).then(res => res.data);
 export const deleteStudent = (id) => api.delete(`/students/${id}`).then(res => res.data);
 
-export const getAttendance = (date) => {
-    const params = date ? { date } : {};
+// Attendance API
+export const getAttendance = (courseId, date) => {
+    const params = { courseId, ...(date && { date }) };
     return api.get('/attendance', { params }).then(res => res.data);
 };
 export const saveAttendance = (data) => api.post('/attendance', data).then(res => res.data);
 
-export const getReports = (params) => api.get('/reports', { params }).then(res => res.data);
+// Reports API
+export const getReports = (courseId, params) => api.get('/reports', { params: { ...params, courseId } }).then(res => res.data);
 
 export default api;

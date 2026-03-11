@@ -3,8 +3,10 @@ import { getAttendance } from '../services/api';
 import { Calendar as CalendarIcon, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useCourse } from '../context/CourseContext';
 
 export default function History() {
+    const { selectedCourse } = useCourse();
     const [dates, setDates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState(null);
@@ -12,12 +14,20 @@ export default function History() {
     const [loadingDetails, setLoadingDetails] = useState(false);
 
     useEffect(() => {
-        fetchHistory();
-    }, []);
+        if (selectedCourse) {
+            fetchHistory();
+        } else {
+            setDates([]);
+            setLoading(false);
+        }
+        setSelectedDate(null);
+    }, [selectedCourse]);
 
     const fetchHistory = async () => {
+        if (!selectedCourse) return;
+        setLoading(true);
         try {
-            const data = await getAttendance(); // no date passed returns grouped history
+            const data = await getAttendance(selectedCourse.id); // no date passed returns grouped history
             setDates(data);
         } catch (error) {
         } finally {
@@ -26,10 +36,11 @@ export default function History() {
     };
 
     const viewDetails = async (date) => {
+        if (!selectedCourse) return;
         setSelectedDate(date);
         setLoadingDetails(true);
         try {
-            const details = await getAttendance(date);
+            const details = await getAttendance(selectedCourse.id, date);
             setDateDetails(details);
         } catch (error) {
         } finally {
@@ -62,8 +73,8 @@ export default function History() {
                                         key={record.date}
                                         onClick={() => viewDetails(record.date)}
                                         className={`w-full text-left p-4 rounded-xl flex items-center justify-between transition-all ${isSelected
-                                                ? 'bg-brand-purple text-white shadow-md'
-                                                : 'bg-gray-50 hover:bg-purple-50 hover:text-brand-purple text-gray-700'
+                                            ? 'bg-brand-purple text-white shadow-md'
+                                            : 'bg-gray-50 hover:bg-purple-50 hover:text-brand-purple text-gray-700'
                                             }`}
                                     >
                                         <div>

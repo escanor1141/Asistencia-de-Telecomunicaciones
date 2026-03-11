@@ -1,23 +1,33 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
-export async function GET(request: Request) {
+export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
         const startDate = searchParams.get('startDate')
         const endDate = searchParams.get('endDate')
+        const courseId = searchParams.get('courseId')
 
-        const dateFilter: any = {}
+        if (!courseId) {
+            return Response.json({ error: 'courseId es requerido' }, { status: 400 })
+        }
+
+        const dateFilter = {}
         if (startDate) dateFilter.gte = startDate
         if (endDate) dateFilter.lte = endDate
 
+        const whereClause = { courseId }
+        if (Object.keys(dateFilter).length > 0) {
+            whereClause.date = dateFilter
+        }
+
         const attendances = await prisma.attendance.findMany({
-            where: Object.keys(dateFilter).length > 0 ? { date: dateFilter } : undefined,
+            where: whereClause,
             include: { student: true }
         })
 
         // Group by student
-        const studentStats: Record<string, { id: string, name: string, total: number, present: number }> = {}
+        const studentStats = {}
 
         attendances.forEach(att => {
             const sid = att.student.id
@@ -40,9 +50,9 @@ export async function GET(request: Request) {
             percentage: stat.total > 0 ? Math.round((stat.present / stat.total) * 100) : 0
         })).sort((a, b) => b.percentage - a.percentage)
 
-        return NextResponse.json(result)
+        return Response.json(result)
     } catch (error) {
         console.error(error)
-        return NextResponse.json({ error: 'Failed to fetch reports' }, { status: 500 })
+        return Response.json({ error: 'Failed to fetch reports' }, { status: 500 })
     }
 }

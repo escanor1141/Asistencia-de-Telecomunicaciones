@@ -3,8 +3,10 @@ import { getStudents, saveAttendance, getAttendance } from '../services/api';
 import { CheckCircle2, XCircle, Save, Calendar, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { useCourse } from '../context/CourseContext';
 
 export default function Attendance() {
+    const { selectedCourse } = useCourse();
     const [students, setStudents] = useState([]);
     const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [attendance, setAttendance] = useState({});
@@ -12,15 +14,22 @@ export default function Attendance() {
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
-        loadData();
-    }, [date]);
+        if (selectedCourse) {
+            loadData();
+        } else {
+            setStudents([]);
+            setAttendance({});
+            setLoading(false);
+        }
+    }, [date, selectedCourse]);
 
     const loadData = async () => {
+        if (!selectedCourse) return;
         setLoading(true);
         try {
             const [studentsData, existingData] = await Promise.all([
-                getStudents(),
-                getAttendance(date)
+                getStudents(selectedCourse.id),
+                getAttendance(selectedCourse.id, date)
             ]);
             setStudents(studentsData);
 
@@ -44,6 +53,7 @@ export default function Attendance() {
     };
 
     const handleSave = async () => {
+        if (!selectedCourse) return;
         const records = students.map(s => ({
             studentId: s.id,
             present: attendance[s.id] || false
@@ -51,7 +61,7 @@ export default function Attendance() {
 
         setSaving(true);
         try {
-            await saveAttendance({ date, records });
+            await saveAttendance({ date, courseId: selectedCourse.id, records });
             toast.success('Asistencia guardada correctamente');
         } catch (error) {
             toast.error('Error al guardar asistencia');
@@ -134,8 +144,8 @@ export default function Attendance() {
                                         <button
                                             onClick={() => toggleAttendance(student.id, true)}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all border-2 ${isPresent
-                                                    ? 'bg-brand-green/10 border-brand-green text-brand-green shadow-sm'
-                                                    : 'border-transparent text-gray-400 hover:bg-gray-100'
+                                                ? 'bg-brand-green/10 border-brand-green text-brand-green shadow-sm'
+                                                : 'border-transparent text-gray-400 hover:bg-gray-100'
                                                 }`}
                                         >
                                             <CheckCircle2 size={20} />
@@ -145,8 +155,8 @@ export default function Attendance() {
                                         <button
                                             onClick={() => toggleAttendance(student.id, false)}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition-all border-2 ${isAbsent
-                                                    ? 'bg-red-50 border-red-500 text-red-500 shadow-sm'
-                                                    : 'border-transparent text-gray-400 hover:bg-gray-100'
+                                                ? 'bg-red-50 border-red-500 text-red-500 shadow-sm'
+                                                : 'border-transparent text-gray-400 hover:bg-gray-100'
                                                 }`}
                                         >
                                             <XCircle size={20} />

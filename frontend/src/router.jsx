@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
+import Courses from './pages/Courses.jsx';
 import Students from './pages/Students.jsx';
 import Attendance from './pages/Attendance.jsx';
 import History from './pages/History.jsx';
@@ -20,6 +21,7 @@ export default function AppRouter() {
                         <Layout>
                             <Routes>
                                 <Route path="/" element={<Home />} />
+                                <Route path="/courses" element={<Courses />} />
                                 <Route path="/students" element={<Students />} />
                                 <Route path="/attendance" element={<Attendance />} />
                                 <Route path="/history" element={<History />} />

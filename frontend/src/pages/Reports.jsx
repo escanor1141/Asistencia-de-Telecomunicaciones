@@ -3,20 +3,23 @@ import { getReports } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Download, Filter, Loader2, BarChart2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useCourse } from '../context/CourseContext';
 
 export default function Reports() {
+    const { selectedCourse } = useCourse();
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
 
     const fetchReports = async () => {
+        if (!selectedCourse) return;
         setLoading(true);
         try {
             const params = {};
             if (startDate) params.startDate = startDate;
             if (endDate) params.endDate = endDate;
-            const res = await getReports(params);
+            const res = await getReports(selectedCourse.id, params);
             setData(res);
         } catch (error) {
             toast.error('Error al cargar reportes');
@@ -26,11 +29,20 @@ export default function Reports() {
     };
 
     useEffect(() => {
-        fetchReports();
-    }, [startDate, endDate]);
+        if (selectedCourse) {
+            fetchReports();
+        } else {
+            setData([]);
+            setLoading(false);
+        }
+    }, [startDate, endDate, selectedCourse]);
 
     const handleExport = () => {
-        window.open('http://localhost:3001/api/export', '_blank');
+        if (!selectedCourse) return;
+        let url = `http://localhost:4000/api/reports?courseId=${selectedCourse.id}&export=csv`;
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+        window.open(url, '_blank');
     };
 
     return (

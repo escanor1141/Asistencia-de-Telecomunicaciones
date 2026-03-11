@@ -4,11 +4,8 @@ const prismaClientSingleton = () => {
     return new PrismaClient()
 }
 
-declare global {
-    var prismaGlobal: undefined | ReturnType<typeof prismaClientSingleton>
-}
-
-const prisma = globalThis.prismaGlobal ?? prismaClientSingleton()
+// Avoid using old cache that doesn't have the new Course model
+const prisma = prismaClientSingleton()
 
 export default prisma
 

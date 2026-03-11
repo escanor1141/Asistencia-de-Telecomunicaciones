@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
+// import { NextResponse } from 'next/server' (ya no se requiere en modo ESM con Response global)
 import prisma from '@/lib/prisma'
 
-export async function GET(request: Request) {
+export async function GET(request) {
     try {
         const attendances = await prisma.attendance.findMany({
             include: { student: true },
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
         const header = ['Student ID', 'Name', 'Date', 'Present', 'Created At']
 
         // Simple CSV builder dealing with basic commas
-        const escapeCsv = (str: string) => `"${str.replace(/"/g, '""')}"`
+        const escapeCsv = (str) => `"${str.replace(/"/g, '""')}"`
 
         const rows = attendances.map(a => [
             escapeCsv(a.student.id),
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
         const csvContent = [header.map(escapeCsv).join(","), ...rows.map(e => e.join(","))].join("\n")
 
-        return new NextResponse(csvContent, {
+        return new Response(csvContent, {
             headers: {
                 'Content-Type': 'text/csv',
                 'Content-Disposition': 'attachment; filename="attendance_export.csv"',
@@ -31,6 +31,6 @@ export async function GET(request: Request) {
         })
     } catch (error) {
         console.error(error)
-        return NextResponse.json({ error: 'Failed to export' }, { status: 500 })
+        return Response.json({ error: 'Failed to export' }, { status: 500 })
     }
 }

@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -16,7 +16,7 @@ async function main() {
 
     const passwordHash = await bcrypt.hash(password, 10);
     const teacher = await prisma.teacher.create({
-        data: { email, passwordHash, name }
+        data: { email, passwordHash, name, role: 'ADMIN' }
     });
 
     console.log(`✅ Profesor creado exitosamente:`);
