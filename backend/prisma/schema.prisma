@@ -1,49 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model Student {
-  id                String             @id @default(cuid())
-  name              String
-  email             String?            // correo institucional
-  whatsapp          String?            // número de WhatsApp
-  courseId          String
-  course            Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  attendances       Attendance[]
-  notificationLogs  NotificationLog[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id               String            @id @default(cuid())
+  name             String
+  email            String?
+  whatsapp         String?
+  courseId         String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  attendances      Attendance[]
+  notificationLogs NotificationLog[]
+  whatsappLogs     WhatsappNotificationLog[]
+  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
 }
 
 model Course {
   id          String       @id @default(cuid())
-  name        String       // nombre de la materia
-  code        String       // codigo del curso
+  name        String
+  code        String
   teacherId   String
-  teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  students    Student[]
-  attendances Attendance[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+  attendances Attendance[]
+  teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students    Student[]
 
-  @@unique([code, teacherId]) // Optionally, ensure a teacher doesn't have duplicate course codes
+  @@unique([code, teacherId])
 }
 
 model Attendance {
   id        String   @id @default(cuid())
   studentId String
   courseId  String
-  date      String   // YYYY-MM-DD
+  date      String
   present   Boolean  @default(false)
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, courseId, date])
 }
@@ -53,19 +54,32 @@ model Teacher {
   email        String   @unique
   passwordHash String
   name         String
-  role         String   @default("TEACHER") // TEACHER or ADMIN
-  courses      Course[]
+  role         String   @default("TEACHER")
   createdAt    DateTime @default(now())
+  courses      Course[]
 }
 
 model NotificationLog {
   id        String   @id @default(cuid())
   studentId String
-  weekStart String   // YYYY-MM-DD del lunes de esa semana
+  weekStart String
   sentAt    DateTime @default(now())
-  status    String   @default("SUCCESS") // SUCCESS or ERROR
+  status    String   @default("SUCCESS")
   error     String?
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  @@unique([studentId, weekStart]) // evita duplicados por semana
+  @@unique([studentId, weekStart])
+}
+
+model WhatsappNotificationLog {
+  id        String   @id @default(cuid())
+  studentId String
+  courseId  String
+  date      String
+  sentAt    DateTime @default(now())
+  status    String   @default("SUCCESS")
+  error     String?
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, courseId, date])
 }

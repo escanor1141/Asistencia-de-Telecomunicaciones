@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { runAbsenceWhatsAppNotification } from '@/jobs/absenceWhatsAppNotification'
 
 export async function GET(request) {
     try {
@@ -74,6 +75,16 @@ export async function POST(request) {
         })
 
         await prisma.$transaction(operations)
+
+        // Disparar notificaciones WhatsApp en fire-and-forget
+        // No bloquea la respuesta HTTP — el profesor no espera los envíos
+        const absentRecords = records.filter(r => !r.present);
+        if (absentRecords.length > 0) {
+            setImmediate(() =>
+                runAbsenceWhatsAppNotification(absentRecords, courseId, date)
+                    .catch(err => console.error('[attendance-route] Error en job WhatsApp:', err))
+            );
+        }
 
         return Response.json({ success: true, count: operations.length })
     } catch (error) {
