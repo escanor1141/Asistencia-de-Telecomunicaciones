@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
-        "dev": "node server.js",
+        "dev": "node --no-deprecation server.js",
         "build": "next build",
         "start": "node server.js",
         "lint": "next lint",

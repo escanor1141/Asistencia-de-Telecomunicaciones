@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
+import { obtenerUsuarioDePeticion } from '@/lib/auth';
 import { runWeeklyNotification } from '@/jobs/weeklyAbsenceNotification';
 
 /**
@@ -9,26 +9,26 @@ import { runWeeklyNotification } from '@/jobs/weeklyAbsenceNotification';
  */
 export async function POST(request) {
     // Verificar autenticación y rol ADMIN
-    const user = getUserFromRequest(request);
-    if (!user) {
+    const usuario = obtenerUsuarioDePeticion(request);
+    if (!usuario) {
         return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
-    if (user.role !== 'ADMIN') {
+    if (usuario.role !== 'ADMIN') {
         return Response.json({ error: 'Acceso restringido a administradores' }, { status: 403 });
     }
 
-    console.log(`[send-weekly] Ejecución manual por: ${user.email} a las ${new Date().toISOString()}`);
+    console.log(`[send-weekly] Ejecución manual por: ${usuario.email} a las ${new Date().toISOString()}`);
 
     try {
-        const results = await runWeeklyNotification();
+        const resultados = await runWeeklyNotification();
         return Response.json({
             success: true,
             message: 'Proceso de notificación completado',
             results: {
-                sent: results.sent,
-                skipped: results.skipped,
-                errors: results.errors,
-                details: results.details,
+                sent: resultados.sent,
+                skipped: resultados.skipped,
+                errors: resultados.errors,
+                details: resultados.details,
             },
         });
     } catch (error) {
@@ -45,18 +45,18 @@ export async function POST(request) {
  * Devuelve el estado del servicio de notificaciones.
  */
 export async function GET(request) {
-    const user = getUserFromRequest(request);
-    if (!user) {
+    const usuario = obtenerUsuarioDePeticion(request);
+    if (!usuario) {
         return Response.json({ error: 'No autorizado' }, { status: 401 });
     }
-    if (user.role !== 'ADMIN') {
+    if (usuario.role !== 'ADMIN') {
         return Response.json({ error: 'Acceso restringido a administradores' }, { status: 403 });
     }
 
     return Response.json({
-        service: 'weekly-absence-notifier',
-        status: 'active',
-        schedule: '0 18 * * 0 (Domingos a las 18:00)',
-        description: 'Envía correos a estudiantes con inasistencias de la semana (lunes-sábado)',
+        servicio: 'notificador-semanal-inasistencias',
+        estado: 'activo',
+        programacion: '0 18 * * 0 (Domingos a las 18:00)',
+        descripcion: 'Envía correos a estudiantes con inasistencias de la semana (lunes-sábado)',
     });
 }

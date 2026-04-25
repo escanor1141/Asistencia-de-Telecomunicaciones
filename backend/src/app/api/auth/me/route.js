@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server'
 import jwt from 'jsonwebtoken'
 
-const SECRET = process.env.JWT_SECRET || 'telecom_secret_key_2024'
+const SECRETO = process.env.JWT_SECRET || 'telecom_secret_key_2024'
 
+// GET /api/auth/me — retorna los datos del docente autenticado
 export async function GET(request) {
     try {
-        const authHeader = request.headers.get('authorization')
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        const encabezadoAuth = request.headers.get('authorization')
+        if (!encabezadoAuth || !encabezadoAuth.startsWith('Bearer ')) {
             return Response.json({ error: 'No autorizado' }, { status: 401 })
         }
 
-        const token = authHeader.split(' ')[1]
-        const decoded = jwt.verify(token, SECRET)
+        const token = encabezadoAuth.split(' ')[1]
+        const decodificado = jwt.verify(token, SECRETO)
 
-        return Response.json({ id: decoded.id, email: decoded.email, name: decoded.name, role: decoded.role })
+        return Response.json({ id: decodificado.id, email: decodificado.email, name: decodificado.name, role: decodificado.role })
     } catch (error) {
         return Response.json({ error: 'Token inválido o expirado' }, { status: 401 })
     }

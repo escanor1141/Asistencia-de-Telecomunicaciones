@@ -1,31 +1,32 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Users, CheckSquare, Clock, BarChart2, LogOut, BookOpen, ChevronDown } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useCourse } from '../context/CourseContext';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
+import { useCurso } from '../context/ContextoCurso';
 import { useNavigate } from 'react-router-dom';
 
+// Layout alternativo (usado en vistas legacy)
 export default function Layout({ children }) {
-    const location = useLocation();
-    const { user, logout } = useAuth();
-    const { courses, selectedCourse, selectCourse, loadingCourses } = useCourse();
-    const navigate = useNavigate();
+    const ubicacion = useLocation();
+    const { usuario, cerrarSesion } = useAutenticacion();
+    const { cursos, cursoSeleccionado, seleccionarCurso, cargandoCursos } = useCurso();
+    const navegar = useNavigate();
 
-    const navItems = [
-        { path: '/', label: 'Inicio', icon: Home },
-        { path: '/courses', label: 'Cursos/Materias', icon: BookOpen },
-        { path: '/students', label: 'Estudiantes', icon: Users },
-        { path: '/attendance', label: 'Asistencia', icon: CheckSquare },
-        { path: '/history', label: 'Historial', icon: Clock },
-        { path: '/reports', label: 'Reportes', icon: BarChart2 },
+    const elementosNav = [
+        { ruta: '/', etiqueta: 'Inicio', icono: Home },
+        { ruta: '/cursos', etiqueta: 'Cursos/Materias', icono: BookOpen },
+        { ruta: '/estudiantes', etiqueta: 'Estudiantes', icono: Users },
+        { ruta: '/asistencia', etiqueta: 'Asistencia', icono: CheckSquare },
+        { ruta: '/historial', etiqueta: 'Historial', icono: Clock },
+        { ruta: '/reportes', etiqueta: 'Reportes', icono: BarChart2 },
     ];
 
-    if (user?.role === 'ADMIN') {
-        navItems.push({ path: '/teachers', label: 'Profesores', icon: Users });
+    if (usuario?.role === 'ADMIN') {
+        elementosNav.push({ ruta: '/profesores', etiqueta: 'Profesores', icono: Users });
     }
 
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
+    const manejarCierreSesion = () => {
+        cerrarSesion();
+        navegar('/login');
     };
 
     return (
@@ -37,20 +38,20 @@ export default function Layout({ children }) {
                     </h1>
                 </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isActive = location.pathname === item.path;
+                    {elementosNav.map((item) => {
+                        const Icono = item.icono;
+                        const activo = ubicacion.pathname === item.ruta;
                         return (
                             <Link
-                                key={item.path}
-                                to={item.path}
-                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${isActive
+                                key={item.ruta}
+                                to={item.ruta}
+                                className={`flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${activo
                                     ? 'bg-brand-blue text-white shadow-md'
                                     : 'text-gray-600 hover:bg-blue-50 hover:text-brand-blue hover:translate-x-1'
                                     }`}
                             >
-                                <Icon size={20} className={isActive ? "text-white" : ""} />
-                                <span className="font-semibold tracking-wide">{item.label}</span>
+                                <Icono size={20} className={activo ? "text-white" : ""} />
+                                <span className="font-semibold tracking-wide">{item.etiqueta}</span>
                             </Link>
                         );
                     })}
@@ -59,15 +60,15 @@ export default function Layout({ children }) {
                 <div className="p-4 border-t border-gray-100">
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 mb-2">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-blue to-brand-green flex items-center justify-center text-white font-bold text-sm shrink-0">
-                            {user?.name?.charAt(0).toUpperCase() || 'P'}
+                            {usuario?.name?.charAt(0).toUpperCase() || 'P'}
                         </div>
                         <div className="min-w-0">
-                            <p className="text-sm font-bold text-gray-800 truncate">{user?.name || 'Profesor'}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.email || ''}</p>
+                            <p className="text-sm font-bold text-gray-800 truncate">{usuario?.name || 'Profesor'}</p>
+                            <p className="text-xs text-gray-500 truncate">{usuario?.email || ''}</p>
                         </div>
                     </div>
                     <button
-                        onClick={handleLogout}
+                        onClick={manejarCierreSesion}
                         className="w-full flex items-center gap-3 p-3 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
                     >
                         <LogOut size={18} />
@@ -77,30 +78,30 @@ export default function Layout({ children }) {
             </aside>
 
             <main className="flex-1 flex flex-col overflow-hidden bg-gray-50/50 relative">
-                {/* Top Bar for Course Selector */}
+                {/* Barra superior con selector de curso */}
                 <header className="bg-white border-b border-gray-200 h-16 flex items-center px-8 shadow-sm z-10 shrink-0">
                     <div className="flex flex-1 justify-between items-center">
                         <h2 className="text-lg font-bold text-gray-800 hidden sm:block">
-                            {/* We can show breadcrumbs here if needed */}
+                            {/* Breadcrumbs pueden ir aquí */}
                         </h2>
 
                         <div className="flex items-center gap-3 ml-auto text-sm">
                             <span className="font-medium text-gray-500">Curso Activo:</span>
-                            {loadingCourses ? (
+                            {cargandoCursos ? (
                                 <span className="text-gray-400">Cargando...</span>
-                            ) : courses?.length > 0 ? (
+                            ) : cursos?.length > 0 ? (
                                 <div className="relative">
                                     <select
                                         className="appearance-none bg-gray-50 border border-gray-200 text-gray-700 py-2 pl-4 pr-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-blue font-bold cursor-pointer hover:bg-gray-100 transition-colors"
-                                        value={selectedCourse?.id || ''}
+                                        value={cursoSeleccionado?.id || ''}
                                         onChange={(e) => {
-                                            const c = courses.find(course => course.id === e.target.value);
-                                            selectCourse(c);
+                                            const c = cursos.find(curso => curso.id === e.target.value);
+                                            seleccionarCurso(c);
                                         }}
                                     >
-                                        {courses.map(course => (
-                                            <option key={course.id} value={course.id}>
-                                                {course.name} ({course.code})
+                                        {cursos.map(curso => (
+                                            <option key={curso.id} value={curso.id}>
+                                                {curso.name} ({curso.code})
                                             </option>
                                         ))}
                                     </select>

@@ -8,9 +8,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
         <App />
         <Toaster position="top-right" toastOptions={{
-            className: 'font-semibold tracking-wide rounded-xl shadow-lg',
+            className: 'font-semibold tracking-wide rounded-xl shadow-sm',
             success: {
-                iconTheme: { primary: '#10b981', secondary: 'white' },
+                iconTheme: { primary: 'var(--color-accent)', secondary: 'var(--color-surface)' },
             },
         }} />
     </React.StrictMode>,

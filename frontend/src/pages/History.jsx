@@ -1,50 +1,53 @@
 import { useState, useEffect } from 'react';
-import { getAttendance } from '../services/api';
-import { Calendar as CalendarIcon, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { obtenerAsistencia } from '../services/api';
+import { Calendar as IconoCalendario, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useCourse } from '../context/CourseContext';
+import { useCurso } from '../context/ContextoCurso';
 
-export default function History() {
-    const { selectedCourse } = useCourse();
-    const [dates, setDates] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState(null);
-    const [dateDetails, setDateDetails] = useState([]);
-    const [loadingDetails, setLoadingDetails] = useState(false);
+export default function Historial() {
+    const { cursoSeleccionado } = useCurso();
+    const [fechas, setFechas] = useState([]);
+    const [cargando, setCargando] = useState(true);
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(null);
+    const [detallesFecha, setDetallesFecha] = useState([]);
+    const [cargandoDetalles, setCargandoDetalles] = useState(false);
 
     useEffect(() => {
-        if (selectedCourse) {
-            fetchHistory();
+        if (cursoSeleccionado) {
+            obtenerHistorial();
         } else {
-            setDates([]);
-            setLoading(false);
+            setFechas([]);
+            setCargando(false);
         }
-        setSelectedDate(null);
-    }, [selectedCourse]);
+        setFechaSeleccionada(null);
+    }, [cursoSeleccionado]);
 
-    const fetchHistory = async () => {
-        if (!selectedCourse) return;
-        setLoading(true);
+    const obtenerHistorial = async () => {
+        if (!cursoSeleccionado) return;
+        setCargando(true);
         try {
-            const data = await getAttendance(selectedCourse.id); // no date passed returns grouped history
-            setDates(data);
+            // Sin fecha devuelve el historial agrupado por día
+            const datos = await obtenerAsistencia(cursoSeleccionado.id);
+            setFechas(datos);
         } catch (error) {
+            // Error silencioso — la UI mostrará lista vacía
         } finally {
-            setLoading(false);
+            setCargando(false);
         }
     };
 
-    const viewDetails = async (date) => {
-        if (!selectedCourse) return;
-        setSelectedDate(date);
-        setLoadingDetails(true);
+    const verDetalles = async (fecha) => {
+        if (!cursoSeleccionado) return;
+        setFechaSeleccionada(fecha);
+        setCargandoDetalles(true);
         try {
-            const details = await getAttendance(selectedCourse.id, date);
-            setDateDetails(details);
+            const detalles = await obtenerAsistencia(cursoSeleccionado.id, fecha);
+            setDetallesFecha(detalles);
         } catch (error) {
+            // Error silencioso
         } finally {
-            setLoadingDetails(false);
+            setCargandoDetalles(false);
         }
     };
 
@@ -56,40 +59,41 @@ export default function History() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Panel izquierdo — listado de fechas */}
                 <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col h-[600px]">
                     <div className="p-4 bg-gray-50 font-bold text-gray-700 border-b flex items-center gap-2">
-                        <CalendarIcon size={18} /> Días de clase
+                        <IconoCalendario size={18} /> Días de clase
                     </div>
-                    {loading ? (
+                    {cargando ? (
                         <div className="flex-1 flex justify-center items-center"><Loader2 className="animate-spin text-brand-purple" size={40} /></div>
-                    ) : dates.length === 0 ? (
+                    ) : fechas.length === 0 ? (
                         <div className="text-center p-10 text-gray-500">No hay registros aún.</div>
                     ) : (
                         <div className="overflow-y-auto flex-1 p-2 space-y-2">
-                            {dates.map((record) => {
-                                const isSelected = selectedDate === record.date;
+                            {fechas.map((registro) => {
+                                const estaSeleccionada = fechaSeleccionada === registro.date;
                                 return (
                                     <button
-                                        key={record.date}
-                                        onClick={() => viewDetails(record.date)}
-                                        className={`w-full text-left p-4 rounded-xl flex items-center justify-between transition-all ${isSelected
+                                        key={registro.date}
+                                        onClick={() => verDetalles(registro.date)}
+                                        className={`w-full text-left p-4 rounded-xl flex items-center justify-between transition-all ${estaSeleccionada
                                             ? 'bg-brand-purple text-white shadow-md'
                                             : 'bg-gray-50 hover:bg-purple-50 hover:text-brand-purple text-gray-700'
                                             }`}
                                     >
                                         <div>
                                             <div className="font-bold text-lg leading-none mb-1">
-                                                {format(parseISO(record.date), 'dd MMM', { locale: es })}
+                                                {format(parseISO(registro.date), 'dd MMM', { locale: es })}
                                             </div>
-                                            <div className={`text-xs ${isSelected ? 'text-purple-200' : 'text-gray-500'}`}>
-                                                {format(parseISO(record.date), 'yyyy')}
+                                            <div className={`text-xs ${estaSeleccionada ? 'text-purple-200' : 'text-gray-500'}`}>
+                                                {format(parseISO(registro.date), 'yyyy')}
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className={`font-bold ${isSelected ? 'text-white' : 'text-brand-green'}`}>
-                                                {record.presentCount} / {record.total}
+                                            <div className={`font-bold ${estaSeleccionada ? 'text-white' : 'text-brand-green'}`}>
+                                                {registro.presentCount} / {registro.total}
                                             </div>
-                                            <div className={`text-xs ${isSelected ? 'text-purple-200' : 'text-gray-500'}`}>
+                                            <div className={`text-xs ${estaSeleccionada ? 'text-purple-200' : 'text-gray-500'}`}>
                                                 Presentes
                                             </div>
                                         </div>
@@ -100,21 +104,22 @@ export default function History() {
                     )}
                 </div>
 
+                {/* Panel derecho — detalles de la fecha seleccionada */}
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[600px]">
-                    {selectedDate ? (
+                    {fechaSeleccionada ? (
                         <>
                             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/30">
                                 <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                    <CalendarIcon className="text-brand-purple" />
-                                    {format(parseISO(selectedDate), "EEEE d 'de' MMMM, yyyy", { locale: es })}
+                                    <IconoCalendario className="text-brand-purple" />
+                                    {format(parseISO(fechaSeleccionada), "EEEE d 'de' MMMM, yyyy", { locale: es })}
                                 </h2>
                             </div>
                             <div className="flex-1 overflow-y-auto p-2">
-                                {loadingDetails ? (
+                                {cargandoDetalles ? (
                                     <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin text-brand-purple" size={40} /></div>
                                 ) : (
                                     <div className="space-y-1">
-                                        {dateDetails.map((item, i) => (
+                                        {detallesFecha.map((item, i) => (
                                             <div key={item.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl transition-colors border border-transparent hover:border-gray-100">
                                                 <div className="flex items-center gap-4">
                                                     <span className="w-8 h-8 flex items-center justify-center bg-gray-100 text-gray-500 font-bold rounded-lg text-sm">
@@ -142,7 +147,7 @@ export default function History() {
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-10 text-center">
                             <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                                <CalendarIcon size={32} className="text-brand-purple/40" />
+                                <IconoCalendario size={32} className="text-brand-purple/40" />
                             </div>
                             <p className="text-2xl font-bold text-gray-800">Selecciona una fecha</p>
                             <p className="mt-2 font-medium">Elige un día en el panel izquierdo para ver los detalles de asistencia.</p>

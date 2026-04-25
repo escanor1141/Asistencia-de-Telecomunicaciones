@@ -1,266 +1,246 @@
-import { useState, useEffect, useRef } from 'react';
-import { UserPlus, Search, Trash2, Upload, Loader2, Mail, Phone } from 'lucide-react';
-import { getStudents, createStudent, deleteStudent } from '../services/api';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, ChevronDown, Plus, Trash2, Loader2 } from 'lucide-react';
+import { obtenerReportes, obtenerEstudiantes, crearEstudiante, eliminarEstudiante } from '../services/api';
 import toast from 'react-hot-toast';
-import Papa from 'papaparse';
-import { useCourse } from '../context/CourseContext';
+import { useCurso } from '../context/ContextoCurso';
 
-export default function Students() {
-    const { selectedCourse } = useCourse();
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [newName, setNewName] = useState('');
-    const [newEmail, setNewEmail] = useState('');
-    const [newWhatsapp, setNewWhatsapp] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const fileInputRef = useRef(null);
+export default function Estudiantes() {
+    const { cursos, cursoSeleccionado, seleccionarCurso, cargandoCursos } = useCurso();
+    const [estudiantes, setEstudiantes] = useState([]);
+    const [busqueda, setBusqueda] = useState('');
+    const [cargando, setCargando] = useState(true);
+    const [formularioEstudiante, setFormularioEstudiante] = useState({ name: '', email: '', whatsapp: '' });
+    const [guardandoEstudiante, setGuardandoEstudiante] = useState(false);
+    const [eliminandoId, setEliminandoId] = useState(null);
+    const [refrescar, setRefrescar] = useState(0);
 
     useEffect(() => {
-        if (selectedCourse) {
-            fetchStudents();
-        } else {
-            setStudents([]);
-            setLoading(false);
-        }
-    }, [selectedCourse]);
+        const cargarEstudiantes = async () => {
+            if (!cursoSeleccionado) {
+                setEstudiantes([]);
+                setCargando(false);
+                return;
+            }
 
-    const fetchStudents = async () => {
-        if (!selectedCourse) return;
-        setLoading(true);
-        try {
-            const data = await getStudents(selectedCourse.id);
-            setStudents(data);
-        } catch (error) {
-            toast.error('Error al cargar estudiantes');
-        } finally {
-            setLoading(false);
-        }
-    };
+            setCargando(true);
+            try {
+                const [lista, reporte] = await Promise.all([
+                    obtenerEstudiantes(cursoSeleccionado.id),
+                    obtenerReportes(cursoSeleccionado.id, {}),
+                ]);
 
-    const handleAdd = async (e) => {
+                const porcentajePorId = new Map(reporte.map((item) => [item.id, item.percentage]));
+                const normalizados = lista.map((estudiante) => ({
+                    id: estudiante.id,
+                    nombre: estudiante.name,
+                    curso: cursoSeleccionado.name,
+                    porcentaje: porcentajePorId.get(estudiante.id) ?? 0,
+                }));
+                setEstudiantes(normalizados);
+            } finally {
+                setCargando(false);
+            }
+        };
+
+        cargarEstudiantes();
+    }, [cursoSeleccionado, refrescar]);
+
+    const manejarCreacionEstudiante = async (e) => {
         e.preventDefault();
-        if (!newName.trim()) return;
-        if (!selectedCourse) {
-            toast.error('Selecciona un curso primero');
-            return;
-        }
-        setIsSubmitting(true);
+        if (!cursoSeleccionado) return toast.error('Selecciona una materia primero');
+        setGuardandoEstudiante(true);
         try {
-            await createStudent(selectedCourse.id, {
-                name: newName,
-                email: newEmail || null,
-                whatsapp: newWhatsapp || null,
-            });
-            toast.success('Estudiante añadido');
-            setNewName('');
-            setNewEmail('');
-            setNewWhatsapp('');
-            fetchStudents();
-        } catch (error) {
-            toast.error('Error al añadir estudiante');
+            await crearEstudiante(cursoSeleccionado.id, formularioEstudiante);
+            setRefrescar(prev => prev + 1);
+            setFormularioEstudiante({ name: '', email: '', whatsapp: '' });
+            toast.success('Estudiante añadido exitosamente');
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Error al añadir estudiante');
         } finally {
-            setIsSubmitting(false);
+            setGuardandoEstudiante(false);
         }
     };
 
-    const handleDelete = async (id, name) => {
-        if (!window.confirm(`¿Estás seguro de eliminar a ${name}?`)) return;
+    const manejarEliminacionEstudiante = async (id, nombre) => {
+        if (!confirm(`¿Eliminar a "${nombre}"? Se borrarán sus registros de asistencia.`)) return;
+        setEliminandoId(id);
         try {
-            await deleteStudent(id);
+            await eliminarEstudiante(id);
+            setRefrescar(prev => prev + 1);
             toast.success('Estudiante eliminado');
-            fetchStudents();
-        } catch (error) {
+        } catch (err) {
             toast.error('Error al eliminar estudiante');
+        } finally {
+            setEliminandoId(null);
         }
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        // Support both CSV and Excel files
-        const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-
-        if (isExcel) {
-            // Use dynamic import for xlsx
-            import('xlsx').then(XLSX => {
-                const reader = new FileReader();
-                reader.onload = async (evt) => {
-                    try {
-                        const workbook = XLSX.read(evt.target.result, { type: 'binary' });
-                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                        const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-                        await processRows(rows);
-                    } catch (error) {
-                        toast.error('Error al leer el archivo Excel');
-                    }
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                };
-                reader.readAsBinaryString(file);
-            }).catch(() => {
-                toast.error('No se pudo cargar el lector de Excel. Usa un archivo CSV.');
-            });
-        } else {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: async (results) => {
-                    await processRows(results.data);
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                }
-            });
-        }
-    };
-
-    const processRows = async (rows) => {
-        try {
-            const validStudents = rows
-                .map(row => ({
-                    name: row.Nombre || row.nombre || row.Name || row.name || row.Student || '',
-                    email: row.Correo || row.correo || row.Email || row.email || '',
-                    whatsapp: row.Whatsapp || row.whatsapp || row.WhatsApp || row.Telefono || row.telefono || row.Phone || '',
-                }))
-                .filter(s => s.name && s.name.trim() !== '');
-
-            if (validStudents.length === 0) {
-                toast.error('No se encontraron datos válidos. Asegúrate de tener columna "Nombre"');
-                return;
-            }
-
-            if (!selectedCourse) {
-                toast.error('Selecciona un curso primero');
-                return;
-            }
-
-            toast.loading('Importando...', { id: 'import' });
-            const res = await createStudent(selectedCourse.id, validStudents);
-            toast.success(`${res.count || validStudents.length} estudiantes importados`, { id: 'import' });
-            fetchStudents();
-        } catch (error) {
-            toast.error('Error al importar', { id: 'import' });
-        }
-    };
-
-    const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()));
+    const filtrados = useMemo(
+        () =>
+            estudiantes.filter((estudiante) =>
+                estudiante.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+                estudiante.id.toLowerCase().includes(busqueda.toLowerCase()),
+            ),
+        [busqueda, estudiantes],
+    );
 
     return (
-        <div className="space-y-6 animate-in fade-in">
-            <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-gray-100 gap-4 flex-wrap">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Estudiantes</h1>
-                    <p className="text-gray-500 mt-1">Gestiona la lista de alumnos ({students.length} total)</p>
+        <section className="space-y-6">
+            <header className="tarjeta flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="w-full sm:w-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="text-2xl font-semibold">Estudiantes</h2>
+                        <p className="mt-1 text-sm text-texto-secundario">Listado y porcentaje de asistencia por estudiante.</p>
+                    </div>
                 </div>
-                <div className="flex flex-col gap-2 items-end">
-                    <input type="file" accept=".csv,.xlsx,.xls" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-5 rounded-xl transition-colors"
-                    >
-                        <Upload size={20} /> Importar Excel / CSV
-                    </button>
-                    <p className="text-xs text-gray-400">Columnas requeridas: <span className="font-semibold">Nombre</span>, <span className="font-semibold">Correo</span>, <span className="font-semibold">Whatsapp</span></p>
+                
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
+                    <div className="flex items-center gap-3 w-full sm:w-auto p-3 bg-fondo/50 rounded-xl border">
+                        <span className="text-sm font-medium text-texto-secundario whitespace-nowrap">Materia activa:</span>
+                        {cargandoCursos ? (
+                            <span className="text-sm text-texto-secundario">Cargando...</span>
+                        ) : cursos.length > 0 ? (
+                            <div className="relative w-full sm:w-auto">
+                                <select
+                                    className="campo pr-9 py-1.5 bg-white font-medium text-primario w-full sm:w-auto appearance-none"
+                                    value={cursoSeleccionado?.id || ''}
+                                    onChange={(evento) => {
+                                        const cursoElegido = cursos.find((curso) => curso.id === evento.target.value);
+                                        seleccionarCurso(cursoElegido);
+                                    }}
+                                >
+                                    {cursos.map((curso) => (
+                                        <option key={curso.id} value={curso.id}>
+                                            {curso.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown
+                                    size={16}
+                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-texto-secundario"
+                                />
+                            </div>
+                        ) : (
+                            <span className="text-sm font-medium text-ausente">Sin materias</span>
+                        )}
+                    </div>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                    <form onSubmit={handleAdd} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-                        <h2 className="text-xl font-bold text-gray-800">Añadir Estudiante</h2>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">Nombre completo <span className="text-red-500">*</span></label>
+            </header>
+            
+            {/* Formulario de Nuevo Estudiante */}
+            {cursoSeleccionado && (
+                <section className="tarjeta p-6">
+                    <h3 className="text-lg font-medium flex items-center gap-2 mb-4">
+                        <Plus size={20} className="text-primario" />
+                        Añadir Nuevo Estudiante
+                    </h3>
+                    <form onSubmit={manejarCreacionEstudiante} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+                        <div className="lg:col-span-1">
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre completo</label>
                             <input
                                 type="text"
-                                placeholder="Ej. Juan Pérez García"
-                                value={newName}
-                                onChange={(e) => setNewName(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none bg-gray-50"
                                 required
+                                placeholder="Ej. Ana García"
+                                className="campo w-full"
+                                value={formularioEstudiante.name}
+                                onChange={(e) => setFormularioEstudiante({ ...formularioEstudiante, name: e.target.value })}
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">
-                                <span className="flex items-center gap-1"><Mail size={14} /> Correo institucional</span>
-                            </label>
+                        <div className="lg:col-span-1">
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Correo electrónico <span className="font-normal text-xs">(Opcional)</span></label>
                             <input
                                 type="email"
-                                placeholder="alumno@institucion.edu"
-                                value={newEmail}
-                                onChange={(e) => setNewEmail(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none bg-gray-50"
+                                placeholder="correo@ejemplo.com"
+                                className="campo w-full"
+                                value={formularioEstudiante.email}
+                                onChange={(e) => setFormularioEstudiante({ ...formularioEstudiante, email: e.target.value })}
                             />
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-600 mb-1">
-                                <span className="flex items-center gap-1"><Phone size={14} /> Número de WhatsApp</span>
-                            </label>
+                        <div className="lg:col-span-1">
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">WhatsApp <span className="font-normal text-xs">(Opcional)</span></label>
                             <input
-                                type="tel"
-                                placeholder="Ej. +593 99 123 4567"
-                                value={newWhatsapp}
-                                onChange={(e) => setNewWhatsapp(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none bg-gray-50"
+                                type="text"
+                                placeholder="+57 300 000 0000"
+                                className="campo w-full"
+                                value={formularioEstudiante.whatsapp}
+                                onChange={(e) => setFormularioEstudiante({ ...formularioEstudiante, whatsapp: e.target.value })}
                             />
                         </div>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="w-full flex items-center justify-center gap-2 bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
-                        >
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : <UserPlus size={20} />}
-                            Guardar
-                        </button>
-                    </form>
-                </div>
-
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-[700px]">
-                    <div className="flex items-center gap-3 mb-6 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                        <Search className="text-gray-400 ml-2" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por nombre..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-transparent border-none outline-none focus:ring-0 text-gray-700 font-medium placeholder-gray-400"
-                        />
-                    </div>
-
-                    {loading ? (
-                        <div className="flex-1 flex justify-center items-center"><Loader2 className="animate-spin text-brand-blue" size={40} /></div>
-                    ) : (
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                            {filtered.length === 0 ? (
-                                <p className="text-center text-gray-500 py-12">No se encontraron estudiantes.</p>
-                            ) : (
-                                filtered.map(student => (
-                                    <div key={student.id} className="flex items-center justify-between p-4 bg-gray-50 hover:bg-white hover:border-brand-blue/30 border border-transparent shadow-sm rounded-xl transition-all group">
-                                        <div className="flex flex-col gap-0.5 min-w-0">
-                                            <span className="font-semibold text-gray-800 truncate">{student.name}</span>
-                                            {student.email && (
-                                                <span className="flex items-center gap-1 text-xs text-gray-500 truncate">
-                                                    <Mail size={11} /> {student.email}
-                                                </span>
-                                            )}
-                                            {student.whatsapp && (
-                                                <span className="flex items-center gap-1 text-xs text-green-600 truncate">
-                                                    <Phone size={11} /> {student.whatsapp}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <button
-                                            onClick={() => handleDelete(student.id, student.name)}
-                                            className="text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 flex-shrink-0"
-                                            title="Eliminar"
-                                        >
-                                            <Trash2 size={20} />
-                                        </button>
-                                    </div>
-                                ))
-                            )}
+                        <div className="lg:col-span-1">
+                            <button
+                                type="submit"
+                                disabled={guardandoEstudiante || !cursoSeleccionado}
+                                className="boton-primario w-full h-[38px] flex justify-center items-center gap-2"
+                            >
+                                {guardandoEstudiante ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                                {guardandoEstudiante ? 'Guardando...' : 'Añadir'}
+                            </button>
                         </div>
-                    )}
+                    </form>
+                </section>
+            )}
+
+            <div className="tarjeta">
+                <div className="mb-4 flex items-center gap-2 rounded-[var(--input-radius)] border bg-superficie px-3">
+                    <Search size={16} className="text-texto-secundario" />
+                    <input
+                        type="text"
+                        className="h-10 w-full border-none bg-transparent text-sm outline-none"
+                        placeholder="Buscar por nombre o ID"
+                        value={busqueda}
+                        onChange={(evento) => setBusqueda(evento.target.value)}
+                    />
                 </div>
             </div>
-        </div>
+
+            <section className="tarjeta p-0">
+                {cargando ? (
+                    <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[700px] text-sm">
+                            <thead style={{ background: 'color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
+                                <tr className="text-left text-texto-secundario">
+                                    <th className="px-4 py-3 font-medium">Nombre</th>
+                                    <th className="px-4 py-3 font-medium">ID</th>
+                                    <th className="px-4 py-3 font-medium">Materia</th>
+                                    <th className="px-4 py-3 text-right font-medium">% asistencia</th>
+                                    <th className="px-4 py-3 font-medium text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtrados.map((estudiante) => (
+                                    <tr key={estudiante.id} className="border-b">
+                                        <td className="px-4 py-3 font-medium text-texto">{estudiante.nombre}</td>
+                                        <td className="px-4 py-3 font-mono text-xs text-texto-secundario">{estudiante.id}</td>
+                                        <td className="px-4 py-3">{estudiante.curso}</td>
+                                        <td className="px-4 py-3 text-right font-mono">
+                                            {Number(estudiante.porcentaje).toLocaleString('es-CO')}%
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <button
+                                                onClick={() => manejarEliminacionEstudiante(estudiante.id, estudiante.nombre)}
+                                                disabled={eliminandoId === estudiante.id}
+                                                className="p-1.5 text-texto-secundario hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                                                title="Eliminar estudiante"
+                                            >
+                                                {eliminandoId === estudiante.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {filtrados.length === 0 && (
+                                    <tr>
+                                        <td colSpan="4" className="px-4 py-8 text-center text-texto-secundario">
+                                            No hay estudiantes para mostrar.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </section>
+        </section>
     );
 }

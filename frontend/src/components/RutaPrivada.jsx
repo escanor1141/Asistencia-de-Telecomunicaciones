@@ -1,0 +1,22 @@
+import { Navigate } from 'react-router-dom';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
+import { Loader2 } from 'lucide-react';
+
+// Protege rutas privadas — redirige al login si no hay sesión activa
+export default function RutaPrivada({ children }) {
+    const { usuario, cargando } = useAutenticacion();
+
+    if (cargando) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader2 className="animate-spin text-brand-purple" size={48} />
+            </div>
+        );
+    }
+
+    if (!usuario) {
+        return <Navigate to="/login" replace />;
+    }
+
+    return children;
+}

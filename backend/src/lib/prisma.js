@@ -1,12 +1,12 @@
 import { PrismaClient } from '@prisma/client'
 
-// Robust configuration for Windows, ensuring 127.0.0.1 is used
-const dbUrl = (process.env.DATABASE_URL || '').replace('localhost', '127.0.0.1')
+// Configuración robusta para Windows: reemplaza localhost por 127.0.0.1
+const urlBD = (process.env.DATABASE_URL || '').replace('localhost', '127.0.0.1')
 
-const prismaClientSingleton = () => {
+const crearClientePrisma = () => {
     return new PrismaClient({
         datasources: {
-            db: { url: dbUrl }
+            db: { url: urlBD }
         },
         errorFormat: 'pretty',
         log: [
@@ -18,9 +18,10 @@ const prismaClientSingleton = () => {
     })
 }
 
-const globalForPrisma = globalThis
-const prisma = globalForPrisma.prismaGlobal ?? prismaClientSingleton()
+// Singleton para evitar múltiples instancias en desarrollo (hot-reload)
+const globalParaPrisma = globalThis
+const prisma = globalParaPrisma.prismaGlobal ?? crearClientePrisma()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prismaGlobal = prisma
+if (process.env.NODE_ENV !== 'production') globalParaPrisma.prismaGlobal = prisma
 
 export default prisma

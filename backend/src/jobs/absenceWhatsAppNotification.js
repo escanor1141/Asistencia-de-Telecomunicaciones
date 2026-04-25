@@ -1,5 +1,5 @@
 /**
- * absenceWhatsAppNotification.js
+ * notificacionWhatsAppAusencia.js
  * Job que envía notificaciones de WhatsApp a estudiantes ausentes
  * cuando el profesor guarda la asistencia de una clase.
  *
@@ -11,8 +11,8 @@
 import prisma from '../lib/prisma.js';
 import { sendWhatsAppMessage } from '../lib/whatsappService.js';
 
-/** Espera N milisegundos (promesa) */
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Espera N milisegundos */
+const esperar = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Construye el mensaje de texto para el estudiante ausente.
@@ -23,13 +23,13 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * @param {string} params.courseName
  * @returns {string}
  */
-function buildAbsenceMessage({ studentName, date, courseName }) {
+function construirMensajeAusencia({ studentName, date, courseName }) {
     // Convertir YYYY-MM-DD a DD/MM/YYYY para el mensaje
-    const [year, month, day] = date.split('-');
-    const formattedDate = `${day}/${month}/${year}`;
+    const [anio, mes, dia] = date.split('-');
+    const fechaFormateada = `${dia}/${mes}/${anio}`;
 
     return (
-        `Estimado/a ${studentName}, le informamos que el día ${formattedDate} ` +
+        `Estimado/a ${studentName}, le informamos que el día ${fechaFormateada} ` +
         `se registró una inasistencia en la asignatura ${courseName}. ` +
         `Si considera que existe un error, comuníquese con la coordinación académica.`
     );
@@ -38,121 +38,120 @@ function buildAbsenceMessage({ studentName, date, courseName }) {
 /**
  * Orquesta el envío de notificaciones WhatsApp para una clase específica.
  *
- * @param {Array<{ studentId: string, present: boolean }>} records
- * @param {string} courseId
- * @param {string} date  - Formato YYYY-MM-DD
+ * @param {Array<{ studentId: string, present: boolean }>} registros
+ * @param {string} idCurso
+ * @param {string} fecha  - Formato YYYY-MM-DD
  */
-export async function runAbsenceWhatsAppNotification(records, courseId, date) {
-    const sendDelayMs = Number(process.env.WHATSAPP_SEND_DELAY_MS ?? 5000);
+export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) {
+    const delayEnvioMs = Number(process.env.WHATSAPP_SEND_DELAY_MS ?? 5000);
 
     console.log('\n════════════════════════════════════════');
     console.log('[whatsapp-job] Iniciando notificaciones de ausencia por WhatsApp...');
-    console.log(`[whatsapp-job] Curso: ${courseId} | Fecha: ${date}`);
+    console.log(`[whatsapp-job] Curso: ${idCurso} | Fecha: ${fecha}`);
     console.log('════════════════════════════════════════\n');
 
-    const stats = { sent: 0, skipped: 0, errors: 0 };
+    const estadisticas = { enviados: 0, omitidos: 0, errores: 0 };
 
     try {
-        // 1. Filtrar sólo los ausentes
-        const absentIds = records
+        // 1. Filtrar solo los ausentes
+        const idsAusentes = registros
             .filter(r => !r.present)
             .map(r => r.studentId);
 
-        if (absentIds.length === 0) {
+        if (idsAusentes.length === 0) {
             console.log('[whatsapp-job] No hay estudiantes ausentes. Nada que enviar.');
             return;
         }
 
         // 2. Obtener datos de estudiantes + nombre del curso en un solo query
-        const [students, course] = await Promise.all([
+        const [estudiantes, curso] = await Promise.all([
             prisma.student.findMany({
-                where: { id: { in: absentIds } },
+                where: { id: { in: idsAusentes } },
                 select: { id: true, name: true, whatsapp: true },
             }),
             prisma.course.findUnique({
-                where: { id: courseId },
+                where: { id: idCurso },
                 select: { name: true },
             }),
         ]);
 
-        if (!course) {
-            console.error(`[whatsapp-job] Curso ${courseId} no encontrado.`);
+        if (!curso) {
+            console.error(`[whatsapp-job] Curso ${idCurso} no encontrado.`);
             return;
         }
 
         // 3. Procesar cada estudiante
-        for (const student of students) {
-            const logBase = { studentId: student.id, courseId, date };
+        for (const estudiante of estudiantes) {
+            const claveLog = { studentId: estudiante.id, courseId: idCurso, date: fecha };
 
             // --- Sin número registrado ---
-            if (!student.whatsapp) {
-                console.warn(`[whatsapp-job] Sin WhatsApp: ${student.name} (${student.id})`);
-                stats.skipped++;
+            if (!estudiante.whatsapp) {
+                console.warn(`[whatsapp-job] Sin WhatsApp: ${estudiante.name} (${estudiante.id})`);
+                estadisticas.omitidos++;
                 continue;
             }
 
             // --- Verificar duplicado: solo omitir si YA fue enviado con éxito ---
-            // Si el intento anterior falló (ERROR), se debe reintentar
-            const existing = await prisma.whatsappNotificationLog.findUnique({
-                where: { studentId_courseId_date: logBase },
+            const existente = await prisma.whatsappNotificationLog.findUnique({
+                where: { studentId_courseId_date: claveLog },
             });
 
-            if (existing?.status === 'SUCCESS') {
-                console.log(`[whatsapp-job] Ya notificado exitosamente: ${student.name} (${date}). Omitiendo.`);
-                stats.skipped++;
+            if (existente?.status === 'SUCCESS') {
+                console.log(`[whatsapp-job] Ya notificado exitosamente: ${estudiante.name} (${fecha}). Omitiendo.`);
+                estadisticas.omitidos++;
                 continue;
             }
 
             // --- Construir y enviar mensaje ---
-            const message = buildAbsenceMessage({
-                studentName: student.name,
-                date,
-                courseName: course.name,
+            const mensaje = construirMensajeAusencia({
+                studentName: estudiante.name,
+                date: fecha,
+                courseName: curso.name,
             });
 
-            const result = await sendWhatsAppMessage({
-                phone: student.whatsapp,
-                message,
+            const resultado = await sendWhatsAppMessage({
+                phone: estudiante.whatsapp,
+                message: mensaje,
             });
 
             // --- Registrar / actualizar en log ---
             await prisma.whatsappNotificationLog.upsert({
-                where: { studentId_courseId_date: logBase },
+                where: { studentId_courseId_date: claveLog },
                 update: {
-                    status: result.success ? 'SUCCESS' : 'ERROR',
-                    error: result.success ? null : result.error,
+                    status: resultado.success ? 'SUCCESS' : 'ERROR',
+                    error: resultado.success ? null : resultado.error,
                     sentAt: new Date(),
                 },
                 create: {
-                    ...logBase,
-                    status: result.success ? 'SUCCESS' : 'ERROR',
-                    error: result.success ? null : result.error,
+                    ...claveLog,
+                    status: resultado.success ? 'SUCCESS' : 'ERROR',
+                    error: resultado.success ? null : resultado.error,
                 },
             });
 
-            if (result.success) {
-                console.log(`[whatsapp-job] ✅ Enviado a ${student.name} (${student.whatsapp})`);
-                stats.sent++;
+            if (resultado.success) {
+                console.log(`[whatsapp-job] ✅ Enviado a ${estudiante.name} (${estudiante.whatsapp})`);
+                estadisticas.enviados++;
             } else {
-                console.error(`[whatsapp-job] ❌ Error enviando a ${student.name} — ${result.error}`);
-                stats.errors++;
+                console.error(`[whatsapp-job] ❌ Error enviando a ${estudiante.name} — ${resultado.error}`);
+                estadisticas.errores++;
             }
 
             // --- Delay entre mensajes para evitar bans ---
-            if (students.indexOf(student) < students.length - 1) {
-                console.log(`[whatsapp-job] 🕐 Esperando ${sendDelayMs / 1000}s antes del próximo envío...`);
-                await delay(sendDelayMs);
+            if (estudiantes.indexOf(estudiante) < estudiantes.length - 1) {
+                console.log(`[whatsapp-job] 🕐 Esperando ${delayEnvioMs / 1000}s antes del próximo envío...`);
+                await esperar(delayEnvioMs);
             }
         }
     } catch (err) {
         console.error('[whatsapp-job] Error crítico:', err.message);
-        stats.errors++;
+        estadisticas.errores++;
     }
 
     console.log('\n════════════════════════════════════════');
     console.log('[whatsapp-job] Resumen final:');
-    console.log(`  ✅ Enviados:  ${stats.sent}`);
-    console.log(`  ⏭️  Omitidos:  ${stats.skipped}`);
-    console.log(`  ❌ Errores:   ${stats.errors}`);
+    console.log(`  ✅ Enviados:  ${estadisticas.enviados}`);
+    console.log(`  ⏭️  Omitidos:  ${estadisticas.omitidos}`);
+    console.log(`  ❌ Errores:   ${estadisticas.errores}`);
     console.log('════════════════════════════════════════\n');
 }

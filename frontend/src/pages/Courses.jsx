@@ -1,120 +1,258 @@
-import { useState } from 'react';
-import { useCourse } from '../context/CourseContext';
-import { createCourse, deleteCourse } from '../services/api';
+import { useEffect, useState } from 'react';
+import { useCurso } from '../context/ContextoCurso';
+import { obtenerReportes, crearCurso, eliminarCurso } from '../services/api';
+import { BookOpen, ChevronDown, Trash2, Plus, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { BookOpen, Trash2, Plus, Loader2 } from 'lucide-react';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
 
-export default function Courses() {
-    const { courses, loadCourses, loadingCourses } = useCourse();
-    const [name, setName] = useState('');
-    const [code, setCode] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+export default function Cursos() {
+    const { cursos, cargandoCursos, cursoSeleccionado, seleccionarCurso, cargarCursos } = useCurso();
+    const { usuario } = useAutenticacion();
+    const [estadisticasCursos, setEstadisticasCursos] = useState([]);
+    const [cargandoEstadisticas, setCargandoEstadisticas] = useState(false);
+    const [formularioCurso, setFormularioCurso] = useState({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString() });
+    const [guardandoCurso, setGuardandoCurso] = useState(false);
+    const [eliminandoId, setEliminandoId] = useState(null);
 
-    const handleAdd = async (e) => {
+    useEffect(() => {
+        const cargarEstadisticas = async () => {
+            if (cursos.length === 0) {
+                setEstadisticasCursos([]);
+                return;
+            }
+
+            setCargandoEstadisticas(true);
+            try {
+                const respuestas = await Promise.all(
+                    cursos.map(async (curso) => {
+                        const reporteCurso = await obtenerReportes(curso.id, {});
+                        const acumulado = reporteCurso.reduce((total, item) => total + item.percentage, 0);
+                        const promedio = reporteCurso.length > 0 ? Math.round(acumulado / reporteCurso.length) : 0;
+                        return {
+                            id: curso.id,
+                            nombre: curso.name,
+                            codigo: curso.code,
+                            grupo: curso.groupCode || 'A',
+                            periodo: curso.academicPeriod || '1',
+                            anio: curso.academicYear || '2024',
+                            profesor: usuario?.name || 'Sin profesor asignado',
+                            horario: curso.schedule || 'Sin horario asignado',
+                            porcentaje: promedio,
+                        };
+                    }),
+                );
+                setEstadisticasCursos(respuestas);
+            } finally {
+                setCargandoEstadisticas(false);
+            }
+        };
+
+        cargarEstadisticas();
+    }, [cursos, usuario?.name]);
+
+    const manejarCreacionCurso = async (e) => {
         e.preventDefault();
-        if (!name.trim() || !code.trim()) return;
-        setIsSubmitting(true);
+        setGuardandoCurso(true);
         try {
-            await createCourse({ name: name.trim(), code: code.trim() });
-            toast.success('Curso añadido exitosamente');
-            setName('');
-            setCode('');
-            await loadCourses();
-        } catch (error) {
-            toast.error(error.response?.data?.error || 'Error al añadir curso');
+            await crearCurso(formularioCurso);
+            await cargarCursos();
+            setFormularioCurso({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString() });
+            toast.success('Materia creada exitosamente');
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Error al crear materia');
         } finally {
-            setIsSubmitting(false);
+            setGuardandoCurso(false);
         }
     };
 
-    const handleDelete = async (id, courseName) => {
-        if (!window.confirm(`¿Estás seguro de eliminar el curso ${courseName}? Se borrarán todos sus estudiantes y asistencias.`)) return;
+    const manejarEliminacionCurso = async (id, nombre) => {
+        if (!confirm(`¿Eliminar la materia "${nombre}"? Se perderán todos sus estudiantes y asistencia.`)) return;
+        setEliminandoId(id);
         try {
-            await deleteCourse(id);
-            toast.success('Curso eliminado');
-            await loadCourses();
-        } catch (error) {
-            toast.error('Error al eliminar curso');
+            await eliminarCurso(id);
+            await cargarCursos();
+            toast.success('Materia eliminada');
+        } catch (err) {
+            toast.error('Error al eliminar materia');
+        } finally {
+            setEliminandoId(null);
         }
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center gap-4 flex-wrap">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Mis Cursos</h1>
-                    <p className="text-gray-500 mt-1">Gestiona las materias o cursos que dictas ({courses.length} en total)</p>
+        <section className="space-y-6">
+            <header className="tarjeta flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="w-full sm:w-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h2 className="text-2xl font-semibold">Materias</h2>
+                        <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
+                    </div>
                 </div>
-            </div>
+                
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
+                    <div className="flex items-center gap-3 w-full sm:w-auto p-3 bg-fondo/50 rounded-xl border">
+                        <span className="text-sm font-medium text-texto-secundario whitespace-nowrap">Materia activa:</span>
+                        {cargandoCursos ? (
+                            <span className="text-sm text-texto-secundario">Cargando...</span>
+                        ) : cursos.length > 0 ? (
+                            <div className="relative w-full sm:w-auto">
+                                <select
+                                    className="campo pr-9 py-1.5 bg-white font-medium text-primario w-full sm:w-auto appearance-none"
+                                    value={cursoSeleccionado?.id || ''}
+                                    onChange={(evento) => {
+                                        const cursoElegido = cursos.find((curso) => curso.id === evento.target.value);
+                                        seleccionarCurso(cursoElegido);
+                                    }}
+                                >
+                                    {cursos.map((curso) => (
+                                        <option key={curso.id} value={curso.id}>
+                                            {curso.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <ChevronDown
+                                    size={16}
+                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-texto-secundario"
+                                />
+                            </div>
+                        ) : (
+                            <span className="text-sm font-medium text-ausente">Sin materias</span>
+                        )}
+                    </div>
+                </div>
+            </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1 space-y-6">
-                    <form onSubmit={handleAdd} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
-                        <h2 className="text-xl font-bold text-gray-800">Añadir Curso</h2>
-                        <div>
-                            <input
-                                type="text"
-                                placeholder="Nombre (ej. Matemáticas)"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none bg-gray-50"
-                                required
-                            />
+            {/* Formulario de Nuevo Curso */}
+            <section className="tarjeta p-6">
+                <h3 className="text-lg font-medium flex items-center gap-2 mb-4">
+                    <Plus size={20} className="text-primario" />
+                    Crear Nueva Materia
+                </h3>
+                <form onSubmit={manejarCreacionCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 items-end">
+                    <div className="lg:col-span-2">
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre de la materia</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="Ej. Matemáticas I"
+                            className="campo w-full"
+                            value={formularioCurso.name}
+                            onChange={(e) => setFormularioCurso({ ...formularioCurso, name: e.target.value })}
+                        />
+                    </div>
+                    <div className="lg:col-span-1">
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Código</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="Ej. MAT-101"
+                            className="campo w-full uppercase"
+                            value={formularioCurso.code}
+                            onChange={(e) => setFormularioCurso({ ...formularioCurso, code: e.target.value })}
+                        />
+                    </div>
+                    <div className="lg:col-span-1">
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Grupo</label>
+                        <input
+                            type="text"
+                            required
+                            placeholder="Ej. A"
+                            className="campo w-full uppercase"
+                            value={formularioCurso.groupCode}
+                            onChange={(e) => setFormularioCurso({ ...formularioCurso, groupCode: e.target.value })}
+                        />
+                    </div>
+                    <div className="lg:col-span-1">
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Periodo</label>
+                        <div className="relative">
+                            <select
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.academicPeriod}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, academicPeriod: e.target.value })}
+                            >
+                                <option value="1">1 (Primer Semestre)</option>
+                                <option value="2">2 (Segundo Semestre)</option>
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
                         </div>
-                        <div>
-                            <input
-                                type="text"
-                                placeholder="Código (ej. MAT-101)"
-                                value={code}
-                                onChange={(e) => setCode(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-brand-blue focus:border-brand-blue transition-all outline-none bg-gray-50"
-                                required
-                            />
+                    </div>
+                    <div className="lg:col-span-1">
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Año</label>
+                        <div className="relative">
+                            <select
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.academicYear}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, academicYear: e.target.value })}
+                            >
+                                {[0, 1, 2].map(offset => {
+                                    const year = (new Date().getFullYear() + offset).toString();
+                                    return <option key={year} value={year}>{year}</option>;
+                                })}
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
                         </div>
+                    </div>
+                    <div className="lg:col-span-6 sm:col-span-2 sm:col-start-1 mt-2">
                         <button
                             type="submit"
-                            disabled={isSubmitting}
-                            className="w-full flex items-center justify-center gap-2 bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-xl transition-colors disabled:opacity-50 shadow-md"
+                            disabled={guardandoCurso}
+                            className="boton-primario w-full h-[38px] flex justify-center items-center gap-2"
                         >
-                            {isSubmitting ? <Loader2 className="animate-spin" /> : <Plus size={20} />}
-                            Guardar Curso
+                            {guardandoCurso ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+                            {guardandoCurso ? 'Guardando...' : 'Crear Materia'}
                         </button>
-                    </form>
-                </div>
+                    </div>
+                </form>
+            </section>
 
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col min-h-[500px]">
-                    <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                        <BookOpen className="text-brand-blue" />
-                        Tus Cursos Registrados
-                    </h2>
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {(cargandoCursos || cargandoEstadisticas) && (
+                    <p className="text-sm text-texto-secundario">Cargando...</p>
+                )}
 
-                    {loadingCourses ? (
-                        <div className="flex-1 flex justify-center items-center"><Loader2 className="animate-spin text-brand-blue" size={40} /></div>
-                    ) : (
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 auto-rows-max">
-                            {courses.length === 0 ? (
-                                <p className="col-span-full text-center text-gray-500 py-12">No has creado ningún curso todavía.</p>
-                            ) : (
-                                courses.map(course => (
-                                    <div key={course.id} className="relative bg-gray-50 hover:bg-white border text-left p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group overflow-hidden border-transparent hover:border-brand-blue/30 h-32 flex flex-col justify-center">
-                                        <div className="absolute top-0 left-0 w-1 h-full bg-brand-blue/80 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                        <h3 className="font-bold text-gray-900 text-lg truncate pr-8">{course.name}</h3>
-                                        <p className="text-brand-blue font-semibold text-sm mt-1">{course.code}</p>
+                {!cargandoCursos &&
+                    !cargandoEstadisticas &&
+                    estadisticasCursos.map((curso) => (
+                        <article key={curso.id} className="tarjeta relative group">
+                            <div className="mb-3 flex items-center gap-2 text-primario pr-8">
+                                <BookOpen size={18} />
+                                <p className="text-sm font-medium truncate">{curso.nombre}</p>
+                            </div>
+                            <button
+                                onClick={() => manejarEliminacionCurso(curso.id, curso.nombre)}
+                                disabled={eliminandoId === curso.id}
+                                className="absolute top-4 right-4 p-1.5 text-texto-secundario hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
+                                title="Eliminar materia"
+                            >
+                                {eliminandoId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                            </button>
+                            <div className="space-y-2 text-sm mt-1">
+                                <div className="flex gap-2">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                        {curso.codigo} - Grupo {curso.grupo}
+                                    </span>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                        Periodo {curso.periodo} ({curso.anio})
+                                    </span>
+                                </div>
+                                <p className="pt-2">
+                                    <span className="text-texto-secundario">Profesor:</span> {curso.profesor}
+                                </p>
+                                <p>
+                                    <span className="text-texto-secundario">Horario:</span> {curso.horario}
+                                </p>
+                                <p className="font-mono">
+                                    <span className="font-sans text-texto-secundario">% asistencia:</span>{' '}
+                                    {curso.porcentaje.toLocaleString('es-CO')}%
+                                </p>
+                            </div>
+                        </article>
+                    ))}
 
-                                        <button
-                                            onClick={() => handleDelete(course.id, course.name)}
-                                            className="absolute top-4 right-4 text-gray-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                                            title="Eliminar curso"
-                                        >
-                                            <Trash2 size={20} />
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
+                {!cargandoCursos && !cargandoEstadisticas && estadisticasCursos.length === 0 && (
+                    <p className="text-sm text-texto-secundario">No hay materias registradas.</p>
+                )}
+            </section>
+        </section>
     );
 }

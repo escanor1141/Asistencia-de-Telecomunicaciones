@@ -1,16 +1,16 @@
 import { BrowserRouter } from 'react-router-dom';
-import AppRouter from './router.jsx';
-import { AuthProvider } from './context/AuthContext.jsx';
-import { CourseProvider } from './context/CourseContext.jsx';
+import EnrutadorApp from './router.jsx';
+import { ProveedorAutenticacion } from './context/ContextoAutenticacion.jsx';
+import { ProveedorCurso } from './context/ContextoCurso.jsx';
 
 function App() {
     return (
         <BrowserRouter>
-            <AuthProvider>
-                <CourseProvider>
-                    <AppRouter />
-                </CourseProvider>
-            </AuthProvider>
+            <ProveedorAutenticacion>
+                <ProveedorCurso>
+                    <EnrutadorApp />
+                </ProveedorCurso>
+            </ProveedorAutenticacion>
         </BrowserRouter>
     )
 }

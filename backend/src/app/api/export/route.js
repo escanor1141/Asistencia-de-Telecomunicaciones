@@ -1,36 +1,36 @@
-// import { NextResponse } from 'next/server' (ya no se requiere en modo ESM con Response global)
 import prisma from '@/lib/prisma'
 
+// GET — exportar asistencia completa en formato CSV
 export async function GET(request) {
     try {
-        const attendances = await prisma.attendance.findMany({
+        const asistencias = await prisma.attendance.findMany({
             include: { student: true },
             orderBy: { date: 'desc' }
         })
 
-        const header = ['Student ID', 'Name', 'Date', 'Present', 'Created At']
+        const encabezado = ['ID Estudiante', 'Nombre', 'Fecha', 'Presente', 'Fecha de Registro']
 
-        // Simple CSV builder dealing with basic commas
-        const escapeCsv = (str) => `"${str.replace(/"/g, '""')}"`
+        // Constructor CSV simple con manejo de comas internas
+        const escaparCsv = (str) => `"${String(str).replace(/"/g, '""')}"`
 
-        const rows = attendances.map(a => [
-            escapeCsv(a.student.id),
-            escapeCsv(a.student.name),
-            escapeCsv(a.date),
-            a.present ? 'Yes' : 'No',
-            escapeCsv(a.createdAt.toISOString())
+        const filas = asistencias.map(a => [
+            escaparCsv(a.student.id),
+            escaparCsv(a.student.name),
+            escaparCsv(a.date),
+            a.present ? 'Sí' : 'No',
+            escaparCsv(a.createdAt.toISOString())
         ])
 
-        const csvContent = [header.map(escapeCsv).join(","), ...rows.map(e => e.join(","))].join("\n")
+        const contenidoCsv = [encabezado.map(escaparCsv).join(','), ...filas.map(f => f.join(','))].join('\n')
 
-        return new Response(csvContent, {
+        return new Response(contenidoCsv, {
             headers: {
                 'Content-Type': 'text/csv',
-                'Content-Disposition': 'attachment; filename="attendance_export.csv"',
+                'Content-Disposition': 'attachment; filename="asistencia_exportada.csv"',
             }
         })
     } catch (error) {
         console.error(error)
-        return Response.json({ error: 'Failed to export' }, { status: 500 })
+        return Response.json({ error: 'Error al exportar asistencia' }, { status: 500 })
     }
 }

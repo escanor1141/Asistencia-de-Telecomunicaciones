@@ -3,42 +3,43 @@ import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
-const SECRET = process.env.JWT_SECRET || 'telecom_secret_key_2024'
+const SECRETO = process.env.JWT_SECRET || 'telecom_secret_key_2024'
 
+// POST /api/auth/login — autenticación de docentes
 export async function POST(request) {
     try {
-        console.log('[Login] Intento de login recibido')
+        console.log('[Login] Intento de inicio de sesión recibido')
         const { email, password } = await request.json()
 
         if (!email || !password) {
             return Response.json({ error: 'Email y contraseña son requeridos' }, { status: 400 })
         }
 
-        // Search for the teacher
-        const teacher = await prisma.teacher.findUnique({ where: { email } })
-        if (!teacher) {
+        // Buscar docente por email
+        const docente = await prisma.teacher.findUnique({ where: { email } })
+        if (!docente) {
             console.log(`[Login] Usuario no encontrado: ${email}`)
             return Response.json({ error: 'Credenciales incorrectas' }, { status: 401 })
         }
 
-        // Verify password
-        const isValid = await bcrypt.compare(password, teacher.passwordHash)
-        if (!isValid) {
+        // Verificar contraseña
+        const esValida = await bcrypt.compare(password, docente.passwordHash)
+        if (!esValida) {
             console.log(`[Login] Contraseña incorrecta para: ${email}`)
             return Response.json({ error: 'Credenciales incorrectas' }, { status: 401 })
         }
 
-        // Generate token
+        // Generar token JWT
         const token = jwt.sign(
-            { id: teacher.id, email: teacher.email, name: teacher.name, role: teacher.role },
-            SECRET,
+            { id: docente.id, email: docente.email, name: docente.name, role: docente.role },
+            SECRETO,
             { expiresIn: '7d' }
         )
 
-        console.log(`[Login] Login exitoso: ${email} (${teacher.role})`)
+        console.log(`[Login] Sesión iniciada: ${email} (${docente.role})`)
         return Response.json({ 
             token, 
-            teacher: { id: teacher.id, email: teacher.email, name: teacher.name, role: teacher.role } 
+            teacher: { id: docente.id, email: docente.email, name: docente.name, role: docente.role } 
         })
     } catch (error) {
         console.error('[Login Error]', error)

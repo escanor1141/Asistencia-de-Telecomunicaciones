@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
-export async function PUT(
-    request,
-    { params }
-) {
+// PUT — actualizar datos de un estudiante
+export async function PUT(request, { params }) {
     try {
         const { name, email, whatsapp } = await request.json()
         if (!name || name.trim() === '') {
-            return Response.json({ error: 'Name is required' }, { status: 400 })
+            return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
         }
-        const student = await prisma.student.update({
+        const estudiante = await prisma.student.update({
             where: { id: params.id },
             data: {
                 name: name.trim(),
@@ -18,22 +16,18 @@ export async function PUT(
                 whatsapp: whatsapp ? whatsapp.trim() : null,
             }
         })
-        return Response.json(student)
+        return Response.json(estudiante)
     } catch (error) {
-        return Response.json({ error: 'Failed to update student' }, { status: 500 })
+        return Response.json({ error: 'Error al actualizar estudiante' }, { status: 500 })
     }
 }
 
-export async function DELETE(
-    request,
-    { params }
-) {
+// DELETE — eliminar un estudiante
+export async function DELETE(request, { params }) {
     try {
-        await prisma.student.delete({
-            where: { id: params.id }
-        })
+        await prisma.student.delete({ where: { id: params.id } })
         return Response.json({ success: true })
     } catch (error) {
-        return Response.json({ error: 'Failed to delete student' }, { status: 500 })
+        return Response.json({ error: 'Error al eliminar estudiante' }, { status: 500 })
     }
 }
