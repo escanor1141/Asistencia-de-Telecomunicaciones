@@ -1,25 +1,40 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
-// GET — reporte de asistencia por porcentaje de presencia
+// GET — reporte de asistencia por porcentaje de presencia con filtros opcionales
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
         const fechaInicio = searchParams.get('startDate')
-        const fechaFin = searchParams.get('endDate')
-        const idCurso = searchParams.get('courseId')
+        const fechaFin    = searchParams.get('endDate')
+        const idCurso     = searchParams.get('courseId')
+        const codigo      = searchParams.get('codigo')    || null
+        const grupo       = searchParams.get('grupo')     || null
+        const docenteId   = searchParams.get('docenteId') || null
 
         if (!idCurso) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
+        // Filtro de fechas
         const filtroFecha = {}
         if (fechaInicio) filtroFecha.gte = fechaInicio
-        if (fechaFin) filtroFecha.lte = fechaFin
+        if (fechaFin)    filtroFecha.lte = fechaFin
 
+        // Condición WHERE base
         const condicion = { courseId: idCurso }
         if (Object.keys(filtroFecha).length > 0) {
             condicion.date = filtroFecha
+        }
+
+        // Filtros opcionales sobre la relación Course
+        const filtroCurso = {}
+        if (codigo)    filtroCurso.code      = codigo
+        if (grupo)     filtroCurso.groupCode = grupo
+        if (docenteId) filtroCurso.teacherId = docenteId
+
+        if (Object.keys(filtroCurso).length > 0) {
+            condicion.course = filtroCurso
         }
 
         const asistencias = await prisma.attendance.findMany({

@@ -12,6 +12,43 @@ export const ProveedorCurso = ({ children }) => {
     const [cursoSeleccionado, setCursoSeleccionado] = useState(null);
     const [cargandoCursos, setCargandoCursos] = useState(true);
 
+    // ── Filtros secundarios ──────────────────────────────────────────
+    const [grupoSeleccionado, setGrupoSeleccionado] = useState(
+        () => localStorage.getItem('selectedGroup') || null
+    );
+    const [codigoSeleccionado, setCodigoSeleccionado] = useState(
+        () => localStorage.getItem('selectedCode') || null
+    );
+    const [docenteSeleccionado, setDocenteSeleccionado] = useState(
+        () => localStorage.getItem('selectedDocente') || null
+    );
+
+    // Persist secondary filters in localStorage
+    useEffect(() => {
+        if (grupoSeleccionado !== null) {
+            localStorage.setItem('selectedGroup', grupoSeleccionado);
+        } else {
+            localStorage.removeItem('selectedGroup');
+        }
+    }, [grupoSeleccionado]);
+
+    useEffect(() => {
+        if (codigoSeleccionado !== null) {
+            localStorage.setItem('selectedCode', codigoSeleccionado);
+        } else {
+            localStorage.removeItem('selectedCode');
+        }
+    }, [codigoSeleccionado]);
+
+    useEffect(() => {
+        if (docenteSeleccionado !== null) {
+            localStorage.setItem('selectedDocente', docenteSeleccionado);
+        } else {
+            localStorage.removeItem('selectedDocente');
+        }
+    }, [docenteSeleccionado]);
+
+    // ── Carga de cursos ──────────────────────────────────────────────
     const cargarCursos = async () => {
         if (!usuario) return;
         setCargandoCursos(true);
@@ -45,14 +82,36 @@ export const ProveedorCurso = ({ children }) => {
         // eslint-disable-next-line
     }, [usuario]);
 
+    // ── Selección de curso principal ─────────────────────────────────
+    // Al cambiar la materia activa, resetear todos los filtros secundarios
     const seleccionarCurso = (curso) => {
         if (!curso) return;
         setCursoSeleccionado(curso);
         localStorage.setItem('selectedCourseId', curso.id);
+
+        // Reset filtros secundarios
+        setGrupoSeleccionado(null);
+        setCodigoSeleccionado(null);
+        setDocenteSeleccionado(null);
     };
 
     return (
-        <ContextoCurso.Provider value={{ cursos, cursoSeleccionado, seleccionarCurso, cargarCursos, cargandoCursos }}>
+        <ContextoCurso.Provider
+            value={{
+                cursos,
+                cursoSeleccionado,
+                seleccionarCurso,
+                cargarCursos,
+                cargandoCursos,
+                // Filtros secundarios
+                grupoSeleccionado,
+                setGrupoSeleccionado,
+                codigoSeleccionado,
+                setCodigoSeleccionado,
+                docenteSeleccionado,
+                setDocenteSeleccionado,
+            }}
+        >
             {children}
         </ContextoCurso.Provider>
     );

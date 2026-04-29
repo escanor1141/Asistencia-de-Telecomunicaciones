@@ -1,23 +1,36 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock3, FileText, Loader2, Save, XCircle, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Clock3, FileText, Loader2, Save, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { obtenerAsistencia, obtenerEstudiantes, guardarAsistencia } from '../services/api';
 import { useCurso } from '../context/ContextoCurso';
+import FiltrosGlobales from '../components/FiltrosGlobales';
 
 const estadosAsistencia = [
-    { valor: 'Presente', icono: CheckCircle2, colorTexto: 'text-presente', colorFondo: 'var(--color-present-bg)' },
-    { valor: 'Ausente', icono: XCircle, colorTexto: 'text-ausente', colorFondo: 'var(--color-absent-bg)' },
-    { valor: 'Tardanza', icono: Clock3, colorTexto: 'text-tardanza', colorFondo: 'var(--color-late-bg)' },
-    { valor: 'Justificado', icono: FileText, colorTexto: 'text-justificado', colorFondo: 'var(--color-excused-bg)' },
+    { valor: 'Presente',    icono: CheckCircle2, colorTexto: 'text-presente',   colorFondo: 'var(--color-present-bg)' },
+    { valor: 'Ausente',     icono: XCircle,      colorTexto: 'text-ausente',    colorFondo: 'var(--color-absent-bg)' },
+    { valor: 'Tardanza',    icono: Clock3,       colorTexto: 'text-tardanza',   colorFondo: 'var(--color-late-bg)' },
+    { valor: 'Justificado', icono: FileText,     colorTexto: 'text-justificado',colorFondo: 'var(--color-excused-bg)' },
 ];
 
 export default function Asistencia() {
-    const { cursos, cursoSeleccionado, seleccionarCurso, cargandoCursos } = useCurso();
+    const {
+        cursoSeleccionado,
+        codigoSeleccionado,
+        grupoSeleccionado,
+        docenteSeleccionado,
+    } = useCurso();
+
     const [estudiantes, setEstudiantes] = useState([]);
     const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
     const [asistencia, setAsistencia] = useState({});
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
+
+    const filtros = {
+        codigo:     codigoSeleccionado,
+        grupo:      grupoSeleccionado,
+        docenteId:  docenteSeleccionado,
+    };
 
     useEffect(() => {
         if (cursoSeleccionado) {
@@ -27,15 +40,15 @@ export default function Asistencia() {
             setAsistencia({});
             setCargando(false);
         }
-    }, [fecha, cursoSeleccionado]);
+    }, [fecha, cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
 
     const cargarDatos = async () => {
         if (!cursoSeleccionado) return;
         setCargando(true);
         try {
             const [listaEstudiantes, asistenciaExistente] = await Promise.all([
-                obtenerEstudiantes(cursoSeleccionado.id),
-                obtenerAsistencia(cursoSeleccionado.id, fecha),
+                obtenerEstudiantes(cursoSeleccionado.id, filtros),
+                obtenerAsistencia(cursoSeleccionado.id, fecha, filtros),
             ]);
             setEstudiantes(listaEstudiantes);
 
@@ -82,51 +95,53 @@ export default function Asistencia() {
 
     return (
         <section className="space-y-6">
-            <header className="tarjeta flex flex-col gap-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h2 className="text-2xl font-semibold">Asistencia</h2>
-                        <p className="mt-1 text-sm text-texto-secundario">Registrá el estado diario por estudiante.</p>
-                    </div>
-                    
-                    <div className="flex items-center gap-3 w-full sm:w-auto p-3 bg-fondo/50 rounded-xl border">
-                        <span className="text-sm font-medium text-texto-secundario whitespace-nowrap">Materia activa:</span>
-                        {cargandoCursos ? (
-                            <span className="text-sm text-texto-secundario">Cargando...</span>
-                        ) : cursos.length > 0 ? (
-                            <div className="relative w-full sm:w-auto">
-                                <select
-                                    className="campo pr-9 py-1.5 bg-white font-medium text-primario w-full sm:w-auto appearance-none"
-                                    value={cursoSeleccionado?.id || ''}
-                                    onChange={(evento) => {
-                                        const cursoElegido = cursos.find((curso) => curso.id === evento.target.value);
-                                        seleccionarCurso(cursoElegido);
-                                    }}
-                                >
-                                    {cursos.map((curso) => (
-                                        <option key={curso.id} value={curso.id}>
-                                            {curso.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown
-                                    size={16}
-                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-texto-secundario"
-                                />
-                            </div>
-                        ) : (
-                            <span className="text-sm font-medium text-ausente">Sin materias</span>
-                        )}
-                    </div>
-                </div>
+            <header className="tarjeta">
+                <h2 className="text-2xl font-semibold mb-1">Asistencia</h2>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    flexWrap: 'wrap',
+                    gap: '12px'
+                }}>
+                    <p className="text-sm text-texto-secundario mt-2">Registrá el estado diario por estudiante.</p>
 
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-                    <input
-                        type="date"
-                        value={fecha}
-                        onChange={(evento) => setFecha(evento.target.value)}
-                        className="campo w-full sm:w-auto"
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                        <FiltrosGlobales />
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
+                            <label htmlFor="fecha-asistencia" style={{ fontSize: '0.8125rem', fontWeight: '500', fontFamily: 'var(--font-sans)', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', width: '56px', textAlign: 'right' }}>
+                                Fecha:
+                            </label>
+                            <input
+                                id="fecha-asistencia"
+                                type="date"
+                                value={fecha}
+                                onChange={(evento) => setFecha(evento.target.value)}
+                                style={{
+                                    height: '36px',
+                                    border: '1px solid var(--color-border)',
+                                    borderRadius: 'var(--input-radius)',
+                                    padding: '0 10px',
+                                    fontSize: '0.8125rem',
+                                    fontFamily: 'var(--font-sans)',
+                                    fontWeight: '500',
+                                    color: 'var(--color-text-primary)',
+                                    background: 'var(--color-surface)',
+                                    width: '140px',
+                                    outline: 'none'
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = 'var(--color-primary)';
+                                    e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)';
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = 'var(--color-border)';
+                                    e.target.style.boxShadow = 'none';
+                                }}
+                            />
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -157,12 +172,12 @@ export default function Asistencia() {
 
                 {cargando ? (
                     <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
-                ) : !cargandoCursos && cursos.length === 0 ? (
-                    <div className="tarjeta text-center py-12">
-                        <p className="text-texto-secundario">No tienes materias asignadas.</p>
+                ) : !cursoSeleccionado ? (
+                    <div className="p-6 text-center">
+                        <p className="text-texto-secundario">Seleccioná una materia en el menú superior.</p>
                     </div>
                 ) : estudiantes.length === 0 ? (
-                    <p className="p-6 text-sm text-texto-secundario">No hay estudiantes registrados.</p>
+                    <p className="p-6 text-sm text-texto-secundario">No hay estudiantes para los filtros seleccionados.</p>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[780px] text-sm">

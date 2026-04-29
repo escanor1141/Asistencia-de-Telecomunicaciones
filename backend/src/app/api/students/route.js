@@ -1,18 +1,34 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
-// GET — obtener lista de estudiantes de un curso
+// GET — obtener lista de estudiantes de un curso con filtros opcionales
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
-        const idCurso = searchParams.get('courseId')
+        const idCurso   = searchParams.get('courseId')
+        const codigo    = searchParams.get('codigo')    || null
+        const grupo     = searchParams.get('grupo')     || null
+        const docenteId = searchParams.get('docenteId') || null
 
         if (!idCurso) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
+        // Condición WHERE base sobre Student
+        const where = { courseId: idCurso }
+
+        // Filtros adicionales a través de la relación Course
+        const filtroCurso = {}
+        if (codigo)    filtroCurso.code      = codigo
+        if (grupo)     filtroCurso.groupCode = grupo
+        if (docenteId) filtroCurso.teacherId = docenteId
+
+        if (Object.keys(filtroCurso).length > 0) {
+            where.course = filtroCurso
+        }
+
         const estudiantes = await prisma.student.findMany({
-            where: { courseId: idCurso },
+            where,
             orderBy: { name: 'asc' }
         })
         return Response.json(estudiantes)

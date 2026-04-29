@@ -3,15 +3,18 @@ import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
 
-// GET — listar todos los profesores (solo ADMIN)
+// GET — listar profesores (ADMIN: todos, TEACHER: solo él mismo)
 export async function GET(request) {
     try {
         const usuario = obtenerUsuarioDePeticion(request)
-        if (!usuario || usuario.role !== 'ADMIN') {
-            return Response.json({ error: 'No autorizado' }, { status: 403 })
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
         }
 
+        const whereClause = usuario.role === 'ADMIN' ? {} : { id: usuario.id }
+
         const profesores = await prisma.teacher.findMany({
+            where: whereClause,
             select: { id: true, name: true, email: true, createdAt: true, role: true },
             orderBy: { createdAt: 'asc' }
         })

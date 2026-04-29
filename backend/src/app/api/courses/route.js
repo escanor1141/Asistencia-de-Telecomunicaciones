@@ -7,8 +7,10 @@ export async function GET(request) {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
 
+        const whereClause = usuario.role === 'ADMIN' ? {} : { teacherId: usuario.id }
+
         const cursos = await prisma.course.findMany({
-            where: { teacherId: usuario.id },
+            where: whereClause,
             orderBy: { name: 'asc' }
         })
         return Response.json(cursos)

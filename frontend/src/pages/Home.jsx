@@ -1,16 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Users, Percent, UserX, ChevronDown } from 'lucide-react';
+import { Users, Percent, UserX } from 'lucide-react';
 import { obtenerAsistencia, obtenerEstudiantes } from '../services/api';
 import { useCurso } from '../context/ContextoCurso';
+import FiltrosGlobales from '../components/FiltrosGlobales';
 
 export default function PanelPrincipal() {
-    const { cursos, cursoSeleccionado, seleccionarCurso, cargandoCursos } = useCurso();
+    const {
+        cursoSeleccionado,
+        codigoSeleccionado,
+        grupoSeleccionado,
+        docenteSeleccionado,
+    } = useCurso();
+
     const [cargando, setCargando] = useState(true);
     const [errorCarga, setErrorCarga] = useState(false);
     const [totalEstudiantes, setTotalEstudiantes] = useState(0);
     const [porcentajeHoy, setPorcentajeHoy] = useState(0);
     const [ausentesHoy, setAusentesHoy] = useState(0);
     const [actividadReciente, setActividadReciente] = useState([]);
+
+    const filtros = {
+        codigo:    codigoSeleccionado,
+        grupo:     grupoSeleccionado,
+        docenteId: docenteSeleccionado,
+    };
 
     useEffect(() => {
         const cargarPanel = async () => {
@@ -29,9 +42,9 @@ export default function PanelPrincipal() {
 
             try {
                 const [estudiantes, asistenciaHoy, historial] = await Promise.all([
-                    obtenerEstudiantes(cursoSeleccionado.id),
-                    obtenerAsistencia(cursoSeleccionado.id, hoy),
-                    obtenerAsistencia(cursoSeleccionado.id),
+                    obtenerEstudiantes(cursoSeleccionado.id, filtros),
+                    obtenerAsistencia(cursoSeleccionado.id, hoy, filtros),
+                    obtenerAsistencia(cursoSeleccionado.id, undefined, filtros),
                 ]);
 
                 const presentes = asistenciaHoy.filter((registro) => registro.present).length;
@@ -50,25 +63,13 @@ export default function PanelPrincipal() {
         };
 
         cargarPanel();
-    }, [cursoSeleccionado]);
+    }, [cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
 
     const kpis = useMemo(
         () => [
-            {
-                titulo: 'Total estudiantes',
-                valor: totalEstudiantes.toLocaleString('es-CO'),
-                icono: Users,
-            },
-            {
-                titulo: '% asistencia hoy',
-                valor: `${porcentajeHoy.toLocaleString('es-CO')}%`,
-                icono: Percent,
-            },
-            {
-                titulo: 'Ausentes hoy',
-                valor: ausentesHoy.toLocaleString('es-CO'),
-                icono: UserX,
-            },
+            { titulo: 'Total estudiantes',  valor: totalEstudiantes.toLocaleString('es-CO'), icono: Users },
+            { titulo: '% asistencia hoy',   valor: `${porcentajeHoy.toLocaleString('es-CO')}%`, icono: Percent },
+            { titulo: 'Ausentes hoy',        valor: ausentesHoy.toLocaleString('es-CO'), icono: UserX },
         ],
         [ausentesHoy, porcentajeHoy, totalEstudiantes],
     );
@@ -83,39 +84,18 @@ export default function PanelPrincipal() {
 
     return (
         <section className="space-y-6">
-            <header className="tarjeta flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h2 className="text-2xl font-semibold">Panel Principal</h2>
-                    <p className="mt-1 text-sm text-texto-secundario">Resumen diario del curso seleccionado.</p>
-                </div>
-                <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0 p-3 bg-fondo/50 rounded-xl border">
-                    <span className="text-sm font-medium text-texto-secundario whitespace-nowrap">Materia activa:</span>
-                    {cargandoCursos ? (
-                        <span className="text-sm text-texto-secundario">Cargando...</span>
-                    ) : cursos.length > 0 ? (
-                        <div className="relative w-full sm:w-auto">
-                            <select
-                                className="campo pr-9 py-1.5 bg-white font-medium text-primario w-full sm:w-auto appearance-none"
-                                value={cursoSeleccionado?.id || ''}
-                                onChange={(evento) => {
-                                    const cursoElegido = cursos.find((curso) => curso.id === evento.target.value);
-                                    seleccionarCurso(cursoElegido);
-                                }}
-                            >
-                                {cursos.map((curso) => (
-                                    <option key={curso.id} value={curso.id}>
-                                        {curso.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown
-                                size={16}
-                                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-texto-secundario"
-                            />
-                        </div>
-                    ) : (
-                        <span className="text-sm font-medium text-ausente">Sin materias</span>
-                    )}
+            <header className="tarjeta">
+                <h2 className="text-2xl font-semibold">Panel Principal</h2>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '8px',
+                    marginTop: '4px'
+                }}>
+                    <p className="text-sm text-texto-secundario">Resumen diario del curso seleccionado.</p>
+                    <FiltrosGlobales />
                 </div>
             </header>
 

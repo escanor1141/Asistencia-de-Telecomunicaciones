@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useCurso } from '../context/ContextoCurso';
 import { obtenerReportes, crearCurso, eliminarCurso } from '../services/api';
-import { BookOpen, ChevronDown, Trash2, Plus, Loader2 } from 'lucide-react';
+import { BookOpen, Trash2, Plus, Loader2, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 
 export default function Cursos() {
-    const { cursos, cargandoCursos, cursoSeleccionado, seleccionarCurso, cargarCursos } = useCurso();
+    const { cursos, cargandoCursos, cargarCursos } = useCurso();
     const { usuario } = useAutenticacion();
     const [estadisticasCursos, setEstadisticasCursos] = useState([]);
     const [cargandoEstadisticas, setCargandoEstadisticas] = useState(false);
@@ -81,45 +81,9 @@ export default function Cursos() {
 
     return (
         <section className="space-y-6">
-            <header className="tarjeta flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="w-full sm:w-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h2 className="text-2xl font-semibold">Materias</h2>
-                        <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
-                    </div>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
-                    <div className="flex items-center gap-3 w-full sm:w-auto p-3 bg-fondo/50 rounded-xl border">
-                        <span className="text-sm font-medium text-texto-secundario whitespace-nowrap">Materia activa:</span>
-                        {cargandoCursos ? (
-                            <span className="text-sm text-texto-secundario">Cargando...</span>
-                        ) : cursos.length > 0 ? (
-                            <div className="relative w-full sm:w-auto">
-                                <select
-                                    className="campo pr-9 py-1.5 bg-white font-medium text-primario w-full sm:w-auto appearance-none"
-                                    value={cursoSeleccionado?.id || ''}
-                                    onChange={(evento) => {
-                                        const cursoElegido = cursos.find((curso) => curso.id === evento.target.value);
-                                        seleccionarCurso(cursoElegido);
-                                    }}
-                                >
-                                    {cursos.map((curso) => (
-                                        <option key={curso.id} value={curso.id}>
-                                            {curso.name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <ChevronDown
-                                    size={16}
-                                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-texto-secundario"
-                                />
-                            </div>
-                        ) : (
-                            <span className="text-sm font-medium text-ausente">Sin materias</span>
-                        )}
-                    </div>
-                </div>
+            <header className="tarjeta">
+                <h2 className="text-2xl font-semibold">Materias</h2>
+                <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
             </header>
 
             {/* Formulario de Nuevo Curso */}

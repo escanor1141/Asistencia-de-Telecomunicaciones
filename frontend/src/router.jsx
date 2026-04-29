@@ -3,6 +3,7 @@ import PanelPrincipal from './pages/Home.jsx';
 import Cursos from './pages/Courses.jsx';
 import Estudiantes from './pages/Students.jsx';
 import Asistencia from './pages/Attendance.jsx';
+import Historial from './pages/History.jsx';
 import Reportes from './pages/Reports.jsx';
 import Configuracion from './pages/Configuracion.jsx';
 import Login from './pages/Login.jsx';
@@ -23,6 +24,7 @@ export default function EnrutadorApp() {
                                 <Route path="/cursos" element={<Cursos />} />
                                 <Route path="/estudiantes" element={<Estudiantes />} />
                                 <Route path="/asistencia" element={<Asistencia />} />
+                                <Route path="/historial" element={<Historial />} />
                                 <Route path="/reportes" element={<Reportes />} />
                                 <Route path="/configuracion" element={<Configuracion />} />
                                 <Route path="*" element={<Navigate to="/" replace />} />
