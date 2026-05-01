@@ -66,8 +66,8 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
         // 2. Obtener datos de estudiantes + nombre del curso en un solo query
         const [estudiantes, curso] = await Promise.all([
             prisma.student.findMany({
-                where: { id: { in: idsAusentes } },
-                select: { id: true, name: true, whatsapp: true },
+                where: { documento: { in: idsAusentes } },
+                select: { documento: true, name: true, whatsapp: true },
             }),
             prisma.course.findUnique({
                 where: { id: idCurso },
@@ -82,11 +82,11 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
 
         // 3. Procesar cada estudiante
         for (const estudiante of estudiantes) {
-            const claveLog = { studentId: estudiante.id, courseId: idCurso, date: fecha };
+            const claveLog = { studentId: estudiante.documento, courseId: idCurso, date: fecha };
 
             // --- Sin número registrado ---
             if (!estudiante.whatsapp) {
-                console.warn(`[whatsapp-job] Sin WhatsApp: ${estudiante.name} (${estudiante.id})`);
+                console.warn(`[whatsapp-job] Sin WhatsApp: ${estudiante.name} (${estudiante.documento})`);
                 estadisticas.omitidos++;
                 continue;
             }

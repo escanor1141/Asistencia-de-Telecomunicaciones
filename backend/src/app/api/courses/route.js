@@ -43,10 +43,10 @@ export async function POST(request) {
         })
         return Response.json(course, { status: 201 })
     } catch (error) {
-        console.error(error)
+        console.error('[Course API Error]:', error);
         if (error.code === 'P2002') {
             return Response.json({ error: 'Ya existe una materia con este código, grupo, periodo y año' }, { status: 400 })
         }
-        return Response.json({ error: 'Error al crear curso' }, { status: 500 })
+        return Response.json({ error: `Error al crear curso: ${error.message}` }, { status: 500 })
     }
 }

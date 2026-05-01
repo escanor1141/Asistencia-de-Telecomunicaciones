@@ -9,14 +9,14 @@ export async function PUT(request, { params }) {
             return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
         }
         const estudiante = await prisma.student.update({
-            where: { id: params.id },
+            where: { documento: params.id },
             data: {
                 name: name.trim(),
                 email: email ? email.trim() : null,
                 whatsapp: whatsapp ? whatsapp.trim() : null,
             }
         })
-        return Response.json(estudiante)
+        return Response.json({ ...estudiante, id: estudiante.documento })
     } catch (error) {
         return Response.json({ error: 'Error al actualizar estudiante' }, { status: 500 })
     }
@@ -25,7 +25,7 @@ export async function PUT(request, { params }) {
 // DELETE — eliminar un estudiante
 export async function DELETE(request, { params }) {
     try {
-        await prisma.student.delete({ where: { id: params.id } })
+        await prisma.student.delete({ where: { documento: params.id } })
         return Response.json({ success: true })
     } catch (error) {
         return Response.json({ error: 'Error al eliminar estudiante' }, { status: 500 })

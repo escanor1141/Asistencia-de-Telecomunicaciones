@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 
+function limpiarTexto(valor) {
+    if (valor === null || valor === undefined) return null
+    const texto = String(valor).trim()
+    return texto === '' ? null : texto
+}
+
 // GET — obtener lista de estudiantes de un curso con filtros opcionales
 export async function GET(request) {
     try {
@@ -31,7 +37,10 @@ export async function GET(request) {
             where,
             orderBy: { name: 'asc' }
         })
-        return Response.json(estudiantes)
+        return Response.json(estudiantes.map((estudiante) => ({
+            ...estudiante,
+            id: estudiante.documento,
+        })))
     } catch (error) {
         return Response.json({ error: 'Error al obtener estudiantes' }, { status: 500 })
     }
@@ -51,11 +60,12 @@ export async function POST(request) {
         // Soporte para inserción individual o masiva (CSV)
         if (Array.isArray(cuerpo)) {
             const datos = cuerpo
-                .filter((e) => e.name && e.name.trim() !== '')
+                .filter((e) => limpiarTexto(e.name) && limpiarTexto(e.documento))
                 .map((e) => ({
-                    name: e.name.trim(),
-                    email: e.email ? e.email.trim() : null,
-                    whatsapp: e.whatsapp ? e.whatsapp.trim() : null,
+                    documento: limpiarTexto(e.documento),
+                    name: limpiarTexto(e.name),
+                    email: limpiarTexto(e.email),
+                    whatsapp: limpiarTexto(e.whatsapp),
                     courseId: idCurso,
                 }))
 
@@ -66,20 +76,26 @@ export async function POST(request) {
             return Response.json({ count: creados.count }, { status: 201 })
         }
 
-        const { name, email, whatsapp } = cuerpo
-        if (!name || name.trim() === '') {
+        const { documento, name, email, whatsapp } = cuerpo
+        const documentoLimpio = limpiarTexto(documento)
+        const nombreLimpio = limpiarTexto(name)
+        if (!documentoLimpio) {
+            return Response.json({ error: 'El documento es requerido' }, { status: 400 })
+        }
+        if (!nombreLimpio) {
             return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
         }
 
         const estudiante = await prisma.student.create({
             data: {
-                name: name.trim(),
-                email: email ? email.trim() : null,
-                whatsapp: whatsapp ? whatsapp.trim() : null,
+                documento: documentoLimpio,
+                name: nombreLimpio,
+                email: limpiarTexto(email),
+                whatsapp: limpiarTexto(whatsapp),
                 courseId: idCurso,
             }
         })
-        return Response.json(estudiante, { status: 201 })
+        return Response.json({ ...estudiante, id: estudiante.documento }, { status: 201 })
     } catch (error) {
         console.error(error)
         return Response.json({ error: 'Error al crear estudiante' }, { status: 500 })

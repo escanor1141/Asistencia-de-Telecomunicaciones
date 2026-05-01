@@ -33,13 +33,27 @@ export async function POST(request) {
             return Response.json({ error: 'No autorizado' }, { status: 403 })
         }
 
-        const { name, email, password, role } = await request.json()
+        const { documento, name, email, password, role } = await request.json()
 
-        if (!name || !email || !password) {
-            return Response.json({ error: 'Nombre, email y contraseña son requeridos' }, { status: 400 })
+        if (!documento || !name || !email || !password) {
+            return Response.json({ error: 'Documento, nombre, email y contraseña son requeridos' }, { status: 400 })
         }
-        if (password.length < 6) {
-            return Response.json({ error: 'La contraseña debe tener al menos 6 caracteres' }, { status: 400 })
+
+        if (!/^\d{6,10}$/.test(String(documento))) {
+            return Response.json({ error: 'El documento debe tener entre 6 y 10 numeros' }, { status: 400 })
+        }
+
+        if (password.length < 8) {
+            return Response.json({ error: 'La contraseña debe tener al menos 8 caracteres' }, { status: 400 })
+        }
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return Response.json({ error: 'La contraseña debe contener mayúsculas, minúsculas, números y caracteres especiales' }, { status: 400 })
+        }
+
+        const existentePorDocumento = await prisma.teacher.findUnique({ where: { id: String(documento) } })
+        if (existentePorDocumento) {
+            return Response.json({ error: 'Ya existe un usuario con ese documento' }, { status: 409 })
         }
 
         const existente = await prisma.teacher.findUnique({ where: { email } })
@@ -51,7 +65,7 @@ export async function POST(request) {
         const rolFinal = role === 'ADMIN' ? 'ADMIN' : 'TEACHER'
 
         const profesor = await prisma.teacher.create({
-            data: { name, email, passwordHash: hashContrasena, role: rolFinal },
+            data: { id: String(documento), name, email, passwordHash: hashContrasena, role: rolFinal },
             select: { id: true, name: true, email: true, createdAt: true, role: true }
         })
 

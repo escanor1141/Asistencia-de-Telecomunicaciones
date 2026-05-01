@@ -14,7 +14,7 @@ export async function GET(request) {
         const escaparCsv = (str) => `"${String(str).replace(/"/g, '""')}"`
 
         const filas = asistencias.map(a => [
-            escaparCsv(a.student.id),
+            escaparCsv(a.student.documento),
             escaparCsv(a.student.name),
             escaparCsv(a.date),
             a.present ? 'Sí' : 'No',

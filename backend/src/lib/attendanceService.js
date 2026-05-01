@@ -67,7 +67,7 @@ export async function getWeeklyAbsences({ referenceDate } = {}) {
         },
         include: {
             student: {
-                select: { id: true, name: true, email: true },
+                select: { documento: true, name: true, email: true },
             },
             course: {
                 select: { name: true },
@@ -80,9 +80,9 @@ export async function getWeeklyAbsences({ referenceDate } = {}) {
     const grouped = new Map();
     for (const record of absences) {
         const { student, course } = record;
-        if (!grouped.has(student.id)) {
-            grouped.set(student.id, {
-                studentId: student.id,
+        if (!grouped.has(student.documento)) {
+            grouped.set(student.documento, {
+                studentId: student.documento,
                 studentName: student.name,
                 email: student.email,
                 totalAbsences: 0,
@@ -91,7 +91,7 @@ export async function getWeeklyAbsences({ referenceDate } = {}) {
                 weekEnd,
             });
         }
-        const entry = grouped.get(student.id);
+        const entry = grouped.get(student.documento);
         entry.totalAbsences++;
         entry.courses.add(course.name);
     }

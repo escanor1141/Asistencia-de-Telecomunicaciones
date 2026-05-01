@@ -8,7 +8,7 @@ datasource db {
 }
 
 model Student {
-  id               String            @id @default(cuid())
+  documento        String            @id
   name             String
   email            String?
   whatsapp         String?
@@ -47,18 +47,18 @@ model Attendance {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
 
   @@unique([studentId, courseId, date])
 }
 
 model Teacher {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         String   @default("TEACHER")
-  createdAt    DateTime @default(now())
+  id           String   @id @default(cuid()) @map("id_docente")
+  email        String   @unique @map("correo")
+  passwordHash String   @map("contraseña")
+  name         String   @map("nombre")
+  role         String   @default("TEACHER") @map("rol")
+  createdAt    DateTime @default(now()) @map("fecha_creacion")
   courses      Course[]
 }
 
@@ -69,7 +69,7 @@ model NotificationLog {
   sentAt    DateTime @default(now())
   status    String   @default("SUCCESS")
   error     String?
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
 
   @@unique([studentId, weekStart])
 }
@@ -82,7 +82,7 @@ model WhatsappNotificationLog {
   sentAt    DateTime @default(now())
   status    String   @default("SUCCESS")
   error     String?
-  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
 
   @@unique([studentId, courseId, date])
 }

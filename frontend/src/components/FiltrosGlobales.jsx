@@ -98,14 +98,24 @@ export default function FiltrosGlobales({ soloMateria = false }) {
     const [docentes, setDocentes] = useState([]);
 
     useEffect(() => {
-        if (soloMateria) return;
         obtenerDocentes()
-            .then(data => {
-                console.log('DEBUG: docentes en FiltrosGlobales:', data);
-                setDocentes(data);
+            .then((data) => {
+                const listaDocentes = Array.isArray(data)
+                    ? data
+                    : Array.isArray(data?.teachers)
+                        ? data.teachers
+                        : [];
+                const docentesMapeados = listaDocentes
+                    .map((teacher) => ({
+                        id: String(teacher?.id ?? ''),
+                        name: teacher?.name ?? '',
+                    }))
+                    .filter((teacher) => teacher.id && teacher.name);
+
+                setDocentes(docentesMapeados);
             })
             .catch(() => setDocentes([]));
-    }, [soloMateria]);
+    }, []);
 
     const codigosUnicos = cursoSeleccionado
         ? [...new Set(
@@ -125,16 +135,10 @@ export default function FiltrosGlobales({ soloMateria = false }) {
           )]
         : [];
 
-    const idsCursosFiltrados = cursoSeleccionado
-        ? cursos
-            .filter((c) => c.name === cursoSeleccionado.name)
-            .map((c) => c.teacherId)
-            .filter(Boolean)
-        : [];
-
-    const docentesFiltrados = docentes.filter((d) =>
-        idsCursosFiltrados.includes(d.id)
-    );
+    const opcionesDocentes = docentes.map((teacher) => ({
+        id: teacher.id,
+        name: teacher.name,
+    }));
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
@@ -187,7 +191,9 @@ export default function FiltrosGlobales({ soloMateria = false }) {
                         onChange={(e) => setDocenteSeleccionado(e.target.value || null)}
                     >
                         <option value="">Todos</option>
-                        {docentesFiltrados.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        {opcionesDocentes.map((teacher) => (
+                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                        ))}
                     </SelectorFiltro>
                 </>
             )}

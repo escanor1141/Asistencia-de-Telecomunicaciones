@@ -46,7 +46,7 @@ export async function GET(request) {
         const estadisticasPorEstudiante = {}
 
         asistencias.forEach(reg => {
-            const idEst = reg.student.id
+            const idEst = reg.student.documento
             if (!estadisticasPorEstudiante[idEst]) {
                 estadisticasPorEstudiante[idEst] = {
                     id: idEst,

@@ -92,8 +92,8 @@ export default function Cursos() {
                     <Plus size={20} className="text-primario" />
                     Crear Nueva Materia
                 </h3>
-                <form onSubmit={manejarCreacionCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6 items-end">
-                    <div className="lg:col-span-2">
+                <form onSubmit={manejarCreacionCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12 items-end">
+                    <div className="lg:col-span-4">
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre de la materia</label>
                         <input
                             type="text"
@@ -104,7 +104,7 @@ export default function Cursos() {
                             onChange={(e) => setFormularioCurso({ ...formularioCurso, name: e.target.value })}
                         />
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-2">
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Código</label>
                         <input
                             type="text"
@@ -115,7 +115,7 @@ export default function Cursos() {
                             onChange={(e) => setFormularioCurso({ ...formularioCurso, code: e.target.value })}
                         />
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-2">
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Grupo</label>
                         <input
                             type="text"
@@ -126,7 +126,7 @@ export default function Cursos() {
                             onChange={(e) => setFormularioCurso({ ...formularioCurso, groupCode: e.target.value })}
                         />
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-2">
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Periodo</label>
                         <div className="relative">
                             <select
@@ -134,13 +134,13 @@ export default function Cursos() {
                                 value={formularioCurso.academicPeriod}
                                 onChange={(e) => setFormularioCurso({ ...formularioCurso, academicPeriod: e.target.value })}
                             >
-                                <option value="1">1 (Primer Semestre)</option>
-                                <option value="2">2 (Segundo Semestre)</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
                             </select>
                             <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
                         </div>
                     </div>
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-2">
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Año</label>
                         <div className="relative">
                             <select
@@ -148,15 +148,15 @@ export default function Cursos() {
                                 value={formularioCurso.academicYear}
                                 onChange={(e) => setFormularioCurso({ ...formularioCurso, academicYear: e.target.value })}
                             >
-                                {[0, 1, 2].map(offset => {
-                                    const year = (new Date().getFullYear() + offset).toString();
+                                {Array.from({ length: 2051 - new Date().getFullYear() }, (_, i) => {
+                                    const year = (new Date().getFullYear() + i).toString();
                                     return <option key={year} value={year}>{year}</option>;
                                 })}
                             </select>
                             <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
                         </div>
                     </div>
-                    <div className="lg:col-span-6 sm:col-span-2 sm:col-start-1 mt-2">
+                    <div className="lg:col-span-12 sm:col-span-2 sm:col-start-1 mt-2">
                         <button
                             type="submit"
                             disabled={guardandoCurso}
