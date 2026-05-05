@@ -6,6 +6,7 @@ import Asistencia from './pages/Attendance.jsx';
 import Historial from './pages/History.jsx';
 import Reportes from './pages/Reports.jsx';
 import Configuracion from './pages/Configuracion.jsx';
+import Perfil from './pages/Perfil.jsx';
 import Login from './pages/Login.jsx';
 import RutaPrivada from './components/RutaPrivada.jsx';
 import LayoutPrincipal from './components/LayoutPrincipal.jsx';
@@ -27,6 +28,7 @@ export default function EnrutadorApp() {
                                 <Route path="/historial" element={<Historial />} />
                                 <Route path="/reportes" element={<Reportes />} />
                                 <Route path="/configuracion" element={<Configuracion />} />
+                                <Route path="/perfil" element={<Perfil />} />
                                 <Route path="*" element={<Navigate to="/" replace />} />
                             </Routes>
                         </LayoutPrincipal>

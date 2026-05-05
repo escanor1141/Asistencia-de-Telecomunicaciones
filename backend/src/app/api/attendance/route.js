@@ -109,6 +109,8 @@ export async function POST(request) {
 
         // Guardar múltiples registros en una sola transacción con upsert
         const operaciones = records.map(registro => {
+            // present = true solo para 'Presente'. 'Justificado' y 'Ausente' = false
+            const isPresent = registro.status === 'Presente';
             return prisma.attendance.upsert({
                 where: {
                     studentId_courseId_date: {
@@ -117,20 +119,21 @@ export async function POST(request) {
                         date
                     }
                 },
-                update: { present: registro.present },
+                update: { present: isPresent, status: registro.status },
                 create: {
                     studentId: registro.studentId,
                     courseId,
                     date,
-                    present: registro.present
+                    present: isPresent,
+                    status: registro.status,
                 }
             })
         })
 
         await prisma.$transaction(operaciones)
 
-        // Disparar notificaciones WhatsApp en fire-and-forget
-        const ausentes = records.filter(r => !r.present);
+        // Disparar notificaciones WhatsApp solo para 'Ausente' (no Justificado)
+        const ausentes = records.filter(r => r.status === 'Ausente');
         if (ausentes.length > 0) {
             const { runAbsenceWhatsAppNotification } = await import('@/jobs/absenceWhatsAppNotification');
             setImmediate(() =>

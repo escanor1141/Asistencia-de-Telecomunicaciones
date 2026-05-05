@@ -25,7 +25,7 @@ export async function POST(request) {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
 
-        const { name, code, groupCode, academicPeriod, academicYear } = await request.json()
+        const { name, code, groupCode, academicPeriod, academicYear, dia, horaInicio, horaFin, dia2, horaInicio2, horaFin2, franja, programa } = await request.json()
 
         if (!name || !code || name.trim() === '' || code.trim() === '') {
             return Response.json({ error: 'Nombre y código son requeridos' }, { status: 400 })
@@ -38,6 +38,14 @@ export async function POST(request) {
                 groupCode: groupCode?.trim() || 'A',
                 academicPeriod: academicPeriod || '1',
                 academicYear: academicYear || '2024',
+                dia: dia?.trim() || null,
+                horaInicio: horaInicio?.trim() || null,
+                horaFin: horaFin?.trim() || null,
+                dia2: dia2?.trim() || null,
+                horaInicio2: horaInicio2?.trim() || null,
+                horaFin2: horaFin2?.trim() || null,
+                franja: franja?.trim() || null,
+                programa: programa?.trim() || null,
                 teacherId: usuario.id
             }
         })

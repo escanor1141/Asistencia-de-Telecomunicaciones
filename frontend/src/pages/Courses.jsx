@@ -1,18 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCurso } from '../context/ContextoCurso';
-import { obtenerReportes, crearCurso, eliminarCurso } from '../services/api';
-import { BookOpen, Trash2, Plus, Loader2, ChevronDown } from 'lucide-react';
+import { obtenerReportes, crearCurso, eliminarCurso, actualizarCurso } from '../services/api';
+import { BookOpen, Trash2, Plus, Loader2, ChevronDown, Pencil, Download, Upload, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
+import * as XLSX from 'xlsx';
 
 export default function Cursos() {
     const { cursos, cargandoCursos, cargarCursos } = useCurso();
     const { usuario } = useAutenticacion();
     const [estadisticasCursos, setEstadisticasCursos] = useState([]);
     const [cargandoEstadisticas, setCargandoEstadisticas] = useState(false);
-    const [formularioCurso, setFormularioCurso] = useState({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString() });
+    const [formularioCurso, setFormularioCurso] = useState({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
+    const [mostrarSegundoDia, setMostrarSegundoDia] = useState(false);
     const [guardandoCurso, setGuardandoCurso] = useState(false);
+    const [cursoEnEdicion, setCursoEnEdicion] = useState(null);
+    const [horariosOpciones] = useState(() => { 
+        const opts = []; 
+        for (let h = 0; h < 24; h++) { 
+            for (let m = 0; m < 60; m += 15) { 
+                opts.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`); 
+            } 
+        } 
+        return opts; 
+    });
     const [eliminandoId, setEliminandoId] = useState(null);
+    const [importandoCursos, setImportandoCursos] = useState(false);
+    const [filasImportCurso, setFilasImportCurso] = useState([]);
+    const [modalImportCursoVisible, setModalImportCursoVisible] = useState(false);
+    const inputArchivoCursoRef = useRef(null);
 
     useEffect(() => {
         const cargarEstadisticas = async () => {
@@ -36,7 +52,11 @@ export default function Cursos() {
                             periodo: curso.academicPeriod || '1',
                             anio: curso.academicYear || '2024',
                             profesor: usuario?.name || 'Sin profesor asignado',
-                            horario: curso.schedule || 'Sin horario asignado',
+                            horario: (curso.dia && curso.horaInicio && curso.horaFin) 
+                                ? `${curso.dia} de ${curso.horaInicio} a ${curso.horaFin}${curso.dia2 ? ` y ${curso.dia2} de ${curso.horaInicio2} a ${curso.horaFin2}` : ''}` 
+                                : curso.schedule || 'Sin horario asignado',
+                            franja: curso.franja || 'Sin franja',
+                            programa: curso.programa || 'Sin programa',
                             porcentaje: promedio,
                         };
                     }),
@@ -50,19 +70,55 @@ export default function Cursos() {
         cargarEstadisticas();
     }, [cursos, usuario?.name]);
 
-    const manejarCreacionCurso = async (e) => {
+    const manejarEnvioCurso = async (e) => {
         e.preventDefault();
         setGuardandoCurso(true);
         try {
-            await crearCurso(formularioCurso);
+            if (cursoEnEdicion) {
+                await actualizarCurso(cursoEnEdicion.id, formularioCurso);
+                toast.success('Materia actualizada exitosamente');
+            } else {
+                await crearCurso(formularioCurso);
+                toast.success('Materia creada exitosamente');
+            }
             await cargarCursos();
-            setFormularioCurso({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString() });
-            toast.success('Materia creada exitosamente');
+            setFormularioCurso({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
+            setMostrarSegundoDia(false);
+            setCursoEnEdicion(null);
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al crear materia');
+            toast.error(err.response?.data?.error || 'Error al procesar la materia');
         } finally {
             setGuardandoCurso(false);
         }
+    };
+
+    const iniciarEdicionCurso = (cursoCompleto) => {
+        const c = cursos.find(x => x.id === cursoCompleto.id);
+        if (!c) return;
+        setCursoEnEdicion(c);
+        setFormularioCurso({
+            name: c.name || '',
+            code: c.code || '',
+            groupCode: c.groupCode || '',
+            academicPeriod: c.academicPeriod || '1',
+            academicYear: c.academicYear || new Date().getFullYear().toString(),
+            dia: c.dia || '',
+            horaInicio: c.horaInicio || '',
+            horaFin: c.horaFin || '',
+            dia2: c.dia2 || '',
+            horaInicio2: c.horaInicio2 || '',
+            horaFin2: c.horaFin2 || '',
+            franja: c.franja || '',
+            programa: c.programa || ''
+        });
+        setMostrarSegundoDia(!!(c.dia2 || c.horaInicio2 || c.horaFin2));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelarEdicion = () => {
+        setCursoEnEdicion(null);
+        setFormularioCurso({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
+        setMostrarSegundoDia(false);
     };
 
     const manejarEliminacionCurso = async (id, nombre) => {
@@ -79,21 +135,282 @@ export default function Cursos() {
         }
     };
 
+    const exportarPlantilla = () => {
+        const COLS = 13;
+        const FILAS_EXTRA = 30; // Filas vacías adicionales con formato aplicado
+
+        const encabezados = [
+            'Nombre de la Materia',
+            'Código',
+            'Grupo',
+            'Período Académico',
+            'Año Académico',
+            'Día 1',
+            'Hora Inicio 1',
+            'Hora Fin 1',
+            'Día 2',
+            'Hora Inicio 2',
+            'Hora Fin 2',
+            'Franja',
+            'Programa',
+        ];
+
+        const filasDatos = cursos.map(c => [
+            c.name || '',
+            c.code || '',
+            c.groupCode || '',
+            c.academicPeriod || '',
+            c.academicYear || '',
+            c.dia || '',
+            c.horaInicio || '',
+            c.horaFin || '',
+            c.dia2 || '',
+            c.horaInicio2 || '',
+            c.horaFin2 || '',
+            c.franja || '',
+            c.programa || '',
+        ]);
+
+        // Columnas que deben forzarse a texto (para que HH:MM no se convierta a tiempo)
+        // Índices: 5=Día1, 6=HI1, 7=HF1, 8=Día2, 9=HI2, 10=HF2
+        const colsTexto = new Set([5, 6, 7, 8, 9, 10]);
+
+        const totalFilas = 1 + filasDatos.length + FILAS_EXTRA;
+        const ws = {};
+
+        // Encabezados (fila 0 → row=0 en índice 0-based, R=1 en XLSX)
+        encabezados.forEach((titulo, c) => {
+            const ref = XLSX.utils.encode_cell({ r: 0, c });
+            ws[ref] = { v: titulo, t: 's', z: '@' };
+        });
+
+        // Filas con datos existentes
+        filasDatos.forEach((fila, ri) => {
+            fila.forEach((valor, ci) => {
+                const ref = XLSX.utils.encode_cell({ r: ri + 1, c: ci });
+                ws[ref] = {
+                    v: valor,
+                    t: 's',   // Siempre texto
+                    z: '@',   // Formato texto explícito
+                };
+            });
+        });
+
+        // Filas vacías con formato predefinido (para que el usuario no pierda el tipo de dato)
+        const inicioVacias = 1 + filasDatos.length;
+        for (let ri = inicioVacias; ri < inicioVacias + FILAS_EXTRA; ri++) {
+            for (let ci = 0; ci < COLS; ci++) {
+                const ref = XLSX.utils.encode_cell({ r: ri, c: ci });
+                ws[ref] = {
+                    v: '',
+                    t: 's',
+                    z: colsTexto.has(ci) ? '@' : '@', // @ = texto para todas
+                };
+            }
+        }
+
+        ws['!ref'] = XLSX.utils.encode_range({ r: 0, c: 0 }, { r: totalFilas - 1, c: COLS - 1 });
+
+        ws['!cols'] = [
+            { wch: 32 }, { wch: 14 }, { wch: 10 }, { wch: 18 }, { wch: 14 },
+            { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 14 },
+            { wch: 14 }, { wch: 22 }, { wch: 32 },
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Materias');
+        XLSX.writeFile(wb, `materias_${new Date().toISOString().split('T')[0]}.xlsx`);
+        toast.success(`${cursos.length} materia${cursos.length !== 1 ? 's' : ''} exportada${cursos.length !== 1 ? 's' : ''}`);
+    };
+
+    // ── Llave de deduplicación: mismo código + grupo + día1 + horaInicio1 + horaFin1
+    const claveDuplicado = (c) =>
+        `${(c.code || '').toUpperCase()}|${(c.groupCode || '').toUpperCase()}|${c.dia || ''}|${c.horaInicio || ''}|${c.horaFin || ''}`;
+
+    const manejarArchivoImportCurso = (e) => {
+        const archivo = e.target.files[0];
+        if (!archivo) return;
+        e.target.value = '';
+
+        const lector = new FileReader();
+        lector.onload = (evt) => {
+            try {
+                const wb = XLSX.read(evt.target.result, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const filas = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+                // Ignorar fila de encabezado (fila 0)
+                const datos = filas.slice(1)
+                    .filter(f => f[0] || f[1]) // Necesita al menos nombre o código
+                    .map(f => ({
+                        name:           String(f[0] || '').trim(),
+                        code:           String(f[1] || '').trim().toUpperCase(),
+                        groupCode:      String(f[2] || 'A').trim().toUpperCase(),
+                        academicPeriod: String(f[3] || '1').trim(),
+                        academicYear:   String(f[4] || new Date().getFullYear()).trim(),
+                        dia:            String(f[5] || '').trim(),
+                        horaInicio:     String(f[6] || '').trim(),
+                        horaFin:        String(f[7] || '').trim(),
+                        dia2:           String(f[8] || '').trim(),
+                        horaInicio2:    String(f[9] || '').trim(),
+                        horaFin2:       String(f[10] || '').trim(),
+                        franja:         String(f[11] || '').trim(),
+                        programa:       String(f[12] || '').trim(),
+                    }));
+
+                // Marcar duplicados vs nuevas
+                const clavesExistentes = new Set(cursos.map(claveDuplicado));
+                const filasMarcadas = datos.map(fila => ({
+                    ...fila,
+                    esDuplicado: clavesExistentes.has(claveDuplicado(fila)),
+                }));
+
+                setFilasImportCurso(filasMarcadas);
+                setModalImportCursoVisible(true);
+            } catch {
+                toast.error('Error al leer el archivo Excel');
+            }
+        };
+        lector.readAsArrayBuffer(archivo);
+    };
+
+    const confirmarImportCursos = async () => {
+        const nuevas = filasImportCurso.filter(f => !f.esDuplicado && f.name && f.code);
+        if (nuevas.length === 0) {
+            toast.error('No hay materias nuevas para importar');
+            return;
+        }
+        setImportandoCursos(true);
+        let creadas = 0;
+        let errores = 0;
+        for (const fila of nuevas) {
+            try {
+                await crearCurso(fila);
+                creadas++;
+            } catch {
+                errores++;
+            }
+        }
+        await cargarCursos();
+        setModalImportCursoVisible(false);
+        setFilasImportCurso([]);
+        setImportandoCursos(false);
+        if (creadas > 0) toast.success(`${creadas} materia${creadas !== 1 ? 's' : ''} importada${creadas !== 1 ? 's' : ''} correctamente`);
+        if (errores > 0) toast.error(`${errores} materia${errores !== 1 ? 's' : ''} no pudieron importarse`);
+    };
+
     return (
         <section className="space-y-6">
-            <header className="tarjeta">
-                <h2 className="text-2xl font-semibold">Materias</h2>
-                <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
+            {/* Modal de importación */}
+            {modalImportCursoVisible && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(2px)' }}
+                >
+                    <div
+                        className="w-full max-w-4xl rounded-[var(--card-radius)] border flex flex-col"
+                        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '82vh' }}
+                    >
+                        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                            <div>
+                                <h3 className="text-lg font-semibold">Vista previa — Importación de Materias</h3>
+                                <p className="mt-0.5 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                    {filasImportCurso.filter(f => !f.esDuplicado).length} nueva{filasImportCurso.filter(f => !f.esDuplicado).length !== 1 ? 's' : ''} · 
+                                    {filasImportCurso.filter(f => f.esDuplicado).length} duplicada{filasImportCurso.filter(f => f.esDuplicado).length !== 1 ? 's' : ''} (se omitirán)
+                                </p>
+                            </div>
+                            <button type="button" onClick={() => setModalImportCursoVisible(false)} disabled={importandoCursos}
+                                className="p-1.5 rounded-md transition-colors disabled:opacity-50" style={{ color: 'var(--color-muted)' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="overflow-auto flex-1 p-4">
+                            <table className="w-full text-sm border-collapse">
+                                <thead>
+                                    <tr style={{ background: 'var(--color-bg)' }}>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}></th>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Materia</th>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Código</th>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Grupo</th>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Período</th>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Horario</th>
+                                        <th className="text-left px-3 py-2 font-medium" style={{ color: 'var(--color-text-secondary)' }}>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filasImportCurso.map((f, i) => (
+                                        <tr key={i} style={{ borderTop: '1px solid var(--color-border)', opacity: f.esDuplicado ? 0.45 : 1 }}>
+                                            <td className="px-3 py-2">
+                                                {f.esDuplicado
+                                                    ? <AlertCircle size={15} style={{ color: 'var(--color-warning, #f59e0b)' }} />
+                                                    : <CheckCircle2 size={15} style={{ color: 'var(--color-success, #22c55e)' }} />}
+                                            </td>
+                                            <td className="px-3 py-2 font-medium">{f.name}</td>
+                                            <td className="px-3 py-2">{f.code}</td>
+                                            <td className="px-3 py-2">{f.groupCode}</td>
+                                            <td className="px-3 py-2">{f.academicPeriod} / {f.academicYear}</td>
+                                            <td className="px-3 py-2 text-xs">
+                                                {f.dia && f.horaInicio ? `${f.dia} ${f.horaInicio}–${f.horaFin}` : '—'}
+                                                {f.dia2 && f.horaInicio2 ? ` · ${f.dia2} ${f.horaInicio2}–${f.horaFin2}` : ''}
+                                            </td>
+                                            <td className="px-3 py-2 text-xs">
+                                                {f.esDuplicado
+                                                    ? <span style={{ color: 'var(--color-warning, #f59e0b)' }}>Ya existe</span>
+                                                    : <span style={{ color: 'var(--color-success, #22c55e)' }}>Nueva</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                            <button type="button" onClick={() => setModalImportCursoVisible(false)} disabled={importandoCursos} className="boton-secundario">Cancelar</button>
+                            <button type="button" onClick={confirmarImportCursos} disabled={importandoCursos || filasImportCurso.filter(f => !f.esDuplicado).length === 0}
+                                className="boton-primario inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                {importandoCursos ? <><Loader2 size={15} className="animate-spin" /> Importando...</> : <><Upload size={15} /> Importar {filasImportCurso.filter(f => !f.esDuplicado).length} nueva{filasImportCurso.filter(f => !f.esDuplicado).length !== 1 ? 's' : ''}</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <input ref={inputArchivoCursoRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={manejarArchivoImportCurso} />
+
+            <header className="tarjeta flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-semibold">Materias</h2>
+                    <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => inputArchivoCursoRef.current?.click()}
+                        className="boton-secundario inline-flex items-center gap-2"
+                        title="Importar materias desde Excel"
+                    >
+                        <Upload size={16} />
+                        Importar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={exportarPlantilla}
+                        className="boton-secundario inline-flex items-center gap-2"
+                        title="Exportar materias a Excel"
+                    >
+                        <Download size={16} />
+                        Exportar
+                    </button>
+                </div>
             </header>
 
             {/* Formulario de Nuevo Curso */}
             <section className="tarjeta p-6">
                 <h3 className="text-lg font-medium flex items-center gap-2 mb-4">
-                    <Plus size={20} className="text-primario" />
-                    Crear Nueva Materia
+                    {cursoEnEdicion ? <Pencil size={20} className="text-primario" /> : <Plus size={20} className="text-primario" />}
+                    {cursoEnEdicion ? 'Editar Materia' : 'Crear Nueva Materia'}
                 </h3>
-                <form onSubmit={manejarCreacionCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-12 items-end">
-                    <div className="lg:col-span-4">
+                <form onSubmit={manejarEnvioCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+                    <div>
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre de la materia</label>
                         <input
                             type="text"
@@ -104,7 +421,7 @@ export default function Cursos() {
                             onChange={(e) => setFormularioCurso({ ...formularioCurso, name: e.target.value })}
                         />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div>
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Código</label>
                         <input
                             type="text"
@@ -115,7 +432,7 @@ export default function Cursos() {
                             onChange={(e) => setFormularioCurso({ ...formularioCurso, code: e.target.value })}
                         />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div>
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Grupo</label>
                         <input
                             type="text"
@@ -126,7 +443,7 @@ export default function Cursos() {
                             onChange={(e) => setFormularioCurso({ ...formularioCurso, groupCode: e.target.value })}
                         />
                     </div>
-                    <div className="lg:col-span-2">
+                    <div>
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Periodo</label>
                         <div className="relative">
                             <select
@@ -140,7 +457,7 @@ export default function Cursos() {
                             <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
                         </div>
                     </div>
-                    <div className="lg:col-span-2">
+                    <div>
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Año</label>
                         <div className="relative">
                             <select
@@ -156,14 +473,182 @@ export default function Cursos() {
                             <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
                         </div>
                     </div>
-                    <div className="lg:col-span-12 sm:col-span-2 sm:col-start-1 mt-2">
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Franja</label>
+                        <div className="relative">
+                            <select
+                                required
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.franja}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, franja: e.target.value })}
+                            >
+                                <option value="">Seleccionar</option>
+                                <option value="Diurna">Diurna</option>
+                                <option value="Nocturna">Nocturna</option>
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Programa</label>
+                        <div className="relative">
+                            <select
+                                required
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.programa}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, programa: e.target.value })}
+                            >
+                                <option value="">Seleccionar</option>
+                                <option value="Ingeniería de Telecomunicaciones">Ingeniería de Telecomunicaciones</option>
+                                <option value="Tecnología en Gestión de Sistemas de Telecomunicaciones">Tecnología en Gestión de Sistemas de Telecomunicaciones</option>
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Día</label>
+                        <div className="relative">
+                            <select
+                                required
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.dia}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, dia: e.target.value })}
+                            >
+                                <option value="">Seleccionar</option>
+                                <option value="Lunes">Lunes</option>
+                                <option value="Martes">Martes</option>
+                                <option value="Miércoles">Miércoles</option>
+                                <option value="Jueves">Jueves</option>
+                                <option value="Viernes">Viernes</option>
+                                <option value="Sábado">Sábado</option>
+                                <option value="Domingo">Domingo</option>
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Hora Inicio</label>
+                        <div className="relative">
+                            <select
+                                required
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.horaInicio}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, horaInicio: e.target.value })}
+                            >
+                                <option value="">Seleccionar</option>
+                                {horariosOpciones.map(h => <option key={`ini-${h}`} value={h}>{h}</option>)}
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-texto-secundario">Hora Fin</label>
+                        <div className="relative">
+                            <select
+                                required
+                                className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                value={formularioCurso.horaFin}
+                                onChange={(e) => setFormularioCurso({ ...formularioCurso, horaFin: e.target.value })}
+                            >
+                                <option value="">Seleccionar</option>
+                                {horariosOpciones.map(h => <option key={`fin-${h}`} value={h}>{h}</option>)}
+                            </select>
+                            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                        </div>
+                    </div>
+
+                    {!mostrarSegundoDia ? (
+                        <div className="flex items-center">
+                            <button
+                                type="button"
+                                onClick={() => setMostrarSegundoDia(true)}
+                                className="text-sm text-primario font-medium flex items-center gap-1 hover:underline h-[38px]"
+                            >
+                                <Plus size={16} /> Agregar día
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Día 2</label>
+                                <div className="relative">
+                                    <select
+                                        className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                        value={formularioCurso.dia2}
+                                        onChange={(e) => setFormularioCurso({ ...formularioCurso, dia2: e.target.value })}
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        <option value="Lunes">Lunes</option>
+                                        <option value="Martes">Martes</option>
+                                        <option value="Miércoles">Miércoles</option>
+                                        <option value="Jueves">Jueves</option>
+                                        <option value="Viernes">Viernes</option>
+                                        <option value="Sábado">Sábado</option>
+                                        <option value="Domingo">Domingo</option>
+                                    </select>
+                                    <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Hora Inicio 2</label>
+                                <div className="relative">
+                                    <select
+                                        className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                        value={formularioCurso.horaInicio2}
+                                        onChange={(e) => setFormularioCurso({ ...formularioCurso, horaInicio2: e.target.value })}
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        {horariosOpciones.map(h => <option key={`ini2-${h}`} value={h}>{h}</option>)}
+                                    </select>
+                                    <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Hora Fin 2</label>
+                                <div className="relative">
+                                    <select
+                                        className="campo pr-8 py-1.5 w-full appearance-none bg-white"
+                                        value={formularioCurso.horaFin2}
+                                        onChange={(e) => setFormularioCurso({ ...formularioCurso, horaFin2: e.target.value })}
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        {horariosOpciones.map(h => <option key={`fin2-${h}`} value={h}>{h}</option>)}
+                                    </select>
+                                    <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-texto-secundario" />
+                                </div>
+                            </div>
+                            <div className="flex items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMostrarSegundoDia(false);
+                                        setFormularioCurso(p => ({ ...p, dia2: '', horaInicio2: '', horaFin2: '' }));
+                                    }}
+                                    className="text-sm text-red-500 font-medium hover:underline flex items-center gap-1 h-[38px]"
+                                >
+                                    <Trash2 size={16} /> Quitar día
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    <div className="flex gap-2">
+                        {cursoEnEdicion && (
+                            <button
+                                type="button"
+                                onClick={cancelarEdicion}
+                                className="boton-secundario w-full h-[38px] flex justify-center items-center"
+                            >
+                                Cancelar
+                            </button>
+                        )}
                         <button
                             type="submit"
                             disabled={guardandoCurso}
                             className="boton-primario w-full h-[38px] flex justify-center items-center gap-2"
                         >
-                            {guardandoCurso ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                            {guardandoCurso ? 'Guardando...' : 'Crear Materia'}
+                            {guardandoCurso ? <Loader2 size={16} className="animate-spin" /> : (cursoEnEdicion ? <Pencil size={16} /> : <Plus size={16} />)}
+                            {guardandoCurso ? 'Guardando...' : (cursoEnEdicion ? 'Actualizar' : 'Crear Materia')}
                         </button>
                     </div>
                 </form>
@@ -182,14 +667,23 @@ export default function Cursos() {
                                 <BookOpen size={18} />
                                 <p className="text-sm font-medium truncate">{curso.nombre}</p>
                             </div>
-                            <button
-                                onClick={() => manejarEliminacionCurso(curso.id, curso.nombre)}
-                                disabled={eliminandoId === curso.id}
-                                className="absolute top-4 right-4 p-1.5 text-texto-secundario hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 opacity-0 group-hover:opacity-100"
-                                title="Eliminar materia"
-                            >
-                                {eliminandoId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                            </button>
+                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    onClick={() => iniciarEdicionCurso(curso)}
+                                    className="p-1.5 text-texto-secundario hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                    title="Editar materia"
+                                >
+                                    <Pencil size={16} />
+                                </button>
+                                <button
+                                    onClick={() => manejarEliminacionCurso(curso.id, curso.nombre)}
+                                    disabled={eliminandoId === curso.id}
+                                    className="p-1.5 text-texto-secundario hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                                    title="Eliminar materia"
+                                >
+                                    {eliminandoId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                </button>
+                            </div>
                             <div className="space-y-2 text-sm mt-1">
                                 <div className="flex gap-2">
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
@@ -201,6 +695,12 @@ export default function Cursos() {
                                 </div>
                                 <p className="pt-2">
                                     <span className="text-texto-secundario">Profesor:</span> {curso.profesor}
+                                </p>
+                                <p>
+                                    <span className="text-texto-secundario">Programa:</span> {curso.programa}
+                                </p>
+                                <p>
+                                    <span className="text-texto-secundario">Franja:</span> {curso.franja}
                                 </p>
                                 <p>
                                     <span className="text-texto-secundario">Horario:</span> {curso.horario}

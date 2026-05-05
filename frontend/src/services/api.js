@@ -74,8 +74,8 @@ export const crearEstudiante    = (idCurso, datos) =>
 export const actualizarEstudiante = (id, datos) =>
     api.put(`/students/${id}`, datos).then(res => res.data);
 
-export const eliminarEstudiante = (id) =>
-    api.delete(`/students/${id}`).then(res => res.data);
+export const eliminarEstudiante = (idCurso, id) =>
+    api.delete(`/students/${id}`, { params: { courseId: idCurso } }).then(res => res.data);
 
 // ── Asistencia ────────────────────────────────────────────────────────────────
 /**

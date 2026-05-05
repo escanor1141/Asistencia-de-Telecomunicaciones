@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
     LayoutDashboard,
     ClipboardCheck,
@@ -9,6 +9,8 @@ import {
     Settings,
     LogOut,
     History,
+    User,
+    ChevronDown
 } from 'lucide-react';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { useCurso } from '../context/ContextoCurso';
@@ -27,10 +29,26 @@ export default function LayoutPrincipal({ children }) {
     const ubicacion = useLocation();
     const navegar = useNavigate();
     const { cerrarSesion, usuario } = useAutenticacion();
+    const [menuAbierto, setMenuAbierto] = useState(false);
+    const menuRef = useRef(null);
+
     const manejarCierreSesion = () => {
         cerrarSesion();
         navegar('/login');
     };
+
+    // Cerrar menú al hacer clic fuera
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setMenuAbierto(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
     return (
         <div className="min-h-screen bg-fondo text-texto">
@@ -69,18 +87,43 @@ export default function LayoutPrincipal({ children }) {
                             Control de Asistencia
                         </h1>
                     </div>
-                    <div className="ml-auto flex items-center gap-4">
-                        <p className="hidden text-sm text-texto-secundario sm:block">
-                            {usuario?.name || 'Cuenta activa'}
-                        </p>
+                    <div className="ml-auto flex items-center relative" ref={menuRef}>
                         <button
                             type="button"
-                            onClick={manejarCierreSesion}
-                            className="boton-secundario flex items-center gap-2 py-1.5 px-3 text-sm"
+                            onClick={() => setMenuAbierto(!menuAbierto)}
+                            className="flex items-center gap-2 py-1.5 px-3 text-sm rounded-lg hover:bg-fondo transition-colors"
                         >
-                            <LogOut size={16} />
-                            <span className="hidden sm:inline">Salir</span>
+                            <User size={18} className="text-texto-secundario" />
+                            <span className="hidden sm:inline font-medium text-texto">
+                                {usuario?.name || 'Cuenta activa'}
+                            </span>
+                            <ChevronDown size={14} className="text-texto-secundario" />
                         </button>
+
+                        {/* Menú Desplegable */}
+                        {menuAbierto && (
+                            <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-borde bg-superficie shadow-lg overflow-hidden py-1">
+                                <Link
+                                    to="/perfil"
+                                    onClick={() => setMenuAbierto(false)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm text-texto hover:bg-fondo transition-colors"
+                                >
+                                    <Settings size={16} className="text-texto-secundario" />
+                                    <span>Editar Perfil</span>
+                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMenuAbierto(false);
+                                        manejarCierreSesion();
+                                    }}
+                                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left"
+                                >
+                                    <LogOut size={16} />
+                                    <span>Salir</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>

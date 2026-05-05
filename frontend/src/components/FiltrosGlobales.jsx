@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useCurso } from '../context/ContextoCurso';
 import { obtenerDocentes } from '../services/api';
 
@@ -16,7 +16,10 @@ const estiloSelector = {
     cursor: 'pointer',
     transition: 'border-color var(--transition-fast)',
     outline: 'none',
-    width: '140px',
+    minWidth: '140px',
+    maxWidth: '400px',
+    width: 'auto',
+    textOverflow: 'ellipsis',
 };
 
 const estiloLabel = {
@@ -81,118 +84,114 @@ function SelectorFiltro({ label, id, value, onChange, children }) {
     );
 }
 
-export default function FiltrosGlobales({ soloMateria = false }) {
+export default function FiltrosGlobales({ soloMateria = false, filtroDia = null }) {
     const {
         cursos,
         cursoSeleccionado,
         seleccionarCurso,
         cargandoCursos,
-        codigoSeleccionado,
-        setCodigoSeleccionado,
         grupoSeleccionado,
         setGrupoSeleccionado,
-        docenteSeleccionado,
-        setDocenteSeleccionado,
     } = useCurso();
 
-    const [docentes, setDocentes] = useState([]);
+    // 1. Filtrar por día si aplica
+    const cursosFiltrados = useMemo(() => {
+        if (!filtroDia) return cursos;
+        return cursos.filter(c => c.dia === filtroDia || c.dia2 === filtroDia);
+    }, [cursos, filtroDia]);
 
+    // 2. Nombres únicos de materias (sin duplicados por grupo)
+    const nombresUnicos = useMemo(() => {
+        const vistos = new Set();
+        return cursosFiltrados.filter(c => {
+            if (vistos.has(c.name)) return false;
+            vistos.add(c.name);
+            return true;
+        });
+    }, [cursosFiltrados]);
+
+    // 3. Grupos disponibles para la materia seleccionada (todos los cursos con ese nombre y día)
+    const gruposDisponibles = useMemo(() => {
+        if (!cursoSeleccionado) return [];
+        return cursosFiltrados
+            .filter(c => c.name === cursoSeleccionado.name)
+            .filter(c => c.groupCode)
+            .sort((a, b) => a.groupCode.localeCompare(b.groupCode));
+    }, [cursosFiltrados, cursoSeleccionado]);
+
+    // 4. Cuando cambia el filtroDia, autoseleccionar primer curso válido
     useEffect(() => {
-        obtenerDocentes()
-            .then((data) => {
-                const listaDocentes = Array.isArray(data)
-                    ? data
-                    : Array.isArray(data?.teachers)
-                        ? data.teachers
-                        : [];
-                const docentesMapeados = listaDocentes
-                    .map((teacher) => ({
-                        id: String(teacher?.id ?? ''),
-                        name: teacher?.name ?? '',
-                    }))
-                    .filter((teacher) => teacher.id && teacher.name);
+        if (filtroDia && cursosFiltrados.length > 0) {
+            const isSelectedValid = cursosFiltrados.some(c => c.id === cursoSeleccionado?.id);
+            if (!isSelectedValid) {
+                seleccionarCurso(cursosFiltrados[0]);
+            }
+        }
+    }, [filtroDia, cursosFiltrados, cursoSeleccionado?.id, seleccionarCurso]);
 
-                setDocentes(docentesMapeados);
-            })
-            .catch(() => setDocentes([]));
-    }, []);
+    // 5. Cuando cambian los grupos disponibles, sincronizar grupoSeleccionado
+    const gruposDisponiblesKey = gruposDisponibles.map(g => g.groupCode).join(',');
+    useEffect(() => {
+        if (gruposDisponibles.length === 0) {
+            setGrupoSeleccionado(null);
+            return;
+        }
+        const existe = gruposDisponibles.some(g => g.groupCode === grupoSeleccionado);
+        if (!existe) {
+            // Autoseleccionar el primer grupo y actualizar el curso seleccionado
+            const primerGrupo = gruposDisponibles[0];
+            setGrupoSeleccionado(primerGrupo.groupCode);
+            seleccionarCurso(primerGrupo);
+        }
+    }, [gruposDisponiblesKey, setGrupoSeleccionado, seleccionarCurso]);
 
-    const codigosUnicos = cursoSeleccionado
-        ? [...new Set(
-            cursos
-                .filter((c) => c.name === cursoSeleccionado.name)
-                .map((c) => c.code)
-                .filter(Boolean)
-          )]
-        : [];
+    const handleCambioMateria = (e) => {
+        // Al elegir una materia, seleccionar el primer curso de ese nombre (primer grupo)
+        const primerCurso = cursosFiltrados.find(c => c.name === e.target.value);
+        if (primerCurso) {
+            seleccionarCurso(primerCurso);
+            setGrupoSeleccionado(primerCurso.groupCode);
+        }
+    };
 
-    const gruposUnicos = cursoSeleccionado
-        ? [...new Set(
-            cursos
-                .filter((c) => c.name === cursoSeleccionado.name)
-                .map((c) => c.groupCode)
-                .filter(Boolean)
-          )]
-        : [];
-
-    const opcionesDocentes = docentes.map((teacher) => ({
-        id: teacher.id,
-        name: teacher.name,
-    }));
+    const handleCambioGrupo = (e) => {
+        // Al elegir un grupo, actualizar tanto el grupo como el curso activo
+        const cursoDelGrupo = gruposDisponibles.find(c => c.groupCode === e.target.value);
+        if (cursoDelGrupo) {
+            seleccionarCurso(cursoDelGrupo); // Cambia el ID del curso activo al correcto
+            setGrupoSeleccionado(cursoDelGrupo.groupCode);
+        }
+    };
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             {cargandoCursos ? (
                 <span style={{ ...estiloLabel, color: 'var(--color-muted)' }}>Cargando...</span>
-            ) : cursos?.length > 0 ? (
+            ) : nombresUnicos?.length > 0 ? (
                 <SelectorFiltro
                     label="Materia activa:"
                     id="selector-materia"
-                    value={cursoSeleccionado?.id ?? ''}
-                    onChange={(e) => {
-                        const c = cursos.find((curso) => curso.id === e.target.value);
-                        if (c) seleccionarCurso(c);
-                    }}
+                    value={cursoSeleccionado?.name ?? ''}
+                    onChange={handleCambioMateria}
                 >
-                    {cursos.map((curso) => (
-                        <option key={curso.id} value={curso.id}>{curso.name}</option>
+                    {nombresUnicos.map((curso) => (
+                        <option key={curso.id} value={curso.name}>{curso.name}</option>
                     ))}
                 </SelectorFiltro>
             ) : (
-                <span style={{ ...estiloLabel, fontStyle: 'italic' }}>Sin materias</span>
+                <span style={{ ...estiloLabel, fontStyle: 'italic' }}>Sin materias para este día</span>
             )}
 
-            {!soloMateria && cursoSeleccionado && (
+            {!soloMateria && cursoSeleccionado && gruposDisponibles.length > 0 && (
                 <>
-                    <SelectorFiltro
-                        label="Código:"
-                        id="selector-codigo"
-                        value={codigoSeleccionado ?? ''}
-                        onChange={(e) => setCodigoSeleccionado(e.target.value || null)}
-                    >
-                        <option value="">Todos</option>
-                        {codigosUnicos.map((cod) => <option key={cod} value={cod}>{cod}</option>)}
-                    </SelectorFiltro>
-
                     <SelectorFiltro
                         label="Grupo:"
                         id="selector-grupo"
                         value={grupoSeleccionado ?? ''}
-                        onChange={(e) => setGrupoSeleccionado(e.target.value || null)}
+                        onChange={handleCambioGrupo}
                     >
-                        <option value="">Todos</option>
-                        {gruposUnicos.map((g) => <option key={g} value={g}>{g}</option>)}
-                    </SelectorFiltro>
-
-                    <SelectorFiltro
-                        label="Docente:"
-                        id="selector-docente"
-                        value={docenteSeleccionado ?? ''}
-                        onChange={(e) => setDocenteSeleccionado(e.target.value || null)}
-                    >
-                        <option value="">Todos</option>
-                        {opcionesDocentes.map((teacher) => (
-                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                        {gruposDisponibles.map((c) => (
+                            <option key={c.id} value={c.groupCode}>{c.groupCode}</option>
                         ))}
                     </SelectorFiltro>
                 </>

@@ -7,6 +7,34 @@ function limpiarTexto(valor) {
     return texto === '' ? null : texto
 }
 
+const parseTime = (timeStr) => {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(':').map(Number);
+    return h * 60 + m;
+};
+
+const hayCruce = (c1, c2) => {
+    const horarios1 = [];
+    if (c1.dia && c1.horaInicio && c1.horaFin) horarios1.push({ dia: c1.dia, start: parseTime(c1.horaInicio), end: parseTime(c1.horaFin) });
+    if (c1.dia2 && c1.horaInicio2 && c1.horaFin2) horarios1.push({ dia: c1.dia2, start: parseTime(c1.horaInicio2), end: parseTime(c1.horaFin2) });
+
+    const horarios2 = [];
+    if (c2.dia && c2.horaInicio && c2.horaFin) horarios2.push({ dia: c2.dia, start: parseTime(c2.horaInicio), end: parseTime(c2.horaFin) });
+    if (c2.dia2 && c2.horaInicio2 && c2.horaFin2) horarios2.push({ dia: c2.dia2, start: parseTime(c2.horaInicio2), end: parseTime(c2.horaFin2) });
+
+    for (const h1 of horarios1) {
+        for (const h2 of horarios2) {
+            if (h1.dia === h2.dia) {
+                // Cruce: empiezan antes de que termine el otro, y terminan después de que empiece el otro
+                if (h1.start < h2.end && h1.end > h2.start) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+};
+
 // GET — obtener lista de estudiantes de un curso con filtros opcionales
 export async function GET(request) {
     try {
@@ -20,8 +48,8 @@ export async function GET(request) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
-        // Condición WHERE base sobre Student
-        const where = { courseId: idCurso }
+        // Condición WHERE base sobre Student (relación N:M con courses)
+        const where = { courses: { some: { id: idCurso } } }
 
         // Filtros adicionales a través de la relación Course
         const filtroCurso = {}
@@ -30,7 +58,7 @@ export async function GET(request) {
         if (docenteId) filtroCurso.teacherId = docenteId
 
         if (Object.keys(filtroCurso).length > 0) {
-            where.course = filtroCurso
+            where.courses = { some: { ...where.courses.some, ...filtroCurso } }
         }
 
         const estudiantes = await prisma.student.findMany({
@@ -56,29 +84,72 @@ export async function POST(request) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
-        const cuerpo = await request.json()
-        // Soporte para inserción individual o masiva (CSV)
-        if (Array.isArray(cuerpo)) {
-            const datos = cuerpo
-                .filter((e) => limpiarTexto(e.name) && limpiarTexto(e.documento))
-                .map((e) => ({
-                    documento: limpiarTexto(e.documento),
-                    name: limpiarTexto(e.name),
-                    email: limpiarTexto(e.email),
-                    whatsapp: limpiarTexto(e.whatsapp),
-                    courseId: idCurso,
-                }))
-
-            const creados = await prisma.student.createMany({
-                data: datos,
-                skipDuplicates: true,
-            })
-            return Response.json({ count: creados.count }, { status: 201 })
+        const curso = await prisma.course.findUnique({ where: { id: idCurso } })
+        if (!curso) {
+            return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
         }
 
-        const { documento, name, email, whatsapp } = cuerpo
+        const cuerpo = await request.json()
+        // Soporte para inserción masiva o individual de CSV no está completamente cubierto aquí con cruces de horarios.
+        // Asumiremos que el CSV requiere lógica similar pero iterativa.
+        if (Array.isArray(cuerpo)) {
+            let count = 0;
+            for (const e of cuerpo) {
+                if (!limpiarTexto(e.name) || !limpiarTexto(e.documento)) continue;
+                
+                const franjaEstudiante = limpiarTexto(e.franja);
+                if (curso.franja && franjaEstudiante && curso.franja !== franjaEstudiante) {
+                    throw new Error(`El estudiante ${e.name} es de franja ${franjaEstudiante} pero la materia es ${curso.franja}`);
+                }
+
+                const docLimpio = limpiarTexto(e.documento);
+                
+                // Verificar si existe el estudiante con sus cursos actuales
+                const estudianteExistente = await prisma.student.findUnique({
+                    where: { documento: docLimpio },
+                    include: { courses: true }
+                });
+
+                if (estudianteExistente) {
+                    // Verificar si ya está en la materia
+                    if (estudianteExistente.courses.some(c => c.id === curso.id)) continue;
+
+                    // Verificar cruce de horarios
+                    for (const cActual of estudianteExistente.courses) {
+                        if (hayCruce(cActual, curso)) {
+                            throw new Error(`Cruce de horarios para ${e.name} con la materia ${cActual.name}`);
+                        }
+                    }
+                }
+
+                await prisma.student.upsert({
+                    where: { documento: docLimpio },
+                    update: {
+                        name: limpiarTexto(e.name),
+                        email: limpiarTexto(e.email),
+                        whatsapp: limpiarTexto(e.whatsapp),
+                        courses: { connect: { id: curso.id } }
+                    },
+                    create: {
+                        documento: docLimpio,
+                        name: limpiarTexto(e.name),
+                        email: limpiarTexto(e.email),
+                        whatsapp: limpiarTexto(e.whatsapp),
+                        franja: franjaEstudiante,
+                        programa: limpiarTexto(e.programa),
+                        courses: { connect: { id: curso.id } }
+                    }
+                });
+                count++;
+            }
+            return Response.json({ count }, { status: 201 })
+        }
+
+        const { documento, name, email, whatsapp, franja, programa } = cuerpo
         const documentoLimpio = limpiarTexto(documento)
         const nombreLimpio = limpiarTexto(name)
+        const franjaLimpia = limpiarTexto(franja)
+        
         if (!documentoLimpio) {
             return Response.json({ error: 'El documento es requerido' }, { status: 400 })
         }
@@ -86,18 +157,54 @@ export async function POST(request) {
             return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
         }
 
-        const estudiante = await prisma.student.create({
-            data: {
+        if (curso.franja && franjaLimpia && curso.franja !== franjaLimpia) {
+            return Response.json({ error: `La materia es de franja ${curso.franja} pero el estudiante es de franja ${franjaLimpia}` }, { status: 400 })
+        }
+
+        const estudianteExistente = await prisma.student.findUnique({
+            where: { documento: documentoLimpio },
+            include: { courses: true }
+        });
+
+        if (estudianteExistente) {
+            // Verificar si ya está en esta materia
+            if (estudianteExistente.courses.some(c => c.id === curso.id)) {
+                return Response.json({ error: 'El estudiante ya está inscrito en esta materia' }, { status: 400 });
+            }
+            
+            // Validar cruce
+            for (const cActual of estudianteExistente.courses) {
+                if (hayCruce(cActual, curso)) {
+                    return Response.json({ error: `Cruce de horarios detectado con la materia: ${cActual.name}` }, { status: 400 });
+                }
+            }
+        }
+
+        const estudiante = await prisma.student.upsert({
+            where: { documento: documentoLimpio },
+            update: {
+                name: nombreLimpio,
+                email: limpiarTexto(email),
+                whatsapp: limpiarTexto(whatsapp),
+                courses: { connect: { id: idCurso } }
+            },
+            create: {
                 documento: documentoLimpio,
                 name: nombreLimpio,
                 email: limpiarTexto(email),
                 whatsapp: limpiarTexto(whatsapp),
-                courseId: idCurso,
+                franja: franjaLimpia,
+                programa: limpiarTexto(programa),
+                courses: { connect: { id: idCurso } }
             }
         })
         return Response.json({ ...estudiante, id: estudiante.documento }, { status: 201 })
     } catch (error) {
         console.error(error)
-        return Response.json({ error: 'Error al crear estudiante' }, { status: 500 })
+        
+        // Ya no deberíamos tener P2002 por documento duplicado porque usamos upsert
+
+        const msg = error.message || 'Error al crear estudiante'
+        return Response.json({ error: msg }, { status: error.message?.includes('franja') ? 400 : 500 })
     }
 }

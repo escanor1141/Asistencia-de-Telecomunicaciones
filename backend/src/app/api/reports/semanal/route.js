@@ -55,19 +55,21 @@ export async function GET(request) {
         // ── Consulta ─────────────────────────────────────────────────────────
         const registros = await prisma.attendance.findMany({
             where,
-            select: { date: true, present: true },
+            select: { date: true, present: true, status: true },
             orderBy: { date: 'asc' },
         })
 
         // ── Agrupar por semana ───────────────────────────────────────────────
         const porSemana = {}
-        registros.forEach(({ date, present }) => {
+        registros.forEach(({ date, present, status }) => {
             const lunes = lunesDeSemana(date)
             if (!porSemana[lunes]) {
-                porSemana[lunes] = { presente: 0, ausente: 0, tardanza: 0, justificado: 0 }
+                porSemana[lunes] = { presente: 0, ausente: 0, justificado: 0 }
             }
-            if (present) porSemana[lunes].presente++
-            else         porSemana[lunes].ausente++
+            const estado = status || (present ? 'Presente' : 'Ausente');
+            if (estado === 'Presente')    porSemana[lunes].presente++
+            else if (estado === 'Justificado') porSemana[lunes].justificado++
+            else                          porSemana[lunes].ausente++
         })
 
         const semanas = Object.keys(porSemana)

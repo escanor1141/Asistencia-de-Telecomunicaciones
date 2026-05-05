@@ -2,36 +2,55 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
 
-// PUT — actualizar curso
 export async function PUT(request, { params }) {
     try {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
 
-        const { id } = params
-        const { name, code } = await request.json()
+        const id = params.id
+        const body = await request.json()
+        const { name, code, groupCode, academicPeriod, academicYear, dia, horaInicio, horaFin, dia2, horaInicio2, horaFin2, franja, programa } = body
 
-        // Verificar propiedad del curso
-        const existente = await prisma.course.findUnique({ where: { id } })
-        if (!existente || existente.teacherId !== usuario.id) {
-            return Response.json({ error: 'Curso no encontrado o sin permiso' }, { status: 404 })
+        if (!name || !code || name.trim() === '' || code.trim() === '') {
+            return Response.json({ error: 'Nombre y código son requeridos' }, { status: 400 })
         }
 
-        const actualizado = await prisma.course.update({
+        const cursoExistente = await prisma.course.findUnique({ where: { id } })
+        
+        if (!cursoExistente) {
+            return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
+        }
+
+        if (usuario.role !== 'ADMIN' && cursoExistente.teacherId !== usuario.id) {
+            return Response.json({ error: 'No autorizado para editar esta materia' }, { status: 403 })
+        }
+
+        const cursoActualizado = await prisma.course.update({
             where: { id },
             data: {
-                name: name?.trim() || existente.name,
-                code: code?.trim() || existente.code
+                name: name.trim(),
+                code: code.trim(),
+                groupCode: groupCode?.trim() || 'A',
+                academicPeriod: academicPeriod || '1',
+                academicYear: academicYear || '2024',
+                dia: dia?.trim() || null,
+                horaInicio: horaInicio?.trim() || null,
+                horaFin: horaFin?.trim() || null,
+                dia2: dia2?.trim() || null,
+                horaInicio2: horaInicio2?.trim() || null,
+                horaFin2: horaFin2?.trim() || null,
+                franja: franja?.trim() || null,
+                programa: programa?.trim() || null,
             }
         })
-        return NextResponse.json(actualizado)
+
+        return Response.json(cursoActualizado)
     } catch (error) {
         console.error(error)
-        return NextResponse.json({ error: 'Error al actualizar curso' }, { status: 500 })
+        return Response.json({ error: 'Error al actualizar la materia' }, { status: 500 })
     }
 }
 
-// DELETE — eliminar curso
 export async function DELETE(request, { params }) {
     try {
         const usuario = obtenerUsuarioDePeticion(request)
@@ -39,15 +58,19 @@ export async function DELETE(request, { params }) {
 
         const { id } = params
 
-        const existente = await prisma.course.findUnique({ where: { id } })
-        if (!existente || existente.teacherId !== usuario.id) {
-            return Response.json({ error: 'Curso no encontrado o sin permiso' }, { status: 404 })
+        const existing = await prisma.course.findUnique({ where: { id } })
+        if (!existing) {
+            return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
+        }
+
+        if (usuario.role !== 'ADMIN' && existing.teacherId !== usuario.id) {
+            return Response.json({ error: 'No autorizado para eliminar esta materia' }, { status: 403 })
         }
 
         await prisma.course.delete({ where: { id } })
         return Response.json({ success: true })
     } catch (error) {
         console.error(error)
-        return Response.json({ error: 'Error al eliminar curso' }, { status: 500 })
+        return Response.json({ error: 'Error al eliminar la materia' }, { status: 500 })
     }
 }

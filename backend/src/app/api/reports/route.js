@@ -49,22 +49,32 @@ export async function GET(request) {
             const idEst = reg.student.documento
             if (!estadisticasPorEstudiante[idEst]) {
                 estadisticasPorEstudiante[idEst] = {
-                    id: idEst,
-                    name: reg.student.name,
-                    total: 0,
-                    present: 0
+                    id:          idEst,
+                    name:        reg.student.name,
+                    total:       0,   // todas las clases registradas
+                    present:     0,   // Presente
+                    absent:      0,   // Ausente (falla)
+                    justified:   0,   // Justificado
                 }
             }
+            const estado = reg.status || (reg.present ? 'Presente' : 'Ausente');
             estadisticasPorEstudiante[idEst].total += 1
-            if (reg.present) {
-                estadisticasPorEstudiante[idEst].present += 1
-            }
+            if (estado === 'Presente')    estadisticasPorEstudiante[idEst].present++
+            else if (estado === 'Justificado') estadisticasPorEstudiante[idEst].justified++
+            else                          estadisticasPorEstudiante[idEst].absent++
         })
 
-        const resultado = Object.values(estadisticasPorEstudiante).map(est => ({
-            ...est,
-            percentage: est.total > 0 ? Math.round((est.present / est.total) * 100) : 0
-        })).sort((a, b) => b.percentage - a.percentage)
+        const resultado = Object.values(estadisticasPorEstudiante).map(est => {
+            // El porcentaje se calcula sobre las clases que cuentan (no justificadas)
+            const clasesQueCountan = est.present + est.absent;
+            const percentage = clasesQueCountan > 0
+                ? Math.round((est.present / clasesQueCountan) * 100)
+                : 100; // si todo es justificado, no hay fallas
+            return {
+                ...est,
+                percentage,
+            };
+        }).sort((a, b) => b.percentage - a.percentage)
 
         return Response.json(resultado)
     } catch (error) {

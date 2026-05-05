@@ -12,13 +12,14 @@ model Student {
   name             String
   email            String?
   whatsapp         String?
-  courseId         String
+  franja           String?
+  programa         String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   attendances      Attendance[]
   notificationLogs NotificationLog[]
   whatsappLogs     WhatsappNotificationLog[]
-  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courses          Course[]
 }
 
 model Course {
@@ -29,6 +30,14 @@ model Course {
   groupCode      String       @default("A")
   academicPeriod String       @default("1")
   academicYear   String       @default("2024")
+  dia            String?
+  horaInicio     String?
+  horaFin        String?
+  dia2           String?
+  horaInicio2    String?
+  horaFin2       String?
+  franja         String?
+  programa       String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   attendances    Attendance[]
@@ -44,6 +53,7 @@ model Attendance {
   courseId  String
   date      String
   present   Boolean  @default(false)
+  status    String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)

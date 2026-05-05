@@ -91,7 +91,7 @@ const ETIQUETAS_BRACKETS = ['≥ 90%', '80–89%', '70–79%', '< 70%'];
 // ── Tooltip personalizado del BarChart ────────────────────────────────────────
 function TooltipBarra({ active, payload, label }) {
     if (!active || !payload?.length) return null;
-    const { porcentaje, presentes, clases } = payload[0].payload;
+    const { porcentaje, presentes, ausentes, justificados, clases } = payload[0].payload;
     return (
         <div
             style={{
@@ -108,8 +108,15 @@ function TooltipBarra({ active, payload, label }) {
                 Asistencia: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--color-primary)' }}>{porcentaje}%</span>
             </p>
             <p style={{ color: 'var(--color-text-secondary)' }}>
-                Presentes: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{presentes} / {clases}</span>
+                Presentes: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{presentes}</span>
+                {' · '}
+                Ausentes: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--color-absent)' }}>{ausentes}</span>
+                {justificados > 0 && <>
+                    {' · '}
+                    Justificados: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--color-excused)' }}>{justificados}</span>
+                </>}
             </p>
+            <p style={{ color: 'var(--color-muted)', fontSize: '0.75rem' }}>Total clases: {clases}</p>
         </div>
     );
 }
@@ -279,10 +286,12 @@ export default function Reportes() {
             .sort((a, b) => b.percentage - a.percentage)
             .slice(0, 20)
             .map((item) => ({
-                nombre:     item.name.split(' ').slice(0, 2).join(' '),  // primeros 2 tokens del nombre
-                porcentaje: item.percentage,
-                presentes:  item.present,
-                clases:     item.total,
+                nombre:       item.name.split(' ').slice(0, 2).join(' '),
+                porcentaje:   item.percentage,
+                presentes:    item.present,
+                ausentes:     item.absent    ?? 0,
+                justificados: item.justified ?? 0,
+                clases:       item.total,
             })),
         [datos]
     );
@@ -591,17 +600,19 @@ export default function Reportes() {
                             </div>
                         )}
 
-                        {/* ── Vista: Tabla ───────────────────────────────────── */}
+                        {/* ── Vista: Tabla ─────────────────────────────────── */}
                         {vistaActiva === 'tabla' && (
                             <div className="overflow-x-auto">
-                                <table className="w-full min-w-[620px] text-sm">
+                                <table className="w-full min-w-[720px] text-sm">
                                     <thead style={{ background: 'color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
                                         <tr className="text-left text-texto-secundario">
                                             <th className="px-4 py-3 font-medium">#</th>
                                             <th className="px-4 py-3 font-medium">Estudiante</th>
                                             <th className="px-4 py-3 font-medium">Clases</th>
                                             <th className="px-4 py-3 font-medium">Presentes</th>
-                                            <th className="px-4 py-3 text-right font-medium">Porcentaje</th>
+                                            <th className="px-4 py-3 font-medium">Ausentes</th>
+                                            <th className="px-4 py-3 font-medium">Justificados</th>
+                                            <th className="px-4 py-3 text-right font-medium">% Asistencia</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -611,15 +622,20 @@ export default function Reportes() {
                                                 className="border-b"
                                                 style={{ borderColor: 'var(--color-border)' }}
                                             >
-                                                <td
-                                                    className="px-4 py-3 font-mono text-xs"
-                                                    style={{ color: 'var(--color-muted)' }}
-                                                >
+                                                <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
                                                     {i + 1}
                                                 </td>
                                                 <td className="px-4 py-3 font-medium text-texto">{item.name}</td>
                                                 <td className="px-4 py-3">{Number(item.total).toLocaleString('es-CO')}</td>
-                                                <td className="px-4 py-3">{Number(item.present).toLocaleString('es-CO')}</td>
+                                                <td className="px-4 py-3" style={{ color: 'var(--color-present)', fontWeight: 600 }}>
+                                                    {Number(item.present).toLocaleString('es-CO')}
+                                                </td>
+                                                <td className="px-4 py-3" style={{ color: item.absent > 0 ? 'var(--color-absent)' : 'inherit', fontWeight: item.absent > 0 ? 600 : 400 }}>
+                                                    {Number(item.absent ?? 0).toLocaleString('es-CO')}
+                                                </td>
+                                                <td className="px-4 py-3" style={{ color: item.justified > 0 ? 'var(--color-excused)' : 'inherit', fontWeight: item.justified > 0 ? 600 : 400 }}>
+                                                    {Number(item.justified ?? 0).toLocaleString('es-CO')}
+                                                </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <span
                                                         className="inline-flex items-center px-2 py-0.5 rounded-[var(--badge-radius)] font-mono font-semibold text-xs"
@@ -734,7 +750,7 @@ export default function Reportes() {
                         <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                             Comparativo de estados por semana
                         </h3>
-                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Materia activa · Presente / Ausente / Tardanza / Justificado</p>
+                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Materia activa · Presente / Ausente / Justificado</p>
                     </div>
                 </div>
 
@@ -761,7 +777,6 @@ export default function Reportes() {
                                 <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 12 }} />
                                 <Bar dataKey="presente"    name="Presente"    fill={v('--color-present')}  radius={[4,4,0,0]} maxBarSize={18} />
                                 <Bar dataKey="ausente"     name="Ausente"     fill={v('--color-absent')}   radius={[4,4,0,0]} maxBarSize={18} />
-                                <Bar dataKey="tardanza"    name="Tardanza"    fill={v('--color-late')}     radius={[4,4,0,0]} maxBarSize={18} />
                                 <Bar dataKey="justificado" name="Justificado" fill={v('--color-excused')} radius={[4,4,0,0]} maxBarSize={18} />
                             </BarChart>
                         </ResponsiveContainer>

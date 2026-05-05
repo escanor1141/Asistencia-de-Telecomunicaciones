@@ -1,16 +1,32 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Clock3, FileText, Loader2, Save, XCircle } from 'lucide-react';
+import { CheckCircle2, FileText, Loader2, Save, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { obtenerAsistencia, obtenerEstudiantes, guardarAsistencia } from '../services/api';
 import { useCurso } from '../context/ContextoCurso';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 
 const estadosAsistencia = [
-    { valor: 'Presente',    icono: CheckCircle2, colorTexto: 'text-presente',   colorFondo: 'var(--color-present-bg)' },
-    { valor: 'Ausente',     icono: XCircle,      colorTexto: 'text-ausente',    colorFondo: 'var(--color-absent-bg)' },
-    { valor: 'Tardanza',    icono: Clock3,       colorTexto: 'text-tardanza',   colorFondo: 'var(--color-late-bg)' },
-    { valor: 'Justificado', icono: FileText,     colorTexto: 'text-justificado',colorFondo: 'var(--color-excused-bg)' },
+    { valor: 'Presente',    icono: CheckCircle2, colorTexto: 'text-presente',    colorFondo: 'var(--color-present-bg)' },
+    { valor: 'Ausente',     icono: XCircle,      colorTexto: 'text-ausente',     colorFondo: 'var(--color-absent-bg)' },
+    { valor: 'Justificado', icono: FileText,     colorTexto: 'text-justificado', colorFondo: 'var(--color-excused-bg)' },
 ];
+
+const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const obtenerDiaSemana = (fechaStr) => {
+    if (!fechaStr) return null;
+    const [year, month, day] = fechaStr.split('-');
+    const date = new Date(year, month - 1, day);
+    const dayIndex = date.getDay(); // 0 es Domingo
+    const indices = [6, 0, 1, 2, 3, 4, 5]; // Mapear a [Lunes, Martes...]
+    return diasSemana[indices[dayIndex]];
+};
+
+const formatearFechaLocal = (fechaDate) => {
+    const year = fechaDate.getFullYear();
+    const month = String(fechaDate.getMonth() + 1).padStart(2, '0');
+    const day = String(fechaDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 export default function Asistencia() {
     const {
@@ -21,7 +37,7 @@ export default function Asistencia() {
     } = useCurso();
 
     const [estudiantes, setEstudiantes] = useState([]);
-    const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
+    const [fecha, setFecha] = useState(formatearFechaLocal(new Date()));
     const [asistencia, setAsistencia] = useState({});
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
@@ -55,7 +71,9 @@ export default function Asistencia() {
             const mapaAsistencia = {};
             if (asistenciaExistente.length > 0) {
                 asistenciaExistente.forEach((registro) => {
-                    mapaAsistencia[registro.studentId] = registro.present ? 'Presente' : 'Ausente';
+                    // Si hay status guardado lo usamos; si no, inferimos del boolean
+                    mapaAsistencia[registro.studentId] =
+                        registro.status || (registro.present ? 'Presente' : 'Ausente');
                 });
             }
             setAsistencia(mapaAsistencia);
@@ -74,7 +92,7 @@ export default function Asistencia() {
         if (!cursoSeleccionado) return;
         const registros = estudiantes.map((estudiante) => ({
             studentId: estudiante.id,
-            present: ['Presente', 'Tardanza', 'Justificado'].includes(asistencia[estudiante.id]),
+            status: asistencia[estudiante.id] || 'Ausente',
         }));
 
         setGuardando(true);
@@ -93,6 +111,40 @@ export default function Asistencia() {
         return acumulado;
     }, {});
 
+    const getLimitesFecha = () => {
+        const hoy = new Date();
+        const hoyStr = formatearFechaLocal(hoy);
+        
+        // Regla 1: Máximo 5 días atrás
+        const hace5Dias = new Date(hoy);
+        hace5Dias.setDate(hace5Dias.getDate() - 5);
+        
+        // Regla 2: Corte semanal (Domingos a las 02:00 AM)
+        const diaSemana = hoy.getDay(); // 0 = Domingo
+        const hora = hoy.getHours();
+        
+        const fechaCorte = new Date(hoy);
+        if (diaSemana === 0 && hora < 2) {
+            // Si es domingo antes de las 02:00, el corte vigente es del domingo pasado
+            fechaCorte.setDate(fechaCorte.getDate() - 7);
+        } else if (diaSemana !== 0) {
+            // Si es lunes a sábado, el corte fue el domingo anterior
+            fechaCorte.setDate(fechaCorte.getDate() - diaSemana);
+        }
+        // Si es domingo y hora >= 2, fechaCorte queda como hoy
+        
+        fechaCorte.setHours(0, 0, 0, 0); // El domingo de corte es el primer día editable post-corte
+
+        // El mínimo absoluto es la fecha más reciente entre hace5Dias y fechaCorte
+        const minDate = hace5Dias > fechaCorte ? hace5Dias : fechaCorte;
+        const minStr = formatearFechaLocal(minDate);
+
+        return { max: hoyStr, min: minStr };
+    };
+    
+    const { min: minFecha, max: maxFecha } = getLimitesFecha();
+    const fechaValida = fecha >= minFecha && fecha <= maxFecha;
+
     return (
         <section className="space-y-6">
             <header className="tarjeta">
@@ -107,7 +159,7 @@ export default function Asistencia() {
                     <p className="text-sm text-texto-secundario mt-2">Registrá el estado diario por estudiante.</p>
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                        <FiltrosGlobales />
+                        <FiltrosGlobales filtroDia={obtenerDiaSemana(fecha)} />
                         
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
                             <label htmlFor="fecha-asistencia" style={{ fontSize: '0.8125rem', fontWeight: '500', fontFamily: 'var(--font-sans)', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', width: '56px', textAlign: 'right' }}>
@@ -116,6 +168,8 @@ export default function Asistencia() {
                             <input
                                 id="fecha-asistencia"
                                 type="date"
+                                min={minFecha}
+                                max={maxFecha}
                                 value={fecha}
                                 onChange={(evento) => setFecha(evento.target.value)}
                                 style={{
@@ -162,8 +216,9 @@ export default function Asistencia() {
                     <button
                         type="button"
                         onClick={manejarGuardarAsistencia}
-                        disabled={guardando || estudiantes.length === 0}
+                        disabled={guardando || estudiantes.length === 0 || !fechaValida}
                         className="boton-primario inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        title={!fechaValida ? "Solo podés editar fechas de hoy o hasta 5 días atrás" : ""}
                     >
                         {guardando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Guardar

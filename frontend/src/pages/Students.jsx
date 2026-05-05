@@ -1,11 +1,89 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Trash2, Loader2, Upload, X, CheckCircle2, Pencil } from 'lucide-react';
+import { Search, Plus, Trash2, Loader2, Upload, X, CheckCircle2, Pencil, Square, CheckSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { obtenerReportes, obtenerEstudiantes, crearEstudiante, actualizarEstudiante, eliminarEstudiante } from '../services/api';
 import toast from 'react-hot-toast';
 import { useCurso } from '../context/ContextoCurso';
 import FiltrosGlobales from '../components/FiltrosGlobales';
+
+// ── Modal de edición de estudiante ────────────────────────────────────────────
+function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
+    const [form, setForm] = useState({
+        name:      estudiante.nombre  || '',
+        email:     estudiante.correo  || '',
+        correo2:   estudiante.correo2 || '',
+        whatsapp:  estudiante.telefono|| '',
+        telefono2: estudiante.telefono2 || '',
+        franja:    estudiante.franja  || '',
+        programa:  estudiante.programa|| '',
+    });
+    const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(2px)' }}>
+            <div className="w-full max-w-lg rounded-[var(--card-radius)] border flex flex-col"
+                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '90vh' }}>
+                <div className="flex items-center justify-between px-6 py-4 border-b shrink-0"
+                    style={{ borderColor: 'var(--color-border)' }}>
+                    <h3 className="text-lg font-semibold">Editar Estudiante</h3>
+                    <button type="button" onClick={onCancelar} disabled={guardando}
+                        className="p-1.5 rounded-md disabled:opacity-50" style={{ color: 'var(--color-muted)' }}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="overflow-auto flex-1 px-6 py-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre completo *</label>
+                            <input className="campo w-full" required value={form.name} onChange={set('name')} placeholder="Nombre completo" />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Franja</label>
+                            <select className="campo w-full" value={form.franja} onChange={set('franja')}>
+                                <option value="">Selecciona una franja</option>
+                                <option value="Diurna">Diurna</option>
+                                <option value="Nocturna">Nocturna</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Programa</label>
+                            <select className="campo w-full" value={form.programa} onChange={set('programa')}>
+                                <option value="">Selecciona un programa</option>
+                                <option value="Ingeniería de Telecomunicaciones">Ingeniería de Telecomunicaciones</option>
+                                <option value="Tecnología en Gestión de Sistemas de Telecomunicaciones">Tecnología en Gestión</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Correo</label>
+                            <input type="email" className="campo w-full" value={form.email} onChange={set('email')} placeholder="correo@ejemplo.com" />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Correo 2</label>
+                            <input type="email" className="campo w-full" value={form.correo2} onChange={set('correo2')} placeholder="correo2@ejemplo.com" />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Teléfono</label>
+                            <input className="campo w-full" value={form.whatsapp} onChange={set('whatsapp')} placeholder="+57 300 000 0000" />
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Teléfono 2</label>
+                            <input className="campo w-full" value={form.telefono2} onChange={set('telefono2')} placeholder="+57 300 000 0000" />
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end gap-3 px-6 py-4 border-t shrink-0"
+                    style={{ borderColor: 'var(--color-border)' }}>
+                    <button type="button" onClick={onCancelar} disabled={guardando} className="boton-secundario">Cancelar</button>
+                    <button type="button" onClick={() => onGuardar(form)} disabled={guardando || !form.name.trim()}
+                        className="boton-primario inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {guardando ? <><Loader2 size={15} className="animate-spin" /> Guardando...</> : 'Guardar cambios'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // ── Modal de previsualización de importación ──────────────────────────────────
 function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
@@ -33,7 +111,9 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                             Vista previa — Importación
                         </h3>
                         <p className="mt-0.5 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                            {filas.length} estudiante{filas.length !== 1 ? 's' : ''} detectado{filas.length !== 1 ? 's' : ''}
+                            {filas.filter(f => !f.esDuplicado && !f.programaInvalido).length} nueva{filas.filter(f => !f.esDuplicado && !f.programaInvalido).length !== 1 ? 's' : ''}
+                            {filas.filter(f => f.esDuplicado).length > 0 && ` · ${filas.filter(f => f.esDuplicado).length} ya existente${filas.filter(f => f.esDuplicado).length !== 1 ? 's' : ''}`}
+                            {filas.filter(f => f.programaInvalido).length > 0 && ` · ${filas.filter(f => f.programaInvalido).length} programa incorrecto`}
                         </p>
                     </div>
                     <button
@@ -70,7 +150,10 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                                 <tr
                                     key={i}
                                     className="border-b"
-                                    style={{ borderColor: 'var(--color-border)' }}
+                                    style={{
+                                        borderColor: 'var(--color-border)',
+                                        opacity: (fila.esDuplicado || fila.programaInvalido) ? 0.45 : 1,
+                                    }}
                                 >
                                     <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--color-muted)' }}>{i + 1}</td>
                                     <td className="px-4 py-2.5" style={{ color: 'var(--color-text-secondary)' }}>{fila.documento || '—'}</td>
@@ -84,26 +167,30 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                                     <td className="px-4 py-2.5" style={{ color: 'var(--color-text-secondary)' }}>{fila.whatsapp || '—'}</td>
                                     <td className="px-4 py-2.5" style={{ color: 'var(--color-text-secondary)' }}>{fila.telefono2 || '—'}</td>
                                     <td className="px-4 py-2.5">
-                                        {fila.error ? (
-                                            <span
-                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
-                                                style={{ background: 'var(--color-absent-bg)', color: 'var(--color-absent)' }}
-                                            >
+                                        {fila.programaInvalido ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
+                                                style={{ background: 'var(--color-absent-bg)', color: 'var(--color-absent)' }}>
+                                                {fila.razonInvalido || 'No permitido'}
+                                            </span>
+                                        ) : fila.esDuplicado ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
+                                                style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#f59e0b' }}>
+                                                Ya existe
+                                            </span>
+                                        ) : fila.error ? (
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
+                                                style={{ background: 'var(--color-absent-bg)', color: 'var(--color-absent)' }}>
                                                 Error fila {i + 1}
                                             </span>
                                         ) : fila.importado ? (
-                                            <span
-                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
-                                                style={{ background: 'var(--color-present-bg)', color: 'var(--color-present)' }}
-                                            >
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
+                                                style={{ background: 'var(--color-present-bg)', color: 'var(--color-present)' }}>
                                                 <CheckCircle2 size={12} /> OK
                                             </span>
                                         ) : (
-                                            <span
-                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
-                                                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}
-                                            >
-                                                Pendiente
+                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
+                                                style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                                                Nueva
                                             </span>
                                         )}
                                     </td>
@@ -129,12 +216,12 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                     <button
                         type="button"
                         onClick={onConfirmar}
-                        disabled={importando || filas.length === 0}
+                        disabled={importando || filas.filter(f => !f.esDuplicado && !f.programaInvalido).length === 0}
                         className="boton-primario inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {importando
                             ? <><Loader2 size={16} className="animate-spin" /> Importando...</>
-                            : <><Upload size={16} /> Confirmar importación</>}
+                            : <><Upload size={16} /> Importar {filas.filter(f => !f.esDuplicado && !f.programaInvalido).length} nueva{filas.filter(f => !f.esDuplicado && !f.programaInvalido).length !== 1 ? 's' : ''}</>}
                     </button>
                 </div>
             </div>
@@ -167,13 +254,18 @@ export default function Estudiantes() {
     const [guardandoEstudiante, setGuardandoEstudiante] = useState(false);
     const [eliminandoId, setEliminandoId] = useState(null);
     const [editandoId, setEditandoId] = useState(null);
+    const [estudianteEnEdicion, setEstudianteEnEdicion] = useState(null);
+    const [guardandoEdicion, setGuardandoEdicion] = useState(false);
     const [refrescar, setRefrescar] = useState(0);
+    const [seleccionados, setSeleccionados] = useState(new Set());
+    const [eliminandoMultiple, setEliminandoMultiple] = useState(false);
 
     // ── Import state ─────────────────────────────────────────────────────────
     const inputArchivoRef = useRef(null);
     const [filasImport, setFilasImport] = useState([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [importando, setImportando] = useState(false);
+    const [borrandoTodo, setBorrandoTodo] = useState(false);
 
     const filtros = {
         codigo:    codigoSeleccionado,
@@ -243,45 +335,78 @@ export default function Estudiantes() {
         if (!confirm(`¿Eliminar a "${nombre}"? Se borrarán sus registros de asistencia.`)) return;
         setEliminandoId(id);
         try {
-            await eliminarEstudiante(id);
+            await eliminarEstudiante(cursoSeleccionado.id, id);
             setRefrescar((p) => p + 1);
             toast.success('Estudiante eliminado');
         } catch {
-            toast.error('Error al eliminar estudiante');
+            toast.error('Error al eliminar estudiante', { duration: 6000 });
         } finally {
             setEliminandoId(null);
         }
     };
 
-    const manejarEdicionEstudiante = async (estudiante) => {
-        const nombreActualizado = prompt('Nuevo nombre del estudiante', estudiante.nombre);
-        if (nombreActualizado === null) return;
-
-        const correoActualizado = prompt('Nuevo correo (opcional)', estudiante.correo || '');
-        if (correoActualizado === null) return;
-
-        const telefonoActualizado = prompt('Nuevo telefono (opcional)', estudiante.telefono || '');
-        if (telefonoActualizado === null) return;
-
-        const nombreLimpio = nombreActualizado.trim();
-        if (!nombreLimpio) {
-            toast.error('El nombre es obligatorio');
-            return;
+    const borrarTodosLosEstudiantes = async () => {
+        if (!cursoSeleccionado || estudiantes.length === 0) return;
+        if (!confirm(`¿Eliminar a los ${estudiantes.length} estudiante${estudiantes.length !== 1 ? 's' : ''} de "${cursoSeleccionado.name}"? Esta acción no se puede deshacer.`)) return;
+        setBorrandoTodo(true);
+        let errores = 0;
+        for (const est of estudiantes) {
+            try {
+                await eliminarEstudiante(cursoSeleccionado.id, est.id);
+            } catch {
+                errores++;
+            }
         }
+        setBorrandoTodo(false);
+        setRefrescar((p) => p + 1);
+        if (errores === 0) toast.success('Lista de estudiantes borrada');
+        else toast.error(`${errores} estudiante${errores !== 1 ? 's' : ''} no pudieron eliminarse`, { duration: 6000 });
+    };
 
-        setEditandoId(estudiante.id);
+    const manejarEdicionEstudiante = async (form) => {
+        if (!estudianteEnEdicion) return;
+        setGuardandoEdicion(true);
         try {
-            await actualizarEstudiante(estudiante.id, {
-                name: nombreLimpio,
-                email: correoActualizado.trim() || null,
-                whatsapp: telefonoActualizado.trim() || null,
-            });
+            await actualizarEstudiante(estudianteEnEdicion.id, form);
             toast.success('Estudiante actualizado');
+            setEstudianteEnEdicion(null);
             setRefrescar((p) => p + 1);
         } catch (err) {
             toast.error(err.response?.data?.error || 'Error al actualizar estudiante');
         } finally {
-            setEditandoId(null);
+            setGuardandoEdicion(false);
+        }
+    };
+
+    const eliminarSeleccionados = async () => {
+        if (seleccionados.size === 0) return;
+        if (!confirm(`¿Eliminar ${seleccionados.size} estudiante${seleccionados.size !== 1 ? 's' : ''} seleccionado${seleccionados.size !== 1 ? 's' : ''}?`)) return;
+        setEliminandoMultiple(true);
+        let errores = 0;
+        for (const id of seleccionados) {
+            try { await eliminarEstudiante(cursoSeleccionado.id, id); }
+            catch { errores++; }
+        }
+        setSeleccionados(new Set());
+        setEliminandoMultiple(false);
+        setRefrescar((p) => p + 1);
+        if (errores === 0) toast.success(`${seleccionados.size} estudiante${seleccionados.size !== 1 ? 's' : ''} eliminado${seleccionados.size !== 1 ? 's' : ''}`);
+        else toast.error(`${errores} no pudieron eliminarse`, { duration: 6000 });
+    };
+
+    const toggleSeleccion = (id) => {
+        setSeleccionados(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const toggleTodos = () => {
+        if (seleccionados.size === filtrados.length) {
+            setSeleccionados(new Set());
+        } else {
+            setSeleccionados(new Set(filtrados.map(e => e.id)));
         }
     };
 
@@ -300,26 +425,56 @@ export default function Estudiantes() {
     const manejarArchivoSeleccionado = (e) => {
         const archivo = e.target.files?.[0];
         if (!inputArchivoRef.current) return;
-        inputArchivoRef.current.value = '';  // reset para permitir re-selección
+        inputArchivoRef.current.value = '';
 
         if (!archivo) return;
 
         const extension = archivo.name.split('.').pop().toLowerCase();
+        const programaCurso = cursoSeleccionado?.programa || null;
+        const documentosExistentes = new Set(estudiantes.map(est => est.documento));
+
+        // Normaliza: minúsculas + sin acentos + sin espacios extras
+        const norm = (s) =>
+            (s || '').trim().toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+        const progCurso  = norm(programaCurso);
+        const franjaCurso = norm(cursoSeleccionado?.franja);
+
+        const marcarFilas = (filas) => filas.map(fila => {
+            const progFila   = norm(fila.programa);
+            const franjaFila = norm(fila.franja);
+
+            const progMal   = !!(progCurso  && progFila  && progFila  !== progCurso);
+            const franjaMal = !!(franjaCurso && franjaFila && franjaFila !== franjaCurso);
+
+            let razonInvalido = null;
+            if (progMal && franjaMal) razonInvalido = 'Programa y franja incorrectos';
+            else if (progMal)          razonInvalido = 'Programa incorrecto';
+            else if (franjaMal)        razonInvalido = 'Franja incorrecta';
+
+            return {
+                ...fila,
+                esDuplicado:     !!(fila.documento && documentosExistentes.has(fila.documento)),
+                programaInvalido: !!razonInvalido,
+                razonInvalido,
+            };
+        });
 
         if (extension === 'csv') {
             Papa.parse(archivo, {
                 header: true,
                 skipEmptyLines: true,
                 complete: (resultado) => {
-                    const filas = resultado.data.map(normalizarColumnas).filter((f) => f.name.trim() !== '');
+                    const filas = marcarFilas(resultado.data.map(normalizarColumnas).filter((f) => f.name.trim() !== ''));
                     if (filas.length === 0) {
-                        toast.error('El archivo CSV no tiene filas válidas (columna "Nombre" requerida)');
+                        toast.error('El archivo CSV no tiene filas válidas (columna "Nombre" requerida)', { duration: 6000 });
                         return;
                     }
                     setFilasImport(filas);
                     setModalVisible(true);
                 },
-                error: () => toast.error('Error al parsear el archivo CSV'),
+                error: () => toast.error('Error al parsear el archivo CSV', { duration: 6000 }),
             });
         } else if (extension === 'xlsx' || extension === 'xls') {
             const lector = new FileReader();
@@ -328,20 +483,20 @@ export default function Estudiantes() {
                     const workbook = XLSX.read(ev.target.result, { type: 'array' });
                     const hoja = workbook.Sheets[workbook.SheetNames[0]];
                     const datos = XLSX.utils.sheet_to_json(hoja, { defval: '' });
-                    const filas = datos.map(normalizarColumnas).filter((f) => f.name.trim() !== '');
+                    const filas = marcarFilas(datos.map(normalizarColumnas).filter((f) => f.name.trim() !== ''));
                     if (filas.length === 0) {
-                        toast.error('El archivo Excel no tiene filas válidas (columna "Nombre" requerida)');
+                        toast.error('El archivo Excel no tiene filas válidas (columna "Nombre" requerida)', { duration: 6000 });
                         return;
                     }
                     setFilasImport(filas);
                     setModalVisible(true);
                 } catch {
-                    toast.error('Error al leer el archivo Excel');
+                    toast.error('Error al leer el archivo Excel', { duration: 6000 });
                 }
             };
             lector.readAsArrayBuffer(archivo);
         } else {
-            toast.error('Formato no soportado. Usá .csv, .xlsx o .xls');
+            toast.error('Formato no soportado. Usá .csv, .xlsx o .xls', { duration: 6000 });
         }
     };
 
@@ -354,6 +509,11 @@ export default function Estudiantes() {
 
                 for (let i = 0; i < filasActualizadas.length; i++) {
                     const fila = filasActualizadas[i];
+                    // Omitir duplicados y programa incorrecto
+                    if (fila.esDuplicado || fila.programaInvalido) {
+                        filasActualizadas[i] = { ...fila, importado: false, error: false };
+                        continue;
+                    }
                     try {
                 await crearEstudiante(cursoSeleccionado.id, {
                     documento: fila.documento || null,
@@ -370,7 +530,7 @@ export default function Estudiantes() {
                     } catch (err) {
                         const msgError = err.response?.data?.error || err.message || 'Error desconocido';
                         filasActualizadas[i] = { ...fila, importado: false, error: true };
-                        toast.error(`Error fila ${i + 1} (${fila.name}): ${msgError}`);
+                        toast.error(`Error fila ${i + 1} (${fila.name}): ${msgError}`, { duration: 7000 });
                     }
                     setFilasImport([...filasActualizadas]);
                 }
@@ -409,7 +569,15 @@ export default function Estudiantes() {
 
     return (
         <>
-            {/* Modal de importación */}
+            {/* Modal de edición */}
+            {estudianteEnEdicion && (
+                <ModalEdicion
+                    estudiante={estudianteEnEdicion}
+                    onGuardar={manejarEdicionEstudiante}
+                    onCancelar={() => setEstudianteEnEdicion(null)}
+                    guardando={guardandoEdicion}
+                />
+            )}
             {modalVisible && (
                 <ModalImportacion
                     filas={filasImport}
@@ -452,21 +620,23 @@ export default function Estudiantes() {
                                 aria-label="Seleccionar archivo de importación"
                                 onChange={manejarArchivoSeleccionado}
                             />
-                            <button
-                                type="button"
-                                onClick={() => inputArchivoRef.current?.click()}
-                                className="inline-flex items-center gap-2 rounded-[var(--input-radius)] px-4 h-10 text-sm font-semibold transition-colors"
-                                style={{
-                                    border: '1px solid var(--color-primary)',
-                                    color: 'var(--color-primary)',
-                                    background: 'var(--color-surface)',
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-primary-light)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--color-surface)'}
-                            >
-                                <Upload size={16} />
-                                Importar Excel
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => inputArchivoRef.current?.click()}
+                                    className="inline-flex items-center gap-2 rounded-[var(--input-radius)] px-4 h-10 text-sm font-semibold transition-colors"
+                                    style={{
+                                        border: '1px solid var(--color-primary)',
+                                        color: 'var(--color-primary)',
+                                        background: 'var(--color-surface)',
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-primary-light)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--color-surface)'}
+                                >
+                                    <Upload size={16} />
+                                    Importar Excel
+                                </button>
+                            </div>
                         </div>
                         <form onSubmit={manejarCreacionEstudiante} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
                             <div>
@@ -598,6 +768,34 @@ export default function Estudiantes() {
 
                 {/* Tabla */}
                 <section className="tarjeta p-0">
+                    {/* Barra de acciones de la tabla */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                        <div className="flex items-center gap-3">
+                            {seleccionados.size > 0 && (
+                                <button type="button" onClick={eliminarSeleccionados} disabled={eliminandoMultiple}
+                                    className="inline-flex items-center gap-2 rounded-[var(--input-radius)] px-3 h-8 text-sm font-semibold transition-colors disabled:opacity-50"
+                                    style={{ border: '1px solid var(--color-absent)', color: 'var(--color-absent)', background: 'var(--color-surface)' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-absent-bg)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--color-surface)'}
+                                >
+                                    {eliminandoMultiple ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                    Eliminar {seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''}
+                                </button>
+                            )}
+                        </div>
+                        {estudiantes.length > 0 && (
+                            <button type="button" onClick={borrarTodosLosEstudiantes} disabled={borrandoTodo}
+                                className="inline-flex items-center gap-2 rounded-[var(--input-radius)] px-3 h-8 text-sm font-semibold transition-colors disabled:opacity-50"
+                                style={{ border: '1px solid var(--color-absent)', color: 'var(--color-absent)', background: 'transparent' }}
+                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-absent-bg)'}
+                                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            >
+                                {borrandoTodo ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                Borrar todo
+                            </button>
+                        )}
+                    </div>
+
                     {cargando ? (
                         <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
                     ) : (
@@ -605,6 +803,13 @@ export default function Estudiantes() {
                             <table className="w-full min-w-[700px] text-sm">
                                 <thead style={{ background: 'color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
                                     <tr className="text-left text-texto-secundario">
+                                        <th className="px-4 py-3">
+                                            <button type="button" onClick={toggleTodos} className="flex items-center" title="Seleccionar todos">
+                                                {seleccionados.size === filtrados.length && filtrados.length > 0
+                                                    ? <CheckSquare size={16} style={{ color: 'var(--color-primary)' }} />
+                                                    : <Square size={16} style={{ color: 'var(--color-muted)' }} />}
+                                            </button>
+                                        </th>
                                         <th className="px-4 py-3 font-medium">Documento</th>
                                         <th className="px-4 py-3 font-medium">Nombre</th>
                                         <th className="px-4 py-3 font-medium">Materia</th>
@@ -614,7 +819,15 @@ export default function Estudiantes() {
                                 </thead>
                                 <tbody>
                                     {filtrados.map((est) => (
-                                        <tr key={est.id} className="border-b" style={{ borderColor: 'var(--color-border)' }}>
+                                        <tr key={est.id} className="border-b"
+                                            style={{ borderColor: 'var(--color-border)', background: seleccionados.has(est.id) ? 'color-mix(in srgb, var(--color-primary) 6%, transparent)' : 'transparent' }}>
+                                            <td className="px-4 py-3">
+                                                <button type="button" onClick={() => toggleSeleccion(est.id)} className="flex items-center">
+                                                    {seleccionados.has(est.id)
+                                                        ? <CheckSquare size={16} style={{ color: 'var(--color-primary)' }} />
+                                                        : <Square size={16} style={{ color: 'var(--color-muted)' }} />}
+                                                </button>
+                                            </td>
                                             <td className="px-4 py-3 font-mono text-xs text-texto-secundario">{est.documento}</td>
                                             <td className="px-4 py-3 font-medium text-texto">{est.nombre}</td>
                                             <td className="px-4 py-3 text-texto-secundario">{est.curso}</td>
@@ -623,18 +836,15 @@ export default function Estudiantes() {
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <button
-                                                    onClick={() => manejarEdicionEstudiante(est)}
+                                                    onClick={() => setEstudianteEnEdicion(est)}
                                                     disabled={editandoId === est.id || eliminandoId === est.id}
                                                     className="mr-2 p-1.5 rounded-md transition-colors disabled:opacity-50"
                                                     style={{ color: 'var(--color-muted)' }}
                                                     title="Editar estudiante"
-                                                    aria-label="Editar estudiante"
                                                     onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-primary-light)'; }}
                                                     onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.background = 'transparent'; }}
                                                 >
-                                                    {editandoId === est.id
-                                                        ? <Loader2 size={16} className="animate-spin" />
-                                                        : <Pencil size={16} />}
+                                                    <Pencil size={16} />
                                                 </button>
                                                 <button
                                                     onClick={() => manejarEliminacionEstudiante(est.id, est.nombre)}
@@ -642,7 +852,6 @@ export default function Estudiantes() {
                                                     className="p-1.5 rounded-md transition-colors disabled:opacity-50"
                                                     style={{ color: 'var(--color-muted)' }}
                                                     title="Eliminar estudiante"
-                                                    aria-label="Eliminar estudiante"
                                                     onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-absent)'; e.currentTarget.style.background = 'var(--color-absent-bg)'; }}
                                                     onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.background = 'transparent'; }}
                                                 >
@@ -655,7 +864,7 @@ export default function Estudiantes() {
                                     ))}
                                     {filtrados.length === 0 && (
                                         <tr>
-                                            <td colSpan="5" className="px-4 py-8 text-center text-texto-secundario">
+                                            <td colSpan="6" className="px-4 py-8 text-center text-texto-secundario">
                                                 No hay estudiantes para los filtros seleccionados.
                                             </td>
                                         </tr>
