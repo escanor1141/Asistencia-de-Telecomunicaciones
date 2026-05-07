@@ -3,7 +3,9 @@ import { obtenerAsistencia, obtenerDocentes } from '../services/api';
 import { Calendar as IconoCalendario, CheckCircle2, XCircle, Loader2, Filter } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 import { useCurso } from '../context/ContextoCurso';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 
 // ── Años disponibles ──────────────────────────────────────────────────────────
@@ -33,6 +35,7 @@ export default function Historial() {
         grupoSeleccionado,
         docenteSeleccionado,
     } = useCurso();
+    const { usuario } = useAutenticacion();
 
     // ── Filtros locales de esta página ────────────────────────────────────────
     const [anio, setAnio] = useState('');
@@ -108,7 +111,7 @@ export default function Historial() {
         setCargandoDetalles(true);
         try {
             const detalles = await obtenerAsistencia(cursoSeleccionado.id, fecha, filtrosCombinados);
-            setDetallesFecha(detalles);
+            setDetallesFecha([...detalles].sort((a, b) => compararPorApellido(a.student?.name ?? '', b.student?.name ?? '')));
         } catch (_err) {
             setDetallesFecha([]);
         } finally {
@@ -214,33 +217,35 @@ export default function Historial() {
                 </div>
 
                 {/* Docente local */}
-                <div className="flex flex-col gap-1">
-                    <label
-                        htmlFor="hist-docente"
-                        style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}
-                    >
-                        Docente
-                    </label>
-                    <select
-                        id="hist-docente"
-                        value={docenteIdLocal}
-                        onChange={(e) => setDocenteIdLocal(e.target.value)}
-                        style={{ ...estiloSelectLocal, minWidth: '180px' }}
-                        onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; }}
-                        onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; }}
-                    >
-                        <option value="">Todos</option>
-                        {docentes.map((d) => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                    </select>
-                </div>
+                {usuario?.role === 'ADMIN' && (
+                    <div className="flex flex-col gap-1">
+                        <label
+                            htmlFor="hist-docente"
+                            style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}
+                        >
+                            Docente
+                        </label>
+                        <select
+                            id="hist-docente"
+                            value={docenteIdLocal}
+                            onChange={(e) => setDocenteIdLocal(e.target.value)}
+                            style={{ ...estiloSelectLocal, minWidth: '180px' }}
+                            onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; }}
+                            onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; }}
+                        >
+                            <option value="">Todos</option>
+                            {docentes.map((d) => (
+                                <option key={d.id} value={d.id}>{d.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
             </div>
 
             {/* ── Sin materia seleccionada ─────────────────────────────────── */}
             {!cursoSeleccionado ? (
                 <div className="tarjeta text-center py-12">
-                    <p className="text-texto-secundario">Seleccioná una materia en el menú superior.</p>
+                    <p className="text-texto-secundario">Selecciona una materia en el menú superior.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -388,7 +393,7 @@ export default function Historial() {
                                                             className="text-sm font-medium"
                                                             style={{ color: 'var(--color-text-primary)' }}
                                                         >
-                                                            {item.student.name}
+                                                            {formatearNombre(item.student.name)}
                                                         </span>
                                                     </div>
                                                     <div>
@@ -437,13 +442,13 @@ export default function Historial() {
                                     className="text-lg font-medium"
                                     style={{ color: 'var(--color-text-primary)' }}
                                 >
-                                    Seleccioná una fecha
+                                    Selecciona una fecha
                                 </p>
                                 <p
                                     className="mt-1 text-sm"
                                     style={{ color: 'var(--color-text-secondary)' }}
                                 >
-                                    Elegí un día en el panel izquierdo para ver los detalles de asistencia.
+                                    Elige un día en el panel izquierdo para ver los detalles de asistencia.
                                 </p>
                             </div>
                         )}

@@ -5,29 +5,36 @@
 
 import prisma from './prisma.js';
 
+// ── Helper: formatea una fecha a "YYYY-MM-DD" en hora de Colombia ────────────
+const fmtBogota = (d) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(d);
+
 /**
- * Calcula el lunes (inicio) y el sábado (fin) de la semana actual.
+ * Calcula el lunes (inicio) y el sábado (fin) de la semana actual
+ * usando la fecha local de Colombia para evitar errores de timezone.
  * @param {Date} [referenceDate=new Date()] - Fecha de referencia (default: hoy)
  * @returns {{ weekStart: string, weekEnd: string }} - Fechas en formato YYYY-MM-DD
  */
 export function getCurrentWeekRange(referenceDate = new Date()) {
-    const date = new Date(referenceDate);
-    const dayOfWeek = date.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
+    // Obtener la fecha local de Colombia para calcular el día de la semana correcto
+    const localStr = fmtBogota(referenceDate); // "YYYY-MM-DD"
+    const [year, month, day] = localStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day); // fecha local sin desfase UTC
 
-    // Calcular días al lunes anterior (o el mismo día si es lunes)
+    const dayOfWeek = date.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
     const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
     const monday = new Date(date);
     monday.setDate(date.getDate() + daysToMonday);
-    monday.setHours(0, 0, 0, 0);
 
-    // Sábado = lunes + 5 días
     const saturday = new Date(monday);
     saturday.setDate(monday.getDate() + 5);
 
-    const fmt = (d) => d.toISOString().split('T')[0]; // YYYY-MM-DD
     return {
-        weekStart: fmt(monday),
-        weekEnd: fmt(saturday),
+        weekStart: fmtBogota(monday),
+        weekEnd:   fmtBogota(saturday),
     };
 }
 
@@ -51,12 +58,14 @@ export async function getWeeklyAbsences({ referenceDate } = {}) {
 
     console.log(`[attendanceService] Consultando inasistencias del ${weekStart} al ${weekEnd}`);
 
-    // Generar rango de fechas lunes-sábado
+    // Generar rango de fechas lunes-sábado usando fechas locales
     const dates = [];
-    const start = new Date(weekStart + 'T00:00:00');
-    const end = new Date(weekEnd + 'T00:00:00');
+    const [sy, sm, sd] = weekStart.split('-').map(Number);
+    const [ey, em, ed] = weekEnd.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end   = new Date(ey, em - 1, ed);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        dates.push(d.toISOString().split('T')[0]);
+        dates.push(fmtBogota(d));
     }
 
     // Consultar inasistencias (present = false) en el rango de fechas
@@ -82,11 +91,11 @@ export async function getWeeklyAbsences({ referenceDate } = {}) {
         const { student, course } = record;
         if (!grouped.has(student.documento)) {
             grouped.set(student.documento, {
-                studentId: student.documento,
-                studentName: student.name,
-                email: student.email,
+                studentId:    student.documento,
+                studentName:  student.name,
+                email:        student.email,
                 totalAbsences: 0,
-                courses: new Set(),
+                courses:      new Set(),
                 weekStart,
                 weekEnd,
             });

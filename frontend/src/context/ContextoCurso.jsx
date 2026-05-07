@@ -55,17 +55,21 @@ export const ProveedorCurso = ({ children }) => {
         try {
             const datos = await obtenerCursos();
             setCursos(datos);
-            if (datos.length > 0 && !cursoSeleccionado) {
-                // Mantener la selección guardada si aún es válida, si no usar el primero
-                const idCursoGuardado = localStorage.getItem('selectedCourseId');
+            const idCursoGuardado = localStorage.getItem('selectedCourseId');
+
+            if (idCursoGuardado === 'TODAS' && usuario?.role === 'ADMIN') {
+                // Admin eligió "Todas las materias" — mantener null
+                setCursoSeleccionado(null);
+            } else if (datos.length > 0) {
                 const encontrado = datos.find(c => c.id === idCursoGuardado);
                 if (encontrado) {
                     setCursoSeleccionado(encontrado);
-                } else {
+                } else if (!cursoSeleccionado) {
+                    // Sin selección guardada válida → elegir el primero
                     setCursoSeleccionado(datos[0]);
                     localStorage.setItem('selectedCourseId', datos[0].id);
                 }
-            } else if (datos.length === 0) {
+            } else {
                 setCursoSeleccionado(null);
                 localStorage.removeItem('selectedCourseId');
             }
@@ -85,9 +89,13 @@ export const ProveedorCurso = ({ children }) => {
     // ── Selección de curso principal ─────────────────────────────────
     // Al cambiar la materia activa, resetear todos los filtros secundarios
     const seleccionarCurso = (curso) => {
-        if (!curso) return;
+        if (curso === undefined) return;
         setCursoSeleccionado(curso);
-        localStorage.setItem('selectedCourseId', curso.id);
+        if (curso) {
+            localStorage.setItem('selectedCourseId', curso.id);
+        } else {
+            localStorage.setItem('selectedCourseId', 'TODAS');
+        }
 
         // Reset filtros secundarios
         setGrupoSeleccionado(null);

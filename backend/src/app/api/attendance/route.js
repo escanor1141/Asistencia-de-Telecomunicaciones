@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 // ── Helper: construye la condición WHERE para los filtros opcionales ──────────
-function construirFiltro({ idCurso, codigo, grupo, docenteId, anio, periodo, modalidad }) {
+function construirFiltro({ nombreMateria, codigo, grupo, docenteId, anio, periodo, modalidad }) {
     const where = {}
-
-    if (idCurso) where.courseId = idCurso
 
     // Filtros sobre la relación Course (JOIN implícito de Prisma)
     const filtroCurso = {}
+    if (nombreMateria) filtroCurso.name = nombreMateria
+    if (modalidad) filtroCurso.programa = { contains: modalidad, mode: 'insensitive' }
+
     if (codigo)    filtroCurso.code          = codigo
     if (grupo)     filtroCurso.groupCode     = grupo
     if (docenteId) filtroCurso.teacherId     = docenteId
     if (anio)      filtroCurso.academicYear  = anio
     if (periodo)   filtroCurso.academicPeriod = periodo
-    if (modalidad) filtroCurso.name = { contains: modalidad, mode: 'insensitive' }
 
     if (Object.keys(filtroCurso).length > 0) {
         where.course = filtroCurso
@@ -40,31 +41,27 @@ export async function GET(request) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
-        const whereFiltros = construirFiltro({ idCurso, codigo, grupo, docenteId, anio, periodo, modalidad })
+        const cursoBase = await prisma.course.findUnique({
+            where: { id: idCurso },
+            select: { name: true }
+        })
 
+        if (!cursoBase) {
+            return Response.json({ error: 'Curso no encontrado' }, { status: 404 })
+        }
+
+        const whereFiltros = construirFiltro({ nombreMateria: cursoBase.name, codigo, grupo, docenteId, anio, periodo, modalidad })
 
         if (!fecha) {
             // Sin fecha: devuelve historial agrupado por día
-            // Los filtros de código/grupo/docente aplican a qué cursos se incluyen.
-            // Si hay filtros adicionales (código/grupo/docente), primero obtenemos
-            // los courseIds válidos y usamos el historial raw agrupado por fecha.
-            let courseIds = [idCurso]
+            const cursosFiltrados = await prisma.course.findMany({
+                where: whereFiltros.course || { name: cursoBase.name },
+                select: { id: true },
+            })
+            const courseIds = cursosFiltrados.map(c => c.id)
 
-            if (codigo || grupo || docenteId) {
-                const cursosFiltrados = await prisma.course.findMany({
-                    where: {
-                        ...(codigo    && { code:      codigo }),
-                        ...(grupo     && { groupCode: grupo }),
-                        ...(docenteId && { teacherId: docenteId }),
-                        // Asegurar que pertenecen al mismo teacher del curso activo
-                        id: idCurso,
-                    },
-                    select: { id: true },
-                })
-                courseIds = cursosFiltrados.map(c => c.id)
-                if (courseIds.length === 0) {
-                    return Response.json([])
-                }
+            if (courseIds.length === 0) {
+                return Response.json([])
             }
 
             const historialBruto = await prisma.$queryRaw`
@@ -73,7 +70,7 @@ export async function GET(request) {
           COUNT(id) as "total", 
           SUM(CASE WHEN present THEN 1 ELSE 0 END) as "presentCount" 
         FROM "Attendance" 
-        WHERE "courseId" = ${idCurso}
+        WHERE "courseId" IN (${Prisma.join(courseIds)})
         GROUP BY date 
         ORDER BY date DESC
       `

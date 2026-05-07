@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { obtenerReportes, obtenerReportesSemanal, obtenerDocentes } from '../services/api';
-import { Download, BarChart2, PieChart as PieIcon, TableIcon, TrendingUp, LayoutGrid } from 'lucide-react';
+import { Download, TrendingUp, LayoutGrid, PieChart as PieIcon, Clock, Users } from 'lucide-react';
 import { useCurso } from '../context/ContextoCurso';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
+import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell, Legend,
     LineChart, Line,
 } from 'recharts';
 
-// ── Helper: resuelve variables CSS en tiempo de ejecución ────────────────────────
+// ÔöÇÔöÇ Helper: resuelve variables CSS en tiempo de ejecuci├│n ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 // Recharts renderiza en SVG: los atributos fill no pasan por el cascade de CSS,
 // por eso hay que resolver los valores con getComputedStyle.
 function v(variable) {
@@ -20,7 +21,7 @@ function v(variable) {
         .trim();
 }
 
-// ── Colores Chart A (series) ──────────────────────────────────────────────────
+// ÔöÇÔöÇ Colores Chart A (series) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 // Derivados del design system: primario + estados + acentos
 const COLORES_LINEAS = [
     '#6B2D8B',  // var(--color-primary)
@@ -31,18 +32,18 @@ const COLORES_LINEAS = [
     '#6A9E2F',  // var(--color-accent-dark)
 ];
 
-// ── Modos de agrupación para Chart A ────────────────────────────────────────
+// ÔöÇÔöÇ Modos de agrupaci├│n para Chart A ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const MODOS_GRUPO = [
     { id: 'materia',      label: 'Por materia' },
-    { id: 'periodo',      label: 'Por período académico' },
+    { id: 'periodo',      label: 'Por per├¡odo acad├®mico' },
     { id: 'modalidad',    label: 'Por modalidad (Tec/Ing)' },
     { id: 'docente',      label: 'Por docente' },
     { id: 'docentes_ti',  label: 'Docentes Tec/Ing' },
 ];
 
-// ── Merge de semanas de múltiples series para LineChart ───────────────────────
+// ÔöÇÔöÇ Merge de semanas de m├║ltiples series para LineChart ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 // series: [{ nombre: 'Tec', semanas: [{ semana, presente }] }, ...]
-// → [{ semana: 'Semana 1', Tec: 10, Ing: 15 }, ...]
+// ÔåÆ [{ semana: 'Semana 1', Tec: 10, Ing: 15 }, ...]
 function mergeSemanales(series) {
     const mapa = {};
     series.forEach(({ nombre, semanas = [] }) => {
@@ -51,14 +52,14 @@ function mergeSemanales(series) {
             mapa[semana][nombre] = presente;
         });
     });
-    // Ordenar por número de semana
+    // Ordenar por n├║mero de semana
     return Object.values(mapa).sort((a, b) => {
         const n = (s) => parseInt(s.semana.replace('Semana ', ''), 10);
         return n(a) - n(b);
     });
 }
 
-// ── Tooltip semanal compartido ────────────────────────────────────────────────
+// ÔöÇÔöÇ Tooltip semanal compartido ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function TooltipSemanal({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     return (
@@ -77,18 +78,18 @@ function TooltipSemanal({ active, payload, label }) {
     );
 }
 
-// ── Paleta de brackets — valores reales de index.css ─────────────────────────
+// ÔöÇÔöÇ Paleta de brackets ÔÇö valores reales de index.css ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const COLORES_BRACKETS = [
-    '#8DC63F',  // ≥ 90%  — var(--color-present)
-    '#6A9E2F',  // 80–89% — var(--color-accent-dark)
-    '#D97706',  // 70–79% — var(--color-late)
-    '#DC2626',  // < 70%  — var(--color-absent)
+    '#8DC63F',  // ÔëÑ 90%  ÔÇö var(--color-present)
+    '#6A9E2F',  // 80ÔÇô89% ÔÇö var(--color-accent-dark)
+    '#D97706',  // 70ÔÇô79% ÔÇö var(--color-late)
+    '#DC2626',  // < 70%  ÔÇö var(--color-absent)
 ];
 
-const ETIQUETAS_BRACKETS = ['≥ 90%', '80–89%', '70–79%', '< 70%'];
+const ETIQUETAS_BRACKETS = ['>= 90%', '80-89%', '70-79%', '< 70%'];
 
 
-// ── Tooltip personalizado del BarChart ────────────────────────────────────────
+// ÔöÇÔöÇ Tooltip personalizado del BarChart ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function TooltipBarra({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     const { porcentaje, presentes, ausentes, justificados, clases } = payload[0].payload;
@@ -109,10 +110,10 @@ function TooltipBarra({ active, payload, label }) {
             </p>
             <p style={{ color: 'var(--color-text-secondary)' }}>
                 Presentes: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{presentes}</span>
-                {' · '}
+                {' ┬À '}
                 Ausentes: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--color-absent)' }}>{ausentes}</span>
                 {justificados > 0 && <>
-                    {' · '}
+                    {' ┬À '}
                     Justificados: <span style={{ fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--color-excused)' }}>{justificados}</span>
                 </>}
             </p>
@@ -121,7 +122,7 @@ function TooltipBarra({ active, payload, label }) {
     );
 }
 
-// ── Tooltip personalizado del PieChart ───────────────────────────────────────
+// ÔöÇÔöÇ Tooltip personalizado del PieChart ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 function TooltipTorta({ active, payload }) {
     if (!active || !payload?.length) return null;
     const { name, value } = payload[0];
@@ -143,12 +144,12 @@ function TooltipTorta({ active, payload }) {
     );
 }
 
-// ── Tabs de vista ─────────────────────────────────────────────────────────────
 const VISTAS = [
-    { id: 'barras',    label: 'Barras',       Icono: BarChart2 },
-    { id: 'torta',     label: 'Distribución', Icono: PieIcon },
-    { id: 'tabla',     label: 'Tabla',        Icono: TableIcon },
+    { id: 'distribucion', label: 'Distribuci\u00f3n',           Icono: PieIcon },
+    { id: 'tiempo',       label: 'Asistencia en el tiempo', Icono: TrendingUp },
+    { id: 'tabla',        label: 'Detalle por Estudiante',  Icono: Users },
 ];
+
 
 export default function Reportes() {
     const {
@@ -163,9 +164,9 @@ export default function Reportes() {
     const [cargando, setCargando] = useState(true);
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
-    const [vistaActiva, setVistaActiva] = useState('barras');
+    const [vistaActiva, setVistaActiva] = useState('distribucion');
 
-    // ── State Chart A / B ──────────────────────────────────────────────────
+    // ÔöÇÔöÇ State Chart A / B ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     const [modoGrupo, setModoGrupo] = useState('materia');
     const [datosLineChart, setDatosLineChart] = useState([]);  // merged weeks
     const [seriesNombres, setSeriesNombres] = useState([]);    // series keys for <Line>
@@ -187,7 +188,7 @@ export default function Reportes() {
             if (fechaInicio) params.startDate = fechaInicio;
             if (fechaFin) params.endDate = fechaFin;
             const respuesta = await obtenerReportes(cursoSeleccionado.id, params, filtros);
-            setDatos(respuesta);
+            setDatos([...respuesta].sort((a, b) => compararPorApellido(a.name, b.name)));
         } finally {
             setCargando(false);
         }
@@ -202,12 +203,12 @@ export default function Reportes() {
         }
     }, [fechaInicio, fechaFin, cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
 
-    // ── Carga docentes para modo 'docente' ────────────────────────────────
+    // ÔöÇÔöÇ Carga docentes para modo 'docente' ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     useEffect(() => {
         obtenerDocentes().then(setDocentes).catch(() => setDocentes([]));
     }, []);
 
-    // ── Fetch datos semanales según modoGrupo ─────────────────────────────
+    // ÔöÇÔöÇ Fetch datos semanales seg├║n modoGrupo ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     useEffect(() => {
         if (!cursoSeleccionado && !usuario?.id) return;
         const tid = usuario?.id || null;
@@ -226,18 +227,18 @@ export default function Reportes() {
                         obtenerReportesSemanal({ docenteId: tid, periodo: '2' }),
                     ]);
                     series = [
-                        { nombre: 'Período 1', semanas: r1.semanas },
-                        { nombre: 'Período 2', semanas: r2.semanas },
+                        { nombre: 'Per├¡odo 1', semanas: r1.semanas },
+                        { nombre: 'Per├¡odo 2', semanas: r2.semanas },
                     ];
 
                 } else if (modoGrupo === 'modalidad' || modoGrupo === 'docentes_ti') {
                     const [rT, rI] = await Promise.all([
-                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Tecnología' }),
-                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Ingeniería' }),
+                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Tecnolog├¡a' }),
+                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Ingenier├¡a' }),
                     ]);
                     series = [
-                        { nombre: 'Tecnología', semanas: rT.semanas },
-                        { nombre: 'Ingeniería', semanas: rI.semanas },
+                        { nombre: 'Tecnolog├¡a', semanas: rT.semanas },
+                        { nombre: 'Ingenier├¡a', semanas: rI.semanas },
                     ];
 
                 } else if (modoGrupo === 'docente' && docentes.length > 0) {
@@ -271,7 +272,7 @@ export default function Reportes() {
         fetchSemanal();
     }, [modoGrupo, cursoSeleccionado, docentes, usuario?.id]);
 
-    // ── KPIs ──────────────────────────────────────────────────────────────────
+    // ÔöÇÔöÇ KPIs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     const promedioAsistencia = useMemo(() =>
         datos.length > 0
             ? Math.round(datos.reduce((a, i) => a + i.percentage, 0) / datos.length)
@@ -280,7 +281,7 @@ export default function Reportes() {
     );
     const estudiantesEnRiesgo = useMemo(() => datos.filter((i) => i.percentage < 80).length, [datos]);
 
-    // ── Datos para BarChart (top 20 si hay muchos) ────────────────────────────
+    // ÔöÇÔöÇ Datos para BarChart (top 20 si hay muchos) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     const datosBarras = useMemo(() =>
         [...datos]
             .sort((a, b) => b.percentage - a.percentage)
@@ -296,9 +297,9 @@ export default function Reportes() {
         [datos]
     );
 
-    // ── Datos para PieChart de distribución por brackets ─────────────────────
+    // ÔöÇÔöÇ Datos para PieChart de distribuci├│n por brackets ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     const datosTorta = useMemo(() => {
-        const brackets = [0, 0, 0, 0];   // ≥90, 80-89, 70-79, <70
+        const brackets = [0, 0, 0, 0];   // ÔëÑ90, 80-89, 70-79, <70
         datos.forEach(({ percentage }) => {
             if (percentage >= 90)      brackets[0]++;
             else if (percentage >= 80) brackets[1]++;
@@ -310,7 +311,7 @@ export default function Reportes() {
             .filter((d) => d.value > 0);
     }, [datos]);
 
-    // ── Exportar CSV ──────────────────────────────────────────────────────────
+    // ÔöÇÔöÇ Exportar CSV ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     const exportarCSV = () => {
         const encabezado = ['Nombre', 'Clases', 'Presentes', 'Porcentaje'];
         const filas = datos.map((item) => [item.name, item.total, item.present, `${item.percentage}%`]);
@@ -324,10 +325,10 @@ export default function Reportes() {
         URL.revokeObjectURL(url);
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // ÔöÇÔöÇ Render ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     return (
         <section className="space-y-6">
-            {/* ── Encabezado con filtros de fechas ─────────────────────────── */}
+            {/* ÔöÇÔöÇ Encabezado con filtros de fechas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <header className="tarjeta flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div className="w-full">
@@ -374,7 +375,7 @@ export default function Reportes() {
                 </div>
             </header>
 
-            {/* ── KPIs ─────────────────────────────────────────────────────── */}
+            {/* ÔöÇÔöÇ KPIs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <section className="grid gap-4 sm:grid-cols-3">
                 <article className="tarjeta">
                     <p className="text-sm text-texto-secundario">Estudiantes reportados</p>
@@ -406,7 +407,7 @@ export default function Reportes() {
                 </article>
             </section>
 
-            {/* ── Panel de visualización con tabs ──────────────────────────── */}
+            {/* ÔöÇÔöÇ Panel de visualizaci├│n con tabs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <section className="tarjeta p-0">
                 {/* Tabs */}
                 <div
@@ -436,7 +437,7 @@ export default function Reportes() {
                     })}
                 </div>
 
-                {/* ── Contenido de cada vista ───────────────────────────────── */}
+                {/* ÔöÇÔöÇ Contenido de cada vista ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
                 {cargando ? (
                     <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
                 ) : datos.length === 0 ? (
@@ -447,99 +448,14 @@ export default function Reportes() {
                     </div>
                 ) : (
                     <>
-                        {/* ── Vista: BarChart horizontal ─────────────────────── */}
-                        {vistaActiva === 'barras' && (
-                            <div className="p-4 pt-6">
-                                <p
-                                    className="mb-4 text-xs font-semibold uppercase tracking-wider"
-                                    style={{ color: 'var(--color-muted)' }}
-                                >
-                                    % de asistencia por estudiante
-                                    {datos.length > 20 && ` (top 20 de ${datos.length})`}
-                                </p>
-                                <ResponsiveContainer width="100%" height={Math.max(datosBarras.length * 38, 260)}>
-                                    <BarChart
-                                        data={datosBarras}
-                                        layout="vertical"
-                                        margin={{ top: 0, right: 24, left: 8, bottom: 0 }}
-                                    >
-                                        <CartesianGrid
-                                            strokeDasharray="3 3"
-                                            horizontal={false}
-                                            stroke="var(--color-border)"
-                                        />
-                                        <XAxis
-                                            type="number"
-                                            domain={[0, 100]}
-                                            tickFormatter={(v) => `${v}%`}
-                                            tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <YAxis
-                                            type="category"
-                                            dataKey="nombre"
-                                            width={130}
-                                            tick={{ fontSize: 12, fill: 'var(--color-text-secondary)', fontFamily: 'var(--font-sans)' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                        />
-                                        <Tooltip content={<TooltipBarra />} cursor={{ fill: 'color-mix(in srgb, var(--color-primary) 6%, transparent)' }} />
-                                        <Bar
-                                            dataKey="porcentaje"
-                                            radius={[0, 6, 6, 0]}
-                                            maxBarSize={22}
-                                        >
-                                            {datosBarras.map((entry) => (
-                                                <Cell
-                                                    key={entry.nombre}
-                                                    fill={
-                                                        entry.porcentaje >= 90 ? v('--color-present') :
-                                                        entry.porcentaje >= 80 ? v('--color-accent-dark') :
-                                                        entry.porcentaje >= 70 ? v('--color-late') :
-                                                        v('--color-absent')
-                                                    }
-                                                />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-
-                                {/* Leyenda de colores */}
-                                <div className="mt-4 flex flex-wrap gap-4 justify-center">
-                                    {[
-                                        { label: '≥ 90%', color: v('--color-present') },
-                                        { label: '80–89%', color: v('--color-accent-dark') },
-                                        { label: '70–79%', color: v('--color-late') },
-                                        { label: '< 70%', color: v('--color-absent') },
-                                    ].map(({ label, color }) => (
-                                        <div key={label} className="flex items-center gap-1.5">
-                                            <span
-                                                style={{
-                                                    display: 'inline-block',
-                                                    width: 12,
-                                                    height: 12,
-                                                    borderRadius: 3,
-                                                    background: color,
-                                                }}
-                                            />
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                                                {label}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* ── Vista: PieChart de distribución ──────────────── */}
-                        {vistaActiva === 'torta' && (
+                        {/* Tab: Distribucion — PieChart por brackets */}
+                        {vistaActiva === 'distribucion' && (
                             <div className="p-4 pt-6">
                                 <p
                                     className="mb-4 text-xs font-semibold uppercase tracking-wider text-center"
                                     style={{ color: 'var(--color-muted)' }}
                                 >
-                                    Distribución de estudiantes por rango de asistencia
+                                    Distribuci&oacute;n de estudiantes por rango de asistencia
                                 </p>
                                 <div className="flex flex-col md:flex-row items-center justify-center gap-8">
                                     <ResponsiveContainer width={280} height={280}>
@@ -566,41 +482,117 @@ export default function Reportes() {
                                     </ResponsiveContainer>
 
                                     {/* Leyenda manual */}
-                                    <div className="flex flex-col gap-3">
-                                        {datosTorta.map((entry) => {
-                                            const colorIdx = ETIQUETAS_BRACKETS.indexOf(entry.name);
-                                            const pct = datos.length > 0
-                                                ? Math.round((entry.value / datos.length) * 100)
-                                                : 0;
-                                            return (
-                                                <div key={entry.name} className="flex items-center gap-3">
-                                                    <span
-                                                        style={{
-                                                            width: 14,
-                                                            height: 14,
-                                                            borderRadius: 4,
-                                                            background: COLORES_BRACKETS[colorIdx],
-                                                            display: 'inline-block',
-                                                            flexShrink: 0,
-                                                        }}
-                                                    />
-                                                    <div>
-                                                        <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                                                            {entry.name}
-                                                        </p>
-                                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                                                            {entry.value} estudiante{entry.value !== 1 ? 's' : ''} · {pct}%
-                                                        </p>
+                                    <div style={{ minWidth: 200 }}>
+                                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+                                            Detalle por rangos
+                                        </p>
+                                        <div className="flex flex-col gap-3">
+                                            {datosTorta.map((entry) => {
+                                                const colorIdx = ETIQUETAS_BRACKETS.indexOf(entry.name);
+                                                const pct = datos.length > 0
+                                                    ? Math.round((entry.value / datos.length) * 100)
+                                                    : 0;
+                                                return (
+                                                    <div key={entry.name}
+                                                        className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
+                                                        style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <span
+                                                                style={{
+                                                                    width: 14, height: 14, borderRadius: 4,
+                                                                    background: COLORES_BRACKETS[colorIdx],
+                                                                    display: 'inline-block', flexShrink: 0,
+                                                                }}
+                                                            />
+                                                            <div>
+                                                                <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                                                                    {entry.name}
+                                                                </p>
+                                                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                                                    {entry.value} estudiante{entry.value !== 1 ? 's' : ''}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '0.875rem', fontWeight: 700,
+                                                                fontFamily: 'var(--font-mono)',
+                                                                color: COLORES_BRACKETS[colorIdx],
+                                                            }}
+                                                        >
+                                                            {pct}%
+                                                        </span>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* ── Vista: Tabla ─────────────────────────────────── */}
+                        {/* Tab: Tiempo — LineChart semanal */}
+                        {vistaActiva === 'tiempo' && (
+                            <div className="p-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+                                        Presentes por semana
+                                    </p>
+                                    <select
+                                        value={modoGrupo}
+                                        onChange={(e) => setModoGrupo(e.target.value)}
+                                        style={{
+                                            height: 34, border: '1px solid var(--color-border)',
+                                            borderRadius: 'var(--input-radius)', padding: '0 12px',
+                                            fontSize: '0.8125rem', fontWeight: 500,
+                                            color: 'var(--color-text-primary)', background: 'var(--color-surface)',
+                                            cursor: 'pointer', outline: 'none',
+                                        }}
+                                    >
+                                        {MODOS_GRUPO.map((m) => (
+                                            <option key={m.id} value={m.id}>{m.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {cargandoSemanal ? (
+                                    <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Cargando...</p>
+                                ) : datosLineChart.length === 0 ? (
+                                    <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Sin datos semanales para los filtros seleccionados.</p>
+                                ) : (
+                                    <ResponsiveContainer width="100%" height={300}>
+                                        <LineChart data={datosLineChart} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                            <XAxis
+                                                dataKey="semana"
+                                                tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)' }}
+                                                axisLine={false} tickLine={false}
+                                            />
+                                            <YAxis
+                                                allowDecimals={false}
+                                                tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+                                                axisLine={false} tickLine={false}
+                                            />
+                                            <Tooltip content={<TooltipSemanal />} />
+                                            <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 12 }} />
+                                            {seriesNombres.map((nombre, i) => (
+                                                <Line
+                                                    key={nombre}
+                                                    type="monotone"
+                                                    dataKey={nombre}
+                                                    stroke={COLORES_LINEAS[i % COLORES_LINEAS.length]}
+                                                    strokeWidth={2.5}
+                                                    dot={{ r: 4 }}
+                                                    activeDot={{ r: 6 }}
+                                                />
+                                            ))}
+                                        </LineChart>
+                                    </ResponsiveContainer>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Tab: Tabla — detalle por estudiante */}
                         {vistaActiva === 'tabla' && (
                             <div className="overflow-x-auto">
                                 <table className="w-full min-w-[720px] text-sm">
@@ -616,16 +608,14 @@ export default function Reportes() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {datos.map((item, i) => (
+                                        {datos.map((item, idx) => (
                                             <tr
                                                 key={item.id}
-                                                className="border-b"
+                                                className="border-b transition-colors"
                                                 style={{ borderColor: 'var(--color-border)' }}
                                             >
-                                                <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--color-muted)' }}>
-                                                    {i + 1}
-                                                </td>
-                                                <td className="px-4 py-3 font-medium text-texto">{item.name}</td>
+                                                <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--color-muted)' }}>{idx + 1}</td>
+                                                <td className="px-4 py-3 font-medium text-texto">{formatearNombre(item.name)}</td>
                                                 <td className="px-4 py-3">{Number(item.total).toLocaleString('es-CO')}</td>
                                                 <td className="px-4 py-3" style={{ color: 'var(--color-present)', fontWeight: 600 }}>
                                                     {Number(item.present).toLocaleString('es-CO')}
@@ -664,125 +654,7 @@ export default function Reportes() {
                     </>
                 )}
             </section>
-
-            {/* ═══════════════════════════════════════════════════════════ */}
-            {/* Chart A — Asistencia en el tiempo (LineChart)               */}
-            {/* ═══════════════════════════════════════════════════════════ */}
-            <section className="tarjeta p-0">
-                <div
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 border-b"
-                    style={{ borderColor: 'var(--color-border)' }}
-                >
-                    <div className="flex items-center gap-2">
-                        <TrendingUp size={18} style={{ color: 'var(--color-primary)' }} />
-                        <div>
-                            <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                                Asistencia en el tiempo
-                            </h3>
-                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Presentes por semana</p>
-                        </div>
-                    </div>
-                    <select
-                        value={modoGrupo}
-                        onChange={(e) => setModoGrupo(e.target.value)}
-                        style={{
-                            height: 36, border: '1px solid var(--color-border)',
-                            borderRadius: 'var(--input-radius)', padding: '0 12px',
-                            fontSize: '0.8125rem', fontWeight: 500,
-                            color: 'var(--color-text-primary)', background: 'var(--color-surface)',
-                            cursor: 'pointer', outline: 'none',
-                        }}
-                    >
-                        {MODOS_GRUPO.map((m) => (
-                            <option key={m.id} value={m.id}>{m.label}</option>
-                        ))}
-                    </select>
-                </div>
-
-                <div className="p-4">
-                    {cargandoSemanal ? (
-                        <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Cargando...</p>
-                    ) : datosLineChart.length === 0 ? (
-                        <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Sin datos semanales para los filtros seleccionados.</p>
-                    ) : (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <LineChart data={datosLineChart} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                                <XAxis
-                                    dataKey="semana"
-                                    tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)' }}
-                                    axisLine={false} tickLine={false}
-                                />
-                                <YAxis
-                                    allowDecimals={false}
-                                    tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
-                                    axisLine={false} tickLine={false}
-                                />
-                                <Tooltip content={<TooltipSemanal />} />
-                                <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 12 }} />
-                                {seriesNombres.map((nombre, i) => (
-                                    <Line
-                                        key={nombre}
-                                        type="monotone"
-                                        dataKey={nombre}
-                                        stroke={COLORES_LINEAS[i % COLORES_LINEAS.length]}
-                                        strokeWidth={2.5}
-                                        dot={{ r: 4 }}
-                                        activeDot={{ r: 6 }}
-                                    />
-                                ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    )}
-                </div>
-            </section>
-
-            {/* ═══════════════════════════════════════════════════════════ */}
-            {/* Chart B — Comparativo de estados por semana (GroupedBar)   */}
-            {/* ═══════════════════════════════════════════════════════════ */}
-            <section className="tarjeta p-0">
-                <div
-                    className="flex items-center gap-2 px-6 py-4 border-b"
-                    style={{ borderColor: 'var(--color-border)' }}
-                >
-                    <LayoutGrid size={18} style={{ color: 'var(--color-primary)' }} />
-                    <div>
-                        <h3 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                            Comparativo de estados por semana
-                        </h3>
-                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Materia activa · Presente / Ausente / Justificado</p>
-                    </div>
-                </div>
-
-                <div className="p-4">
-                    {cargandoSemanal ? (
-                        <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Cargando...</p>
-                    ) : datosBarrasSemanales.length === 0 ? (
-                        <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Sin datos para la materia seleccionada.</p>
-                    ) : (
-                        <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={datosBarrasSemanales} margin={{ top: 8, right: 24, left: 0, bottom: 0 }} barGap={2}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                                <XAxis
-                                    dataKey="semana"
-                                    tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)' }}
-                                    axisLine={false} tickLine={false}
-                                />
-                                <YAxis
-                                    allowDecimals={false}
-                                    tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
-                                    axisLine={false} tickLine={false}
-                                />
-                                <Tooltip content={<TooltipSemanal />} />
-                                <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 12 }} />
-                                <Bar dataKey="presente"    name="Presente"    fill={v('--color-present')}  radius={[4,4,0,0]} maxBarSize={18} />
-                                <Bar dataKey="ausente"     name="Ausente"     fill={v('--color-absent')}   radius={[4,4,0,0]} maxBarSize={18} />
-                                <Bar dataKey="justificado" name="Justificado" fill={v('--color-excused')} radius={[4,4,0,0]} maxBarSize={18} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    )}
-                </div>
-            </section>
         </section>
     );
 }
+

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useCurso } from '../context/ContextoCurso';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { obtenerDocentes } from '../services/api';
 
 const estiloSelector = {
@@ -85,6 +86,7 @@ function SelectorFiltro({ label, id, value, onChange, children }) {
 }
 
 export default function FiltrosGlobales({ soloMateria = false, filtroDia = null }) {
+    const { usuario } = useAutenticacion();
     const {
         cursos,
         cursoSeleccionado,
@@ -122,7 +124,7 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null 
     // 4. Cuando cambia el filtroDia, autoseleccionar primer curso válido
     useEffect(() => {
         if (filtroDia && cursosFiltrados.length > 0) {
-            const isSelectedValid = cursosFiltrados.some(c => c.id === cursoSeleccionado?.id);
+            const isSelectedValid = cursoSeleccionado === null || cursosFiltrados.some(c => c.id === cursoSeleccionado?.id);
             if (!isSelectedValid) {
                 seleccionarCurso(cursosFiltrados[0]);
             }
@@ -132,6 +134,7 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null 
     // 5. Cuando cambian los grupos disponibles, sincronizar grupoSeleccionado
     const gruposDisponiblesKey = gruposDisponibles.map(g => g.groupCode).join(',');
     useEffect(() => {
+        if (!cursoSeleccionado) return; // Si es 'TODAS', no hay grupos
         if (gruposDisponibles.length === 0) {
             setGrupoSeleccionado(null);
             return;
@@ -143,9 +146,14 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null 
             setGrupoSeleccionado(primerGrupo.groupCode);
             seleccionarCurso(primerGrupo);
         }
-    }, [gruposDisponiblesKey, setGrupoSeleccionado, seleccionarCurso]);
+    }, [gruposDisponiblesKey, setGrupoSeleccionado, seleccionarCurso, cursoSeleccionado]);
 
     const handleCambioMateria = (e) => {
+        if (e.target.value === 'TODAS') {
+            seleccionarCurso(null);
+            setGrupoSeleccionado(null);
+            return;
+        }
         // Al elegir una materia, seleccionar el primer curso de ese nombre (primer grupo)
         const primerCurso = cursosFiltrados.find(c => c.name === e.target.value);
         if (primerCurso) {
@@ -163,17 +171,20 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null 
         }
     };
 
+    const isAdmin = usuario?.role === 'ADMIN';
+
     return (
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             {cargandoCursos ? (
                 <span style={{ ...estiloLabel, color: 'var(--color-muted)' }}>Cargando...</span>
-            ) : nombresUnicos?.length > 0 ? (
+            ) : nombresUnicos?.length > 0 || isAdmin ? (
                 <SelectorFiltro
                     label="Materia activa:"
                     id="selector-materia"
-                    value={cursoSeleccionado?.name ?? ''}
+                    value={cursoSeleccionado ? cursoSeleccionado.name : (isAdmin ? 'TODAS' : '')}
                     onChange={handleCambioMateria}
                 >
+                    {isAdmin && <option value="TODAS">Todas las materias</option>}
                     {nombresUnicos.map((curso) => (
                         <option key={curso.id} value={curso.name}>{curso.name}</option>
                     ))}

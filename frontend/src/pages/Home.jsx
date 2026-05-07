@@ -1,10 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Users, Percent, UserX } from 'lucide-react';
-import { obtenerAsistencia, obtenerEstudiantes } from '../services/api';
+import { obtenerAsistencia, obtenerEstudiantes, obtenerAsistenciaHoyPorCurso } from '../services/api';
 import { useCurso } from '../context/ContextoCurso';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+
+// Paleta de colores para la torta
+const COLORES_CURSOS = [
+    '#6B2D8B', '#8DC63F', '#D97706', '#4E1F68', '#DC2626', 
+    '#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'
+];
 
 export default function PanelPrincipal() {
+    const { usuario } = useAutenticacion();
     const {
         cursoSeleccionado,
         codigoSeleccionado,
@@ -14,10 +23,17 @@ export default function PanelPrincipal() {
 
     const [cargando, setCargando] = useState(true);
     const [errorCarga, setErrorCarga] = useState(false);
+    
+    // Estado para una sola materia
     const [totalEstudiantes, setTotalEstudiantes] = useState(0);
     const [porcentajeHoy, setPorcentajeHoy] = useState(0);
     const [ausentesHoy, setAusentesHoy] = useState(0);
     const [actividadReciente, setActividadReciente] = useState([]);
+
+    // Estado para "Todas las materias"
+    const [asistenciaTodas, setAsistenciaTodas] = useState([]);
+
+    const isAdmin = usuario?.role === 'ADMIN';
 
     const filtros = {
         codigo:    codigoSeleccionado,
@@ -27,34 +43,35 @@ export default function PanelPrincipal() {
 
     useEffect(() => {
         const cargarPanel = async () => {
-            if (!cursoSeleccionado) {
-                setTotalEstudiantes(0);
-                setPorcentajeHoy(0);
-                setAusentesHoy(0);
-                setActividadReciente([]);
-                setCargando(false);
-                return;
-            }
-
             setCargando(true);
             setErrorCarga(false);
-            const hoy = new Date().toISOString().split('T')[0];
-
+            
             try {
-                const [estudiantes, asistenciaHoy, historial] = await Promise.all([
-                    obtenerEstudiantes(cursoSeleccionado.id, filtros),
-                    obtenerAsistencia(cursoSeleccionado.id, hoy, filtros),
-                    obtenerAsistencia(cursoSeleccionado.id, undefined, filtros),
-                ]);
+                if (!cursoSeleccionado && isAdmin) {
+                    // Modo "Todas las materias"
+                    const datosHoy = await obtenerAsistenciaHoyPorCurso();
+                    setAsistenciaTodas(datosHoy);
+                } else if (cursoSeleccionado) {
+                    // Modo "Materia Específica"
+                    const hoy = new Intl.DateTimeFormat('en-CA', {
+                        timeZone: 'America/Bogota',
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                    }).format(new Date());
+                    const [estudiantes, asistenciaHoy, historial] = await Promise.all([
+                        obtenerEstudiantes(cursoSeleccionado.id, filtros),
+                        obtenerAsistencia(cursoSeleccionado.id, hoy, filtros),
+                        obtenerAsistencia(cursoSeleccionado.id, undefined, filtros),
+                    ]);
 
-                const presentes = asistenciaHoy.filter((registro) => registro.present).length;
-                const total = estudiantes.length;
-                const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
+                    const presentes = asistenciaHoy.filter((registro) => registro.present).length;
+                    const total = estudiantes.length;
+                    const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
 
-                setTotalEstudiantes(total);
-                setPorcentajeHoy(porcentaje);
-                setAusentesHoy(Math.max(total - presentes, 0));
-                setActividadReciente(historial.slice(0, 8));
+                    setTotalEstudiantes(total);
+                    setPorcentajeHoy(porcentaje);
+                    setAusentesHoy(Math.max(total - presentes, 0));
+                    setActividadReciente(historial.slice(0, 8));
+                }
             } catch (_error) {
                 setErrorCarga(true);
             } finally {
@@ -63,7 +80,7 @@ export default function PanelPrincipal() {
         };
 
         cargarPanel();
-    }, [cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
+    }, [cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado, isAdmin]);
 
     const kpis = useMemo(
         () => [
@@ -94,58 +111,121 @@ export default function PanelPrincipal() {
                     gap: '8px',
                     marginTop: '4px'
                 }}>
-                    <p className="text-sm text-texto-secundario">Resumen diario del curso seleccionado.</p>
+                    <p className="text-sm text-texto-secundario">
+                        {!cursoSeleccionado ? 'Asistencia de hoy en todas las materias.' : 'Resumen diario del curso seleccionado.'}
+                    </p>
                     <FiltrosGlobales />
                 </div>
             </header>
 
-            <div className="grid gap-4 md:grid-cols-3">
-                {kpis.map((item) => {
-                    const Icono = item.icono;
-                    return (
-                        <article key={item.titulo} className="tarjeta">
-                            <div className="mb-4 flex items-center gap-2 text-texto-secundario">
-                                <Icono size={20} />
-                                <span className="text-sm">{item.titulo}</span>
-                            </div>
-                            <p className="font-mono text-3xl">{item.valor}</p>
-                        </article>
-                    );
-                })}
-            </div>
+            {!cursoSeleccionado && isAdmin ? (
+                // ── Vista: Todas las materias (Admin) ────────────────────────────────
+                <section className="tarjeta">
+                    <h3 className="mb-4 text-lg font-medium">% de Asistencia Hoy (Todas las materias)</h3>
+                    {asistenciaTodas.length === 0 ? (
+                        <p className="text-sm text-texto-secundario">No hay registros de asistencia para el día de hoy.</p>
+                    ) : (
+                        <div className="flex flex-col md:flex-row items-center justify-center gap-10 py-6">
+                            <ResponsiveContainer width={240} height={240}>
+                                <PieChart>
+                                    <Pie
+                                        data={asistenciaTodas}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={100}
+                                        paddingAngle={2}
+                                        dataKey="porcentaje"
+                                        nameKey="nombre"
+                                    >
+                                        {asistenciaTodas.map((entry, index) => (
+                                            <Cell key={entry.id} fill={COLORES_CURSOS[index % COLORES_CURSOS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip formatter={(value) => `${value}%`} />
+                                </PieChart>
+                            </ResponsiveContainer>
 
-            <section className="tarjeta">
-                <h3 className="mb-4 text-lg font-medium">Actividad reciente</h3>
-                {actividadReciente.length === 0 ? (
-                    <p className="text-sm text-texto-secundario">No hay actividad reciente</p>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[560px] text-sm">
-                            <thead style={{ background: 'color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
-                                <tr className="text-left text-texto-secundario">
-                                    <th className="px-4 py-3 font-medium">Fecha</th>
-                                    <th className="px-4 py-3 font-medium">Presentes</th>
-                                    <th className="px-4 py-3 font-medium">Total</th>
-                                    <th className="px-4 py-3 text-right font-medium">Porcentaje</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {actividadReciente.map((item) => {
-                                    const porcentajeFila = item.total > 0 ? Math.round((item.presentCount / item.total) * 100) : 0;
-                                    return (
-                                        <tr key={item.date} className="border-b">
-                                            <td className="px-4 py-3">{new Date(item.date).toLocaleDateString('es-CO')}</td>
-                                            <td className="px-4 py-3">{Number(item.presentCount).toLocaleString('es-CO')}</td>
-                                            <td className="px-4 py-3">{Number(item.total).toLocaleString('es-CO')}</td>
-                                            <td className="px-4 py-3 text-right font-mono">{porcentajeFila.toLocaleString('es-CO')}%</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                            {/* Mapa de Convenciones (Leyenda) */}
+                            <div className="flex flex-col gap-3">
+                                {asistenciaTodas.map((entry, index) => (
+                                    <div key={entry.id} className="flex items-center gap-3">
+                                        <span
+                                            style={{
+                                                width: 14,
+                                                height: 14,
+                                                borderRadius: 4,
+                                                background: COLORES_CURSOS[index % COLORES_CURSOS.length],
+                                                display: 'inline-block',
+                                                flexShrink: 0,
+                                            }}
+                                        />
+                                        <div>
+                                            <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                                                {entry.nombre}
+                                            </p>
+                                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                                                Asistencia: {entry.porcentaje}%
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </section>
+            ) : (
+                // ── Vista: Materia Específica ──────────────────────────────────────
+                <>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {kpis.map((item) => {
+                            const Icono = item.icono;
+                            return (
+                                <article key={item.titulo} className="tarjeta">
+                                    <div className="mb-4 flex items-center gap-2 text-texto-secundario">
+                                        <Icono size={20} />
+                                        <span className="text-sm">{item.titulo}</span>
+                                    </div>
+                                    <p className="font-mono text-3xl">{item.valor}</p>
+                                </article>
+                            );
+                        })}
                     </div>
-                )}
-            </section>
+
+                    <section className="tarjeta">
+                        <h3 className="mb-4 text-lg font-medium">Actividad reciente</h3>
+                        {actividadReciente.length === 0 ? (
+                            <p className="text-sm text-texto-secundario">No hay actividad reciente</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[560px] text-sm">
+                                    <thead style={{ background: 'color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
+                                        <tr className="text-left text-texto-secundario">
+                                            <th className="px-4 py-3 font-medium">Fecha</th>
+                                            <th className="px-4 py-3 font-medium">Presentes</th>
+                                            <th className="px-4 py-3 font-medium">Total</th>
+                                            <th className="px-4 py-3 text-right font-medium">Porcentaje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {actividadReciente.map((item) => {
+                                            const porcentajeFila = item.total > 0 ? Math.round((item.presentCount / item.total) * 100) : 0;
+                                            return (
+                                                <tr key={item.date} className="border-b">
+                                                    <td className="px-4 py-3">{new Date(item.date).toLocaleDateString('es-CO')}</td>
+                                                    <td className="px-4 py-3">{Number(item.presentCount).toLocaleString('es-CO')}</td>
+                                                    <td className="px-4 py-3">{Number(item.total).toLocaleString('es-CO')}</td>
+                                                    <td className="px-4 py-3 text-right font-mono">{porcentajeFila.toLocaleString('es-CO')}%</td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
+                </>
+            )}
         </section>
     );
 }

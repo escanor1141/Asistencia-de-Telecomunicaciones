@@ -104,7 +104,7 @@ export const guardarAsistencia = (datos) =>
 export const obtenerReportes = (idCurso, params = {}, filtros = {}) =>
     api.get('/reports', {
         params: {
-            courseId: idCurso,
+            ...(idCurso ? { courseId: idCurso } : {}),
             ...params,
             ...filtrosGlobales({ ...filtros }),
         },
@@ -121,5 +121,13 @@ export const obtenerReportesSemanal = (params = {}) =>
 // ── Docentes ──────────────────────────────────────────────────────────────────
 export const obtenerDocentes = () =>
     api.get('/teachers').then(res => res.data.filter(u => u.role === 'TEACHER' || u.role === 'DOCENTE'));
+
+/**
+ * Asistencia de hoy por materia (para el dashboard del admin).
+ * @param {string} [docenteId] - Opcional: filtrar por docente
+ */
+export const obtenerAsistenciaHoyPorCurso = (docenteId) =>
+    api.get('/attendance/hoy', { params: docenteId ? { docenteId } : {} })
+        .then(res => res.data.cursos);
 
 export default api;

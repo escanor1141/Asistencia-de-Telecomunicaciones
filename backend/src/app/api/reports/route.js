@@ -11,27 +11,43 @@ export async function GET(request) {
         const codigo      = searchParams.get('codigo')    || null
         const grupo       = searchParams.get('grupo')     || null
         const docenteId   = searchParams.get('docenteId') || null
+        const anio        = searchParams.get('anio')      || null
+        const periodo     = searchParams.get('periodo')   || null
 
-        if (!idCurso) {
-            return Response.json({ error: 'courseId es requerido' }, { status: 400 })
+        if (!idCurso && !docenteId && !anio) {
+            return Response.json({ error: 'Se requiere courseId, docenteId o anio' }, { status: 400 })
         }
 
-        // Filtro de fechas
+        // Filtro de fechas — si se pasa anio/periodo, derivar fechas automáticamente
         const filtroFecha = {}
-        if (fechaInicio) filtroFecha.gte = fechaInicio
-        if (fechaFin)    filtroFecha.lte = fechaFin
+        if (anio && periodo && !fechaInicio && !fechaFin) {
+            // Período 1: 01/01 → 30/06 | Período 2: 01/07 → 31/12
+            if (periodo === '1') {
+                filtroFecha.gte = `${anio}-01-01`
+                filtroFecha.lte = `${anio}-06-30`
+            } else {
+                filtroFecha.gte = `${anio}-07-01`
+                filtroFecha.lte = `${anio}-12-31`
+            }
+        } else {
+            if (fechaInicio) filtroFecha.gte = fechaInicio
+            if (fechaFin)    filtroFecha.lte = fechaFin
+        }
 
-        // Condición WHERE base
-        const condicion = { courseId: idCurso }
+        // Condición WHERE base — courseId es opcional
+        const condicion = {}
+        if (idCurso) condicion.courseId = idCurso
         if (Object.keys(filtroFecha).length > 0) {
             condicion.date = filtroFecha
         }
 
         // Filtros opcionales sobre la relación Course
         const filtroCurso = {}
-        if (codigo)    filtroCurso.code      = codigo
-        if (grupo)     filtroCurso.groupCode = grupo
-        if (docenteId) filtroCurso.teacherId = docenteId
+        if (codigo)    filtroCurso.code           = codigo
+        if (grupo)     filtroCurso.groupCode       = grupo
+        if (docenteId) filtroCurso.teacherId       = docenteId
+        if (anio)      filtroCurso.academicYear    = anio
+        if (periodo)   filtroCurso.academicPeriod  = periodo
 
         if (Object.keys(filtroCurso).length > 0) {
             condicion.course = filtroCurso

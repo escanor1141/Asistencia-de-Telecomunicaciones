@@ -6,6 +6,7 @@ import { obtenerReportes, obtenerEstudiantes, crearEstudiante, actualizarEstudia
 import toast from 'react-hot-toast';
 import { useCurso } from '../context/ContextoCurso';
 import FiltrosGlobales from '../components/FiltrosGlobales';
+import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 
 // ── Modal de edición de estudiante ────────────────────────────────────────────
 function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
@@ -288,15 +289,18 @@ export default function Estudiantes() {
                     obtenerReportes(cursoSeleccionado.id, {}, filtros),
                 ]);
                 const porcentajePorId = new Map(reporte.map((item) => [item.id, item.percentage]));
-                const normalizados = lista.map((est) => ({
-                    id: est.id,
-                    documento: est.documento || est.id,
-                    nombre: est.name,
-                    curso: cursoSeleccionado.name,
-                    correo: est.email || '',
-                    telefono: est.whatsapp || '',
-                    porcentaje: porcentajePorId.get(est.id) ?? 0,
-                }));
+                const normalizados = lista
+                    .map((est) => ({
+                        id: est.id,
+                        documento: est.documento || est.id,
+                        nombre: est.name,
+                        nombreFormateado: formatearNombre(est.name),
+                        curso: cursoSeleccionado.name,
+                        correo: est.email || '',
+                        telefono: est.whatsapp || '',
+                        porcentaje: porcentajePorId.get(est.id) ?? 0,
+                    }))
+                    .sort((a, b) => compararPorApellido(a.nombre, b.nombre));
                 setEstudiantes(normalizados);
             } finally {
                 setCargando(false);
@@ -308,7 +312,7 @@ export default function Estudiantes() {
     // ── CRUD ──────────────────────────────────────────────────────────────────
     const manejarCreacionEstudiante = async (e) => {
         e.preventDefault();
-        if (!cursoSeleccionado) return toast.error('Seleccioná una materia primero');
+        if (!cursoSeleccionado) return toast.error('Selecciona una materia primero');
         setGuardandoEstudiante(true);
         try {
             await crearEstudiante(cursoSeleccionado.id, formularioEstudiante);
@@ -496,7 +500,7 @@ export default function Estudiantes() {
             };
             lector.readAsArrayBuffer(archivo);
         } else {
-            toast.error('Formato no soportado. Usá .csv, .xlsx o .xls', { duration: 6000 });
+            toast.error('Formato no soportado. Usa .csv, .xlsx o .xls', { duration: 6000 });
         }
     };
 
@@ -829,7 +833,7 @@ export default function Estudiantes() {
                                                 </button>
                                             </td>
                                             <td className="px-4 py-3 font-mono text-xs text-texto-secundario">{est.documento}</td>
-                                            <td className="px-4 py-3 font-medium text-texto">{est.nombre}</td>
+                                            <td className="px-4 py-3 font-medium text-texto">{est.nombreFormateado}</td>
                                             <td className="px-4 py-3 text-texto-secundario">{est.curso}</td>
                                             <td className="px-4 py-3 text-right font-mono">
                                                 {Number(est.porcentaje).toLocaleString('es-CO')}%

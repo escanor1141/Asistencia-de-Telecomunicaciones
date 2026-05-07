@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { obtenerAsistencia, obtenerEstudiantes, guardarAsistencia } from '../services/api';
 import { useCurso } from '../context/ContextoCurso';
 import FiltrosGlobales from '../components/FiltrosGlobales';
+import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 
 const estadosAsistencia = [
     { valor: 'Presente',    icono: CheckCircle2, colorTexto: 'text-presente',    colorFondo: 'var(--color-present-bg)' },
@@ -66,7 +67,8 @@ export default function Asistencia() {
                 obtenerEstudiantes(cursoSeleccionado.id, filtros),
                 obtenerAsistencia(cursoSeleccionado.id, fecha, filtros),
             ]);
-            setEstudiantes(listaEstudiantes);
+            const ordenados = [...listaEstudiantes].sort((a, b) => compararPorApellido(a.name, b.name));
+            setEstudiantes(ordenados);
 
             const mapaAsistencia = {};
             if (asistenciaExistente.length > 0) {
@@ -156,7 +158,7 @@ export default function Asistencia() {
                     flexWrap: 'wrap',
                     gap: '12px'
                 }}>
-                    <p className="text-sm text-texto-secundario mt-2">Registrá el estado diario por estudiante.</p>
+                    <p className="text-sm text-texto-secundario mt-2">Registra el estado diario por estudiante.</p>
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
                         <FiltrosGlobales filtroDia={obtenerDiaSemana(fecha)} />
@@ -218,7 +220,7 @@ export default function Asistencia() {
                         onClick={manejarGuardarAsistencia}
                         disabled={guardando || estudiantes.length === 0 || !fechaValida}
                         className="boton-primario inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        title={!fechaValida ? "Solo podés editar fechas de hoy o hasta 5 días atrás" : ""}
+                        title={!fechaValida ? "Solo puedes editar fechas de hoy o hasta 5 días atrás" : ""}
                     >
                         {guardando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                         Guardar
@@ -229,7 +231,7 @@ export default function Asistencia() {
                     <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
                 ) : !cursoSeleccionado ? (
                     <div className="p-6 text-center">
-                        <p className="text-texto-secundario">Seleccioná una materia en el menú superior.</p>
+                        <p className="text-texto-secundario">Selecciona una materia en el menú superior.</p>
                     </div>
                 ) : estudiantes.length === 0 ? (
                     <p className="p-6 text-sm text-texto-secundario">No hay estudiantes para los filtros seleccionados.</p>
@@ -246,7 +248,7 @@ export default function Asistencia() {
                             <tbody>
                                 {estudiantes.map((estudiante) => (
                                     <tr key={estudiante.id} className="border-b">
-                                        <td className="px-4 py-3 font-medium text-texto">{estudiante.name}</td>
+                                        <td className="px-4 py-3 font-medium text-texto">{formatearNombre(estudiante.name)}</td>
                                         <td className="px-4 py-3 font-mono text-xs text-texto-secundario">{estudiante.id}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex flex-wrap justify-end gap-2">

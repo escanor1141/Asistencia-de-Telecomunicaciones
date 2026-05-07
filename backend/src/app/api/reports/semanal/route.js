@@ -1,12 +1,18 @@
 import prisma from '@/lib/prisma'
 
 // Devuelve la fecha del lunes de la semana que contiene la fecha dada
+// Trabaja con las partes de la fecha como string para evitar desfases de UTC
 function lunesDeSemana(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00Z')
-    const dow = d.getUTCDay()                          // 0=Dom…6=Sáb
-    const diff = dow === 0 ? -6 : 1 - dow             // días al lunes
-    d.setUTCDate(d.getUTCDate() + diff)
-    return d.toISOString().split('T')[0]               // "YYYY-MM-DD"
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const d = new Date(year, month - 1, day); // fecha local sin desfase UTC
+    const dow  = d.getDay();                  // 0=Dom…6=Sáb
+    const diff = dow === 0 ? -6 : 1 - dow;   // días al lunes
+    d.setDate(d.getDate() + diff);
+    // Formatear como YYYY-MM-DD sin pasar por UTC
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dy = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dy}`;
 }
 
 // GET — reporte semanal agregado
@@ -25,6 +31,8 @@ export async function GET(request) {
         const modalidad   = sp.get('modalidad')  || null
         const startDate   = sp.get('startDate')  || null
         const endDate     = sp.get('endDate')    || null
+
+        const agrupacion  = sp.get('agrupacion') || 'semana' // 'semana' o 'dia'
 
         if (!courseId && !docenteId && !modalidad) {
             return Response.json(
@@ -48,7 +56,7 @@ export async function GET(request) {
         if (docenteId) fc.teacherId      = docenteId
         if (anio)      fc.academicYear   = anio
         if (periodo)   fc.academicPeriod = periodo
-        if (modalidad) fc.name           = { contains: modalidad, mode: 'insensitive' }
+        if (modalidad) fc.programa       = { contains: modalidad, mode: 'insensitive' }
 
         if (Object.keys(fc).length > 0) where.course = fc
 
@@ -59,25 +67,25 @@ export async function GET(request) {
             orderBy: { date: 'asc' },
         })
 
-        // ── Agrupar por semana ───────────────────────────────────────────────
-        const porSemana = {}
+        // ── Agrupar por tiempo ───────────────────────────────────────────────
+        const porTiempo = {}
         registros.forEach(({ date, present, status }) => {
-            const lunes = lunesDeSemana(date)
-            if (!porSemana[lunes]) {
-                porSemana[lunes] = { presente: 0, ausente: 0, justificado: 0 }
+            const clave = agrupacion === 'semana' ? lunesDeSemana(date) : date
+            if (!porTiempo[clave]) {
+                porTiempo[clave] = { presente: 0, ausente: 0, justificado: 0 }
             }
             const estado = status || (present ? 'Presente' : 'Ausente');
-            if (estado === 'Presente')    porSemana[lunes].presente++
-            else if (estado === 'Justificado') porSemana[lunes].justificado++
-            else                          porSemana[lunes].ausente++
+            if (estado === 'Presente')    porTiempo[clave].presente++
+            else if (estado === 'Justificado') porTiempo[clave].justificado++
+            else                          porTiempo[clave].ausente++
         })
 
-        const semanas = Object.keys(porSemana)
+        const semanas = Object.keys(porTiempo)
             .sort()
-            .map((lunes, idx) => ({
-                semana:      `Semana ${idx + 1}`,
-                fechaLunes:  lunes,
-                ...porSemana[lunes],
+            .map((clave, idx) => ({
+                semana:      agrupacion === 'semana' ? `Semana ${idx + 1}` : clave,
+                fechaLunes:  clave, // en modo dia esto es simplemente la fecha
+                ...porTiempo[clave],
             }))
 
         return Response.json({ semanas })
