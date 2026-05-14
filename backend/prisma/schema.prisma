@@ -11,7 +11,9 @@ model Student {
   documento        String            @id
   name             String
   email            String?
+  correo2          String?
   whatsapp         String?
+  telefono2        String?
   franja           String?
   programa         String?
   createdAt        DateTime          @default(now())
@@ -67,8 +69,10 @@ model Teacher {
   email        String   @unique @map("correo")
   passwordHash String   @map("contraseña")
   name         String   @map("nombre")
-  role         String   @default("TEACHER") @map("rol")
-  createdAt    DateTime @default(now()) @map("fecha_creacion")
+  role             String   @default("TEACHER") @map("rol")
+  resetToken       String?  @map("token_recuperacion")
+  resetTokenExpiry DateTime? @map("expiracion_token")
+  createdAt        DateTime @default(now()) @map("fecha_creacion")
   courses      Course[]
 }
 

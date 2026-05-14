@@ -149,25 +149,15 @@ export default function Asistencia() {
 
     return (
         <section className="space-y-6">
-            <header className="tarjeta">
-                <h2 className="text-2xl font-semibold mb-1">Asistencia</h2>
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    flexWrap: 'wrap',
-                    gap: '12px'
-                }}>
-                    <p className="text-sm text-texto-secundario mt-2">Registra el estado diario por estudiante.</p>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-                        <FiltrosGlobales filtroDia={obtenerDiaSemana(fecha)} />
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
-                            <label htmlFor="fecha-asistencia" style={{ fontSize: '0.8125rem', fontWeight: '500', fontFamily: 'var(--font-sans)', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', width: '56px', textAlign: 'right' }}>
-                                Fecha:
-                            </label>
-                            <input
+            <div className="tarjeta flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                    <FiltrosGlobales filtroDia={obtenerDiaSemana(fecha)} />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <label htmlFor="fecha-asistencia" style={{ fontSize: '0.8125rem', fontWeight: '500', fontFamily: 'var(--font-sans)', color: 'var(--color-text-secondary)' }}>
+                        Fecha:
+                    </label>
+                    <input
                                 id="fecha-asistencia"
                                 type="date"
                                 min={minFecha}
@@ -196,7 +186,14 @@ export default function Asistencia() {
                                     e.target.style.boxShadow = 'none';
                                 }}
                             />
-                        </div>
+                </div>
+            </div>
+
+            <header className="tarjeta flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-semibold">Asistencia</h2>
+                        <p className="mt-1 text-sm text-texto-secundario">Registra el estado diario por estudiante.</p>
                     </div>
                 </div>
             </header>

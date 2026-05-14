@@ -111,6 +111,18 @@ export const obtenerReportes = (idCurso, params = {}, filtros = {}) =>
     }).then(res => res.data);
 
 /**
+ * Obtiene la data detallada para exportar a Excel.
+ */
+export const obtenerDataExportacion = (idCurso, params = {}, filtros = {}) =>
+    api.get('/reports/export', {
+        params: {
+            ...(idCurso ? { courseId: idCurso } : {}),
+            ...params,
+            ...filtrosGlobales({ ...filtros }),
+        },
+    }).then(res => res.data);
+
+/**
  * Reporte semanal agregado (Chart A + B).
  * @param {object} params - Cualquier combinación de courseId, docenteId, modalidad,
  *                          periodo, anio, startDate, endDate, etc.
@@ -129,5 +141,15 @@ export const obtenerDocentes = () =>
 export const obtenerAsistenciaHoyPorCurso = (docenteId) =>
     api.get('/attendance/hoy', { params: docenteId ? { docenteId } : {} })
         .then(res => res.data.cursos);
+
+// ── Notificaciones ────────────────────────────────────────────────────────────
+export const enviarNotificacionesSemanal = () =>
+    api.post('/notifications/send-weekly').then(res => res.data);
+
+export const obtenerEstadoNotificaciones = () =>
+    api.get('/notifications/send-weekly').then(res => res.data);
+
+export const obtenerEstadoWhatsApp = (limite = 50) =>
+    api.get('/notifications/whatsapp-status', { params: { limite } }).then(res => res.data);
 
 export default api;

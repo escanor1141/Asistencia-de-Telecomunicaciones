@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
 import { obtenerUsuarioDePeticion } from '@/lib/auth';
 import { runWeeklyNotification } from '@/jobs/weeklyAbsenceNotification';
+import prisma from '@/lib/prisma';
 
 /**
  * POST /api/notifications/send-weekly
@@ -8,7 +8,6 @@ import { runWeeklyNotification } from '@/jobs/weeklyAbsenceNotification';
  * Solo accesible por usuarios con rol ADMIN.
  */
 export async function POST(request) {
-    // Verificar autenticación y rol ADMIN
     const usuario = obtenerUsuarioDePeticion(request);
     if (!usuario) {
         return Response.json({ error: 'No autorizado' }, { status: 401 });
@@ -42,7 +41,7 @@ export async function POST(request) {
 
 /**
  * GET /api/notifications/send-weekly
- * Devuelve el estado del servicio de notificaciones.
+ * Devuelve el estado del servicio y el historial reciente de notificaciones.
  */
 export async function GET(request) {
     const usuario = obtenerUsuarioDePeticion(request);
@@ -53,10 +52,52 @@ export async function GET(request) {
         return Response.json({ error: 'Acceso restringido a administradores' }, { status: 403 });
     }
 
+    // Última ejecución registrada
+    const ultimoLog = await prisma.notificationLog.findFirst({
+        orderBy: { sentAt: 'desc' },
+        select: { sentAt: true, weekStart: true, status: true },
+    });
+
+    // Conteo de la semana en curso
+    const { weekStart } = obtenerSemanaActual();
+    const totalEstaSemana = await prisma.notificationLog.count({
+        where: { weekStart, status: 'SUCCESS' },
+    });
+
     return Response.json({
         servicio: 'notificador-semanal-inasistencias',
         estado: 'activo',
-        programacion: '0 18 * * 0 (Domingos a las 18:00)',
+        programacion: '0 18 * * 0',
         descripcion: 'Envía correos a estudiantes con inasistencias de la semana (lunes-sábado)',
+        zonaHoraria: 'America/Bogota',
+        ultimaEjecucion: ultimoLog
+            ? {
+                fecha: ultimoLog.sentAt,
+                semana: ultimoLog.weekStart,
+                estado: ultimoLog.status,
+            }
+            : null,
+        estadoSemanaActual: {
+            weekStart,
+            correosEnviados: totalEstaSemana,
+        },
     });
 }
+
+/** Helper: calcula lunes de la semana actual en hora Colombia */
+function obtenerSemanaActual() {
+    const fmtBogota = (d) => new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d);
+
+    const hoy = fmtBogota(new Date());
+    const [y, m, d] = hoy.split('-').map(Number);
+    const fecha = new Date(y, m - 1, d);
+    const diaSemana = fecha.getDay();
+    const diasAlLunes = diaSemana === 0 ? -6 : 1 - diaSemana;
+    const lunes = new Date(fecha);
+    lunes.setDate(fecha.getDate() + diasAlLunes);
+    return { weekStart: fmtBogota(lunes) };
+}
+

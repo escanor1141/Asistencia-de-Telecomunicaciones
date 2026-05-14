@@ -1,0 +1,271 @@
+
+
+Ficha técnica de la propuestaTítulo: Prototipo de Plataforma Web para la Gestión y Registro de Asistencia de Estudiantes del Programa de Telecomunicaciones en el año 2026Fecha:Día
+
+16Mes
+
+03Año
+
+2026
+Código de la propuesta: (lo asigna la coordinación del programa)
+Modalidad del Trabajo de Grado
+Proyecto:
+
+Proyecto de 
+Investigación ?
+Desarrollo Tecnológico:
+
+X Desarrollo de       
+      Software
+? Planta Piloto
+? Esquema Circuito 
+       Integrado
+? Signos Distintivos
+Monografía
+
+? Teórica
+? Análisis 
+? Sistematización de Experiencias
+Emprendimiento
+
+? Casos de Estudio
+? Planes de Negocio
+? Fortalecimiento         
+     Empresarial
+Facultad: FCNI__X___     FCSE_____   Grupo de Investigación: GRIIS
+Programa Académico: Ingeniería de Telecomunicaciones              Ciudad: Bucaramanga
+Estudiante 1: Daniel Arturo Rodriguez Vargas
+Email: darturorodriguez@uts.edu.coCédula: 1095818970
+Teléfono: 3186943029Programa: Ingeniería de telecomunicacionesEstudiante 2: Daniel Fernando Villamizar Sandoval
+Email: danielfvillamizar@uts.edu.coCédula: 1005162725
+Teléfono: 3043755772Programa: Ingeniería de telecomunicacionesDirector: Ricardo Andres Medina Puentes
+
+Cédula: 
+TeléfonoPrograma:
+Ingeniería de telecomunicacionesCodirector:
+Cédula: 
+TeléfonoPrograma:Información sobre el pago de la modalidad de trabajo de grado
+Número del LQ (consignación)______________________Entidad Bancaria ____________________________
+Valor     ____________________________                        Fecha:   día/mes/año
+
+                  Nota: Anexar evidencia de envío de la copia de consignación al correo institucional del programa Nota: El programa debe disponer de un correo institucional para trabajos de grado y crear un espacio para cada uno de ellos con el fin de mantener una base de datos actualizada y disponible en todo momento.
+
+
+CONTENIDO DE LA PROPUESTA
+
+Descripción del problema 
+
+El control de asistencia en el programa de Telecomunicaciones se realiza manualmente, generando imprecisiones, pérdida de tiempo y dificultades en la consolidación de datos. Esta limitación impacta negativamente la gestión académica, pues la falta de automatización impide una supervisión eficiente y la toma de decisiones oportuna (Shad, Chen, & Farooq, 2021). El problema radica en el uso de métodos tradicionales (listas físicas o Excel) que no garantizan la integridad de la información y la carencia de una herramienta exclusiva para docentes que centralice la sistematización (Alotaibi & Almagwashi, 2020). Ante este escenario, surge la pregunta: ¿Cómo puede un prototipo de plataforma web mejorar la precisión y eficiencia en el registro y gestión de asistencia estudiantil en el programa de Telecomunicaciones, asegurando su uso exclusivo por parte de los docentes?
+
+Justificación 
+
+Este proyecto se desarrolla porque el sistema manual de asistencia actual genera errores en el manejo de datos, falta de integridad en la información y retrasos críticos en la consolidación de reportes académicos. Es necesario superar estos métodos tradicionales que afectan la eficiencia de la gestión docente. Se propone este prototipo para que el programa de Telecomunicaciones de las UTS cuente con una herramienta digital centralizada que optimice la consulta de información y facilite el seguimiento real de la permanencia estudiantil. Asimismo, el proyecto se justifica para que la Facultad de Ciencias Naturales e Ingenierías (FCNI) fortalezca sus procesos tecnológicos, articulándose directamente con las líneas de trabajo del grupo de investigación GRIIS (Grupo de Investigación en Ingeniería de Software). De esta manera, se aporta una solución basada en ingeniería de software que cumple con los objetivos institucionales de innovación y optimización de procesos académicos.
+
+Objetivo General
+
+Desarrollar un prototipo de plataforma web que facilite el control de asistencia de los estudiantes del programa de Telecomunicaciones, optimizando la generación de reportes y mejorando la administración académica, mediante el uso de tecnologías modernas como React + Vite para el frontend, Node.js/Next.js para el backend, implementando una arquitectura cliente–servidor con enfoque modular y prácticas DevOps, destinada al uso exclusivo de los docentes.
+
+
+Objetivos específicos
+
+1. Diseñar la arquitectura del sistema web para la gestión y registro de asistencia de estudiantes del programa de Telecomunicaciones, utilizando tecnologías modernas de desarrollo web que permitan la escalabilidad y funcionamiento independiente de la infraestructura institucional.
+2. Desarrollar una plataforma web multiplataforma, accesible desde diferentes dispositivos (computadores, tablets y teléfonos móviles), que permita el registro y consulta de la asistencia de los estudiantes.
+3. Implementar mecanismos de integración continua y despliegue continuo (CI/CD) que permitan automatizar el proceso de desarrollo, pruebas y actualización del sistema.
+4. Integrar un servicio de envío automatizado de correos electrónicos mediante la API de Brevo, que permita notificar a los estudiantes que registren inasistencia durante las semanas del semestre.
+5. Implementar un sistema de notificaciones mediante WhatsApp utilizando Evolution API, que permita enviar alertas automáticas de inasistencia a los estudiantes.
+6. Realizar pruebas funcionales y de usabilidad del sistema, con el fin de validar el correcto funcionamiento de las funcionalidades desarrolladas y la interacción de los usuarios con la plataforma.
+
+Estado del arte 
+Para la construcción de este estado del arte se realizó una búsqueda documental inicial en bases de datos académicas internacionales como Scopus, IEEE Xplore y ScienceDirect, además de consultar documentos normativos de la UNESCO. La búsqueda partió de una revisión global sobre sistemas de registro de asistencia, para luego acotarse al contexto colombiano y a entornos educativos, con especial atención a tecnologías de control de acceso como biometría, geolocalización o NFC.
+En la literatura sobre sistemas de registro de asistencia en educación superior se identifican principalmente tres enfoques tecnológicos: el uso de códigos QR, la biometría y los complementos como la geolocalización o la tecnología NFC (Shad et al., 2021; Alotaibi & Almagwashi, 2020). Investigaciones recientes evidencian que los sistemas basados en QR dinámicos o códigos rotativos reducen la posibilidad de fraude y agilizan el proceso de registro, aunque requieren controles de seguridad adicionales (Alotaibi & Almagwashi, 2020). Este antecedente resulta relevante para el proyecto, dado que plantea alternativas de bajo costo y fácil implementación en contextos educativos que demandan soluciones prácticas y escalables.
+ Por su parte, los sistemas biométricos (huella dactilar y reconocimiento facial) disminuyen el riesgo de asistencias registradas por terceros, pero generan desafíos en términos de costos, infraestructura y protección de datos personales (Alghamdi & Khan, 2022). La relación con el objetivo del proyecto radica en que este enfoque ofrece un mayor nivel de seguridad y confiabilidad en la validación de la presencia real de los estudiantes.
+En lo que respecta a los controles de acceso, la literatura recomienda la implementación de modelos basados en roles (RBAC) junto con mecanismos de autenticación multifactor, que permiten auditar acciones y restringir funcionalidades según los permisos definidos (Sandhu et al., 1996; ISO/IEC, 2013). Estos aportes se conectan con el proyecto al brindar lineamientos para asegurar la integridad del sistema y la protección de la información sensible. 
+Finalmente, la integración de learning analytics y tableros de control en los registros de asistencia se presenta como una estrategia que facilita la detección temprana de inasistencias y aporta evidencia para la toma de decisiones académicas (Romero & Ventura, 2020; UNESCO, 2019). Este aspecto guarda estrecha relación con el proyecto, ya que trasciende el simple registro de asistencia al ofrecer información valiosa para la gestión institucional y la mejora de los procesos formativos.
+Fundamento Teórico
+
+1. Sistemas de información en la gestión académica. (Romero, 2020) (UNESCO, 2019)
+2. Tecnologías de autenticación y control de acceso. (Sandhu, 1996) (ISO/IEC, 2013)
+3. Modelos y metodologías de desarrollo de software web. (Nielsen, 1994) (Preece, 2019)
+4. Herramientas tecnológicas para el registro de asistencia (Alotaibi, 2020) (Shad, 2021)
+5. Usabilidad y experiencia de usuario (UX/UI) en plataformas educativas. (Scale), 1996) (Nielsen, 1994)
+6. Evaluación cuantitativa y cualitativa en desarrollo de software (Amaro, Pérez Montesinos, & Píñero Pérez, 2021) (Largo García & Marin Mazo, 2005)
+
+7. Tratamiento de datos personales y ley 1581 de 2012 y de reg 1377 de 2013
+Resultados esperados
+* Prototipo web v1.0 — Demo funcional con registro de asistencia y generación de reportes (verificable en servidor de pruebas).
+* Manual de usuario (PDF) — Guía práctica para docentes (8–12 páginas) con checklist de verificación.
+* Informe técnico — Memoria del proyecto (20–30 páginas) con arquitectura, diagramas y resultados de pruebas.
+* Pruebas y piloto — Informe de pruebas funcionales y de usabilidad; piloto con al menos 3 docentes; objetivo: reducción del tiempo de registro de al menos 50% y puntuación SUS de al menos 68 o plan de mejora.
+Plan de actividades
+Actividad (Semanal)Fase 1Fase 2Fase 3Fase 4Fase 512345678910111213141516171819202122Revisión bibliográfica                      Levantamiento de requerimientos con docentes y análisis de necesidades.                      Diseño de la arquitectura de la plataforma                      Diseño de interfaz y experiencia de usuario                      Implementación del módulo de autenticación y control de acceso                      Implementación del módulo de registro de asistencia                      Implementación del módulo de reportes automatizados                      Pruebas funcionales y de rendimiento en servidor de pruebas                      Evaluación de usabilidad con docentes                      Ajustes y mejoras según retroalimentación recibida.                      Redacción del informe técnico y manual de usuario.                      Entrega del documento final para evaluación y preparación de sustentación.                      Sustentación y entrega final del proyecto.                      
+Presupuesto
+
+RUBROCANTIDADTIEMPOVALORRESPONSABLE DE LA FINANCIACIÓN O GASTOEFECTIVOTOTALRecurso humanoEstudiantes25 meses1’000.00010’000.000EstudiantesAsesor15 meses500.0002’500.000UniversidadRecursos para la ejecución del proyecto Computador portátil15 meses200.0001’000.000EstudiantesLicencias de software, servidores web15 meses200.0001’000.000EstudiantesMateriales e insumosConectividad a internetN/A5 meses40.000200.000EstudiantesPapelería o impresión1300.000EstudiantesOtros serviciosPruebas con docentes1200.000UniversidadSUBTOTAL15’200.000IMPREVISTOS (10%)1’520.000TOTAL16’720.000Consideraciones Éticas
+
+
+
+
+
+
+
+
+
+Referencias Bibliográficas
+
+1. Referencias
+Alotaibi, M. &. (2020). QR code-based attendance system with facial recognition for classroom management. International Journal of Advanced Computer Science and Applications, 11(5), 112–118. Obtenido de https://doi.org/10.14569/IJACSA.2020.0110516
+Amaro, N., Pérez Montesinos, D., & Píñero Pérez, P. (Abril de 2021). Qualitative and quantitative analysis of risks in software. Serie Científica de la Universidad de las Ciencias Informáticas, 14(4), 15. doi:ISSN: 2306-2495 | RNPS: 2343
+ISO/IEC. (2013). Information technology – Security techniques – Information security management systems – Requirements (ISO/IEC 27001:2013).
+Largo García, C., & Marin Mazo, E. (2005). Guía Técnica para Evaluación de Software. Recuperado el 21 de 08 de 2025, de Cloudfront.net: https://d1wqtxts1xzle7.cloudfront.net/45614894/guia_tecnica_para_evaluacion_de_software-libre.pdf?1463211478=&response-content-disposition=inline%3B+filename%3DC_CI_I_IA_A_A_E_E_ER_R_RL_L_LE_E_ED_D_DY.pdf&Expires=1755829505&Signature=D2wgqqj06LFXYH8bxrAas
+Nielsen, J. (1994). Usability engineering. Morgan Kaufmann. 
+Preece, J. R. (2019). Interaction design: Beyond human-computer interaction (5th ed.). Wiley. 
+Romero, C. &. (2020). ducational data mining and learning analytics: An updated survey. Wiley Interdisciplinary Reviews: Data Mining and Knowledge Discovery, 10(3), e1355. Obtenido de https://doi.org/10.1002/widm.1355
+Sandhu, R. S. (1996). Role-based access control models. IEEE Computer, 29(2), 38–47. Obtenido de https://doi.org/10.1109/2.485845
+Scale), S. (. (1996). Measuring usability with the SUS. Digital Equipment Corporation. 
+Shad, S. A. (2021). Cloud-based smart attendance system using QR codes and geolocation. Journal of Cloud Computing, 10(1), 1–15. Obtenido de https://doi.org/10.1186/s13677-021-00242-1
+UNESCO. (2019). Artificial Intelligence in education: Challenges and opportunities. United Nations Educational, Scientific and Cultural Organization.
+
+
+REJILLA DE EVALUACIÓN Las UTS agradecen al docente evaluador por su participación en los procesos académicos. Por favor diligencie el siguiente formato para la evaluación de la propuesta de trabajo de grado. En la rejilla de evaluación establezca el cumplimiento de los indicadores marcando con una “x” en cada ítem de acuerdo al resultado de la revisión que realizó. Al finalizar encontrará una sección para relacionar las observaciones. Es importante aclarar que para emitir el concepto de “Aprobado”, se deben cumplir todos los criterios que aplican para la modalidad que se está evaluando.
+
+INFORMACIÓN GENERAL DE LA PROPUESTA DE TRABAJO DE GRADOFecha
+11/03/2026
+Código de la propuestaModalidad? Proyecto de Investigación        ? Monografía     X Desarrollo Tecnológico ? Seminario
+? EmprendimientoModalidad EspecíficaDesarrollo de softwareTitulo"Prototipo de Plataforma Web para la Gestión y Registro de Asistencia de Estudiantes en el Área de Telecomunicaciones"Estudiantes1. Daniel Arturo Rodriguez VargasCédula: 1095818970
+Teléfono: 3186943029Programa: Ingeniería de Telecomunicaciones 2. Daniel Fernando Villamizar SandovalCédula: 1005162725
+Teléfono: 3043755772Programa: Ingeniería de TelecomunicacionesFacultadX FCNI ? FCSEPrograma(s)Ingeniería de TelecomunicacionesDATOS DEL EVALUADORNombre Andreiv Nelber Montaguth UsecheFacultadX FCNI  ? FCSEProgramaIngeniería de Telecomunicaciones
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+REJILLA DE EVALUACION DE LA PROPUESTA DE TRABAJO DE GRADOCRITERIOSINDICADORESCumpleSINOFicha técnica¿La ficha técnica relaciona toda la información requerida?Descripción del problema¿Cumple el máximo de 20 líneas?¿Describe claramente la problemática a resolver?¿Se evidencia la pregunta concreta de investigación? (expresa la relación entre dos o más variables)¿Se ilustran citas bibliográficas en la redacción texto relevantes con respecto a la problemática?Justificación¿Se evidencia por qué se debe realizar este trabajo de grado?¿Se argumenta la necesidad, la conveniencia, las implicaciones tecnológicas, sociales, económicas, entre otras?, es decir el para qué del trabajo a desarrollar?¿Genera un aporte al desarrollo de la investigación o al DTeI, del grupo de investigación o de las UTS?Objetivos¿El objetivo general plantea una solución clara la problemática?En el objetivo general y los específicos se evidencia: el ¿qué? ¿Cómo? y el ¿Para qué?¿El objetivo general tiene relación con el título de la propuesta de trabajo de grado?¿Hay relación entre el cómo del objetivo general y los objetivos específicos?¿Se mantiene un orden cronológico en los objetivos específicos?Estado del arte¿Se referencian otros casos o estudios a nivel nacional e internacional relacionados con el tema?¿Se manejan las citas de acuerdo a la norma APA vigente?Fundamento Teórico¿Se evidencian los diferentes fundamentos teóricos, en el desarrollo de la propuesta de trabajo de grado?¿Los fundamentos teóricos son coherentes con la solución de la problemática?Resultados esperados¿Se definen los resultados que se quieren obtener de acuerdo a la metodología planteada?Plan de actividades¿El tiempo de duración total del trabajo de grado está acorde con lo estipulado en el Reglamento de Trabajo de Grado?¿La duración planteada para cada actividad es razonable?¿Las actividades planteadas son las necesarias para cumplir con el objetivo general del trabajo de grado?Presupuesto¿El presupuesto estipula claramente los costos en recurso humano?¿El presupuesto estipula los costos en recursos tecnológicos?¿El presupuesto estipula los costos en materiales requeridos?¿Se discrimina en el presupuesto el aporte realizado por los autores, las UTS y otras instituciones patrocinadoras, en cada uno de los rubros costeados?Consideraciones éticas¿Se evidencia dentro del informe el detalle de las consideraciones éticas que se pueden presentar en su desarrollo?Referencias bibliográficas¿Las referencias aplican el estándar APA de la edición vigente?Resumen de similitud El resultado del informe de similitud evidencia un porcentaje de similitud entre el 0 y 10% (VER ANEXO A)
+OBSERVACIONES GENERALES
+
+
+
+
+CONCEPTO FINAL (Aprobado, No Aprobado o Aplazado).
+
+
+NOMBRE
+
+
+FIRMA DEL DIRECTOR
+
+NOMBRE 
+
+
+FIRMA DEL EVALUADOR 
+
+FECHA DE RECIBIDO COMITÉ DE TRABAJOS DE GRADO
+día/mes/año
+
+FECHA DE EMISIÓN DEL CONCEPTO COMITÉ DE TRABAJOS DE GRADO: 
+día/mes/añoESPACIO DILIGENCIADO POR EL COMITÉ DE TRABAJO DE GRADO
+Concepto Emitido:    ____Aprobado    ___No Aprobado ___Aplazado    
+
+Observaciones: 
+
+_____________________________________________________________
+
+Fecha de aprobación: día/mes/año/              Acta No. ____       
+
+Firma Estudiante1 ____________________________ 
+
+Firma Estudiante2 ____________________________
+
+
+Firma Estudiante 3 ____________________________
+
+
+Director: ___________________________________
+
+Coordinador del programa académico: ______________________________________
+
+Fecha de notificación al estudiante:                          
+Fecha de inicio:  día/mes/año              Fecha de finalización del TG: día/mes/año (180 días a partir de la notificación de la aprobación al estudiante)
+Prórroga 1: día/mes/año            Prórroga 2: día/mes/año                  Prórroga 3: día/mes/año
+                  	
+
+
+Al diligenciar este documento, autorizo de manera previa, expresa e inequívoca a las UNIDADES TECNOLÓGICAS DE SANTANDER a dar tratamiento de mis datos personales (y/o de los datos del menor de edad o persona en condición de discapacidad cognitiva que represento) aquí consignados, incluyendo el consentimiento explícito para tratar datos sensibles aun conociendo la posibilidad de oponerme a ello, conforme a las finalidades incorporadas en la Política de Tratamiento de Información publicada en www.uts.edu.co y/o en Calle de los estudiantes 9-82 Ciudadela Real de Minas, que declaro conocer y estar informado que en ella se presentan los derechos que me asisten como titular y los canales de atención donde ejercerlos.
+	
+
+
+ANEXO A.
+
+INFORME DE SIMILITUD GENERADO POR LA HERRAMIENTA ANTIPLAGIO INSTITUCIONAL
+
+Ejemplo de Resumen de Similitud
+
+
+
+Nota: tener en cuenta que los índices arrojados por la herramienta no determinan exactamente si un trabajo fue plagiado o no. Los reportes de similitud simplemente son una herramienta que ayuda al director del TG a encontrar fuentes que contienen texto similar a los trabajos entregados disponibles en la web. La decisión de considerar si un trabajo contiene plagio debe tomarse con cuidado y solo después de un examen minucioso tanto del trabajo entregado como de las fuentes que indican esos niveles de coincidencia. El porcentaje máximo de similitud admitido debe ser menor o igual al 10%.
+
+
+ANEXO B.
+
+Si aplica, se anexan: formato de encuestas entrevistas, chek list, en general las herramientas o instrumentos utilizados en la investigación. Se enumeran con letras mayúsculas de la A - Z, si la cantidad es mayor se enumeran con números arábigos. Fuente y títulos en Normas APA.
+
+ANEXO C.
+
+Este instructivo es una guía general de como se presenta el informe de la propuesta, se debe eliminar después de diligenciada.
+
+Instructivo General para diligenciar la propuesta
+
+Formato de la página:
+
+Márgenes: iguales: todos a 2.5 cm.
+
+
+
+Títulos en Mayúsculas y minúsculas, color negro, centrado
+Subtítulos: Mayúsculas y minúsculas. Color negro, alineados a la izquierda, letra arial 12 pts. 
+
+Citas y referencias: en formato APA vigente
+
+Numeración de páginas en la parte superior derecha (ya la trae el formato institucional)
+Texto: 
+Tipo de letra: Arial en 12 pts.
+Interlineado: 1.5 líneas. Justificado
+
+Nota: el formato ya tiene los márgenes establecidos. Solo debe verificar que estén correctos.
+ 
+Formato de tablas: Apa, vigente
+
+Las tablas deben llevar: Título y nombre de la tabla, alineado a la izquierda, letra color negro, con fondo blanco. Inicia con el número y termina con el título. Igual, las columnas deben estar debidamente identificadas: títulos centrados, letra color negro; letra: Arial 10, fondo blanco. Interlineado sencillo. Ver ejemplo tomado de la norma APA.
+
+
+Formato de las imágenes:
+
+Las imágenes, fotografías, diagramas y figuras en general, deben estar identificadas con un número y el nombre de la figura. Ej. Figura 1 Participación de los estudiantes de III y IV nivel de formación. Se debe incluir en la parte inferior la fuente de la figura, en formato APA vigente, con estilo de una referencia. 
+
+
+
+
+
+DOCENCIAPÁGINA 2
+ DE 12         F-DC-124 
+PROPUESTA DE TRABAJO DE GRADO 
+Proyecto de: Investigación, Desarrollo Tecnológico, Monografía y EmprendimientoVERSIÓN: 2.0
+
+
+
+ELABORADO POR: 
+DocenciaREVISADO POR:
+Sistema Integrado de GestiónAPROBADO POR: Líder del Sistema Integrado de GestiónFECHA APROBACIÓN: septiembre de 2023
+
+
+
+
+

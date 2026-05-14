@@ -8,6 +8,8 @@ import Reportes from './pages/Reports.jsx';
 import Configuracion from './pages/Configuracion.jsx';
 import Perfil from './pages/Perfil.jsx';
 import Login from './pages/Login.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import RutaPrivada from './components/RutaPrivada.jsx';
 import LayoutPrincipal from './components/LayoutPrincipal.jsx';
 
@@ -15,6 +17,8 @@ export default function EnrutadorApp() {
     return (
         <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route
                 path="/*"
                 element={

@@ -154,8 +154,12 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null 
             setGrupoSeleccionado(null);
             return;
         }
-        // Al elegir una materia, seleccionar el primer curso de ese nombre (primer grupo)
-        const primerCurso = cursosFiltrados.find(c => c.name === e.target.value);
+        // Al elegir una materia, seleccionar el primer curso de ese nombre (primer grupo en orden ascendente)
+        const cursosMateria = cursosFiltrados
+            .filter(c => c.name === e.target.value)
+            .sort((a, b) => (a.groupCode || '').localeCompare(b.groupCode || ''));
+            
+        const primerCurso = cursosMateria[0];
         if (primerCurso) {
             seleccionarCurso(primerCurso);
             setGrupoSeleccionado(primerCurso.groupCode);

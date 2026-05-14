@@ -129,9 +129,9 @@ export default function LayoutPrincipal({ children }) {
             </header>
 
             {/* ── Sidebar de escritorio ────────────────────────────────────── */}
-            <aside className="fixed bottom-0 left-0 top-topbar z-10 hidden w-sidebar border-r bg-superficie md:block">
-                <nav className="flex h-full flex-col px-4 py-4">
-                    <ul className="space-y-2">
+            <aside className="sidebar-nav fixed bottom-0 left-0 top-topbar z-10 hidden w-sidebar border-r md:block">
+                <nav className="flex h-full flex-col px-3 pt-24 pb-4">
+                    <ul className="space-y-1">
                         {elementosNavegacion
                             .filter((item) => !item.adminOnly || usuario?.role === 'ADMIN')
                             .map((item) => {
@@ -141,11 +141,7 @@ export default function LayoutPrincipal({ children }) {
                                     <li key={item.ruta}>
                                         <Link
                                             to={item.ruta}
-                                            className={`flex items-center gap-3 rounded-[6px] px-4 py-[10px] text-sm transition-colors ${
-                                                activo
-                                                    ? 'bg-primario-suave font-semibold text-primario'
-                                                    : 'text-texto-secundario hover:bg-fondo'
-                                            }`}
+                                            className={`nav-item ${activo ? 'activo' : ''}`}
                                         >
                                             <Icono size={18} />
                                             <span>{item.etiqueta}</span>

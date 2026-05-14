@@ -12,6 +12,7 @@ export default function Cursos() {
     const [estadisticasCursos, setEstadisticasCursos] = useState([]);
     const [cargandoEstadisticas, setCargandoEstadisticas] = useState(false);
     const [formularioCurso, setFormularioCurso] = useState({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
+    const [modalFormularioVisible, setModalFormularioVisible] = useState(false);
     const [mostrarSegundoDia, setMostrarSegundoDia] = useState(false);
     const [guardandoCurso, setGuardandoCurso] = useState(false);
     const [cursoEnEdicion, setCursoEnEdicion] = useState(null);
@@ -85,6 +86,7 @@ export default function Cursos() {
             setFormularioCurso({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
             setMostrarSegundoDia(false);
             setCursoEnEdicion(null);
+            setModalFormularioVisible(false);
         } catch (err) {
             toast.error(err.response?.data?.error || 'Error al procesar la materia');
         } finally {
@@ -112,6 +114,7 @@ export default function Cursos() {
             programa: c.programa || ''
         });
         setMostrarSegundoDia(!!(c.dia2 || c.horaInicio2 || c.horaFin2));
+        setModalFormularioVisible(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
@@ -119,6 +122,7 @@ export default function Cursos() {
         setCursoEnEdicion(null);
         setFormularioCurso({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
         setMostrarSegundoDia(false);
+        setModalFormularioVisible(false);
     };
 
     const manejarEliminacionCurso = async (id, nombre) => {
@@ -304,11 +308,11 @@ export default function Cursos() {
             {/* Modal de importación */}
             {modalImportCursoVisible && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
                     style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(2px)' }}
                 >
                     <div
-                        className="w-full max-w-4xl rounded-[var(--card-radius)] border flex flex-col"
+                        className="modal-panel w-full max-w-4xl rounded-[var(--card-radius)] border flex flex-col"
                         style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '82vh' }}
                     >
                         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
@@ -376,12 +380,22 @@ export default function Cursos() {
 
             <input ref={inputArchivoCursoRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={manejarArchivoImportCurso} />
 
-            <header className="tarjeta flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-semibold">Materias</h2>
-                    <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
-                </div>
-                <div className="flex items-center gap-2">
+            <header className="tarjeta flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-semibold">Materias</h2>
+                        <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                        type="button"
+                        onClick={() => setModalFormularioVisible(true)}
+                        className="boton-primario inline-flex items-center gap-2"
+                        title="Crear Nueva Materia"
+                    >
+                        <Plus size={16} />
+                        Nueva Materia
+                    </button>
                     <button
                         type="button"
                         onClick={() => inputArchivoCursoRef.current?.click()}
@@ -401,15 +415,24 @@ export default function Cursos() {
                         Exportar
                     </button>
                 </div>
+                </div>
             </header>
 
-            {/* Formulario de Nuevo Curso */}
-            <section className="tarjeta p-6">
-                <h3 className="text-lg font-medium flex items-center gap-2 mb-4">
-                    {cursoEnEdicion ? <Pencil size={20} className="text-primario" /> : <Plus size={20} className="text-primario" />}
-                    {cursoEnEdicion ? 'Editar Materia' : 'Crear Nueva Materia'}
-                </h3>
-                <form onSubmit={manejarEnvioCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+            {/* Modal Formulario de Nuevo Curso */}
+            {modalFormularioVisible && (
+                <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(2px)' }}>
+                    <div className="modal-panel w-full max-w-4xl rounded-[var(--card-radius)] border flex flex-col" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '90vh' }}>
+                        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                            <h3 className="text-lg font-semibold flex items-center gap-2">
+                                {cursoEnEdicion ? <Pencil size={20} className="text-primario" /> : <Plus size={20} className="text-primario" />}
+                                {cursoEnEdicion ? 'Editar Materia' : 'Crear Nueva Materia'}
+                            </h3>
+                            <button type="button" onClick={cancelarEdicion} disabled={guardandoCurso} className="p-1.5 rounded-md disabled:opacity-50" style={{ color: 'var(--color-muted)' }}>
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="overflow-auto flex-1 px-6 py-4">
+                            <form id="form-curso" onSubmit={manejarEnvioCurso} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
                     <div>
                         <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre de la materia</label>
                         <input
@@ -632,27 +655,17 @@ export default function Cursos() {
                         </>
                     )}
 
-                    <div className="flex gap-2">
-                        {cursoEnEdicion && (
-                            <button
-                                type="button"
-                                onClick={cancelarEdicion}
-                                className="boton-secundario w-full h-[38px] flex justify-center items-center"
-                            >
-                                Cancelar
+                            </form>
+                        </div>
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                            <button type="button" onClick={cancelarEdicion} disabled={guardandoCurso} className="boton-secundario">Cancelar</button>
+                            <button type="submit" form="form-curso" disabled={guardandoCurso} className="boton-primario inline-flex items-center gap-2 disabled:opacity-50">
+                                {guardandoCurso ? <><Loader2 size={15} className="animate-spin" /> Guardando...</> : (cursoEnEdicion ? 'Actualizar' : 'Crear Materia')}
                             </button>
-                        )}
-                        <button
-                            type="submit"
-                            disabled={guardandoCurso}
-                            className="boton-primario w-full h-[38px] flex justify-center items-center gap-2"
-                        >
-                            {guardandoCurso ? <Loader2 size={16} className="animate-spin" /> : (cursoEnEdicion ? <Pencil size={16} /> : <Plus size={16} />)}
-                            {guardandoCurso ? 'Guardando...' : (cursoEnEdicion ? 'Actualizar' : 'Crear Materia')}
-                        </button>
+                        </div>
                     </div>
-                </form>
-            </section>
+                </div>
+            )}
 
             <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {(cargandoCursos || cargandoEstadisticas) && (

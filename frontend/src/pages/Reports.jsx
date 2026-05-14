@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { obtenerReportes, obtenerReportesSemanal, obtenerDocentes } from '../services/api';
-import { Download, TrendingUp, LayoutGrid, PieChart as PieIcon, Clock, Users } from 'lucide-react';
+import { obtenerReportes, obtenerReportesSemanal, obtenerDocentes, obtenerDataExportacion } from '../services/api';
+import { Download, TrendingUp, LayoutGrid, PieChart as PieIcon, Clock, Users, Loader2 } from 'lucide-react';
+import * as xlsx from 'xlsx';
 import { useCurso } from '../context/ContextoCurso';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
@@ -35,7 +36,7 @@ const COLORES_LINEAS = [
 // ÔöÇÔöÇ Modos de agrupaci├│n para Chart A ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const MODOS_GRUPO = [
     { id: 'materia',      label: 'Por materia' },
-    { id: 'periodo',      label: 'Por per├¡odo acad├®mico' },
+    { id: 'periodo',      label: 'Por período académico' },
     { id: 'modalidad',    label: 'Por modalidad (Tec/Ing)' },
     { id: 'docente',      label: 'Por docente' },
     { id: 'docentes_ti',  label: 'Docentes Tec/Ing' },
@@ -165,6 +166,7 @@ export default function Reportes() {
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
     const [vistaActiva, setVistaActiva] = useState('distribucion');
+    const [exportando, setExportando] = useState(false);
 
     // ÔöÇÔöÇ State Chart A / B ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     const [modoGrupo, setModoGrupo] = useState('materia');
@@ -227,18 +229,18 @@ export default function Reportes() {
                         obtenerReportesSemanal({ docenteId: tid, periodo: '2' }),
                     ]);
                     series = [
-                        { nombre: 'Per├¡odo 1', semanas: r1.semanas },
-                        { nombre: 'Per├¡odo 2', semanas: r2.semanas },
+                        { nombre: 'Período 1', semanas: r1.semanas },
+                        { nombre: 'Período 2', semanas: r2.semanas },
                     ];
 
                 } else if (modoGrupo === 'modalidad' || modoGrupo === 'docentes_ti') {
                     const [rT, rI] = await Promise.all([
-                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Tecnolog├¡a' }),
-                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Ingenier├¡a' }),
+                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Tecnología' }),
+                        obtenerReportesSemanal({ docenteId: tid, modalidad: 'Ingeniería' }),
                     ]);
                     series = [
-                        { nombre: 'Tecnolog├¡a', semanas: rT.semanas },
-                        { nombre: 'Ingenier├¡a', semanas: rI.semanas },
+                        { nombre: 'Tecnología', semanas: rT.semanas },
+                        { nombre: 'Ingeniería', semanas: rI.semanas },
                     ];
 
                 } else if (modoGrupo === 'docente' && docentes.length > 0) {
@@ -311,41 +313,92 @@ export default function Reportes() {
             .filter((d) => d.value > 0);
     }, [datos]);
 
-    // ÔöÇÔöÇ Exportar CSV ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-    const exportarCSV = () => {
-        const encabezado = ['Nombre', 'Clases', 'Presentes', 'Porcentaje'];
-        const filas = datos.map((item) => [item.name, item.total, item.present, `${item.percentage}%`]);
-        const csv = [encabezado, ...filas].map((fila) => fila.join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const enlace = document.createElement('a');
-        enlace.href = url;
-        enlace.download = 'reporte-asistencia.csv';
-        enlace.click();
-        URL.revokeObjectURL(url);
+    // ── Exportar Excel ────────────────────────────────────────────────────────────────
+    const exportarExcel = async () => {
+        setExportando(true);
+        try {
+            const params = {};
+            if (fechaInicio) params.startDate = fechaInicio;
+            if (fechaFin) params.endDate = fechaFin;
+            
+            const data = await obtenerDataExportacion(cursoSeleccionado?.id, params, filtros);
+            
+            const wb = xlsx.utils.book_new();
+            
+            // Hoja 1: Resumen
+            const wsResumen = xlsx.utils.json_to_sheet(data.resumen.map(e => ({
+                'Documento': e.documento,
+                'Estudiante': e.name,
+                'Clases Totales': e.total,
+                'Presentes': e.present,
+                'Ausentes': e.absent,
+                'Justificados': e.justified,
+                '% Asistencia': `${e.percentage}%`
+            })));
+            xlsx.utils.book_append_sheet(wb, wsResumen, 'Resumen General');
+
+            // Hoja 2: En Riesgo (<=80)
+            const wsRiesgo = xlsx.utils.json_to_sheet(data.enRiesgo.map(e => ({
+                'Documento': e.documento,
+                'Estudiante': e.name,
+                'Clases Totales': e.total,
+                'Presentes': e.present,
+                'Ausentes': e.absent,
+                'Justificados': e.justified,
+                '% Asistencia': `${e.percentage}%`
+            })));
+            xlsx.utils.book_append_sheet(wb, wsRiesgo, 'Estudiantes en Riesgo');
+
+            // Hoja 3: Faltas por Asignatura
+            const wsAsignatura = xlsx.utils.json_to_sheet(data.asignaturas.map(a => ({
+                'Documento': a.documento,
+                'Estudiante': a.estudiante,
+                'Asignatura': a.asignatura,
+                'Código': a.codigo,
+                'Grupo': a.grupo,
+                'Clases Totales': a.total,
+                'Presentes': a.present,
+                'Ausentes': a.absent,
+                'Justificados': a.justified,
+                '% Asistencia': `${a.percentage}%`
+            })));
+            xlsx.utils.book_append_sheet(wb, wsAsignatura, 'Faltas por Asignatura');
+
+            // Hoja 4: Directorio de Contacto
+            const wsDirectorio = xlsx.utils.json_to_sheet(data.directorio.map(d => ({
+                'Documento': d.documento,
+                'Estudiante': d.name,
+                'Email Institucional': d.email,
+                'Email Secundario': d.correo2,
+                'WhatsApp': d.whatsapp,
+                'Teléfono 2': d.telefono2
+            })));
+            xlsx.utils.book_append_sheet(wb, wsDirectorio, 'Directorio de Contacto');
+
+            xlsx.writeFile(wb, `Reporte_Asistencia_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+        } catch (error) {
+            console.error('Error al exportar Excel:', error);
+        } finally {
+            setExportando(false);
+        }
     };
 
     // ÔöÇÔöÇ Render ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
     return (
         <section className="space-y-6">
+            <div className="tarjeta flex flex-wrap items-center gap-4">
+                <FiltrosGlobales />
+            </div>
+
             {/* ÔöÇÔöÇ Encabezado con filtros de fechas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <header className="tarjeta flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="w-full">
+                    <div>
                         <h2 className="text-2xl font-semibold">Reportes</h2>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            flexWrap: 'wrap',
-                            gap: '8px',
-                            marginTop: '4px'
-                        }}>
-                            <p className="text-sm text-texto-secundario">
-                                Asistencia por estudiante con visualizaciones interactivas.
-                            </p>
-                            <FiltrosGlobales />
-                        </div>
+                        <p className="mt-1 text-sm text-texto-secundario">
+                            Asistencia por estudiante con visualizaciones interactivas.
+                        </p>
                     </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -365,12 +418,12 @@ export default function Reportes() {
                     />
                     <button
                         type="button"
-                        onClick={exportarCSV}
-                        disabled={datos.length === 0}
-                        className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={exportarExcel}
+                        disabled={datos.length === 0 || exportando}
+                        className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
                     >
-                        <Download size={15} />
-                        Exportar CSV
+                        {exportando ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                        {exportando ? 'Generando...' : 'Exportar Excel'}
                     </button>
                 </div>
             </header>

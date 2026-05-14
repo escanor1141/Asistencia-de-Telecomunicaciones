@@ -26,8 +26,9 @@ export default function PanelPrincipal() {
     
     // Estado para una sola materia
     const [totalEstudiantes, setTotalEstudiantes] = useState(0);
-    const [porcentajeHoy, setPorcentajeHoy] = useState(0);
-    const [ausentesHoy, setAusentesHoy] = useState(0);
+    const [porcentajeHoy, setPorcentajeHoy] = useState(null);
+    const [ausentesHoy, setAusentesHoy] = useState(null);
+    const [huboClaseHoy, setHuboClaseHoy] = useState(false);
     const [actividadReciente, setActividadReciente] = useState([]);
 
     // Estado para "Todas las materias"
@@ -65,11 +66,21 @@ export default function PanelPrincipal() {
 
                     const presentes = asistenciaHoy.filter((registro) => registro.present).length;
                     const total = estudiantes.length;
-                    const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
+                    const hayClaseHoy = asistenciaHoy.length > 0;
 
                     setTotalEstudiantes(total);
-                    setPorcentajeHoy(porcentaje);
-                    setAusentesHoy(Math.max(total - presentes, 0));
+                    setHuboClaseHoy(hayClaseHoy);
+
+                    if (hayClaseHoy) {
+                        const porcentaje = total > 0 ? Math.round((presentes / total) * 100) : 0;
+                        setPorcentajeHoy(porcentaje);
+                        setAusentesHoy(Math.max(total - presentes, 0));
+                    } else {
+                        // No se tomó asistencia hoy → no mostrar como ausentes
+                        setPorcentajeHoy(null);
+                        setAusentesHoy(null);
+                    }
+
                     setActividadReciente(historial.slice(0, 8));
                 }
             } catch (_error) {
@@ -84,11 +95,28 @@ export default function PanelPrincipal() {
 
     const kpis = useMemo(
         () => [
-            { titulo: 'Total estudiantes',  valor: totalEstudiantes.toLocaleString('es-CO'), icono: Users },
-            { titulo: '% asistencia hoy',   valor: `${porcentajeHoy.toLocaleString('es-CO')}%`, icono: Percent },
-            { titulo: 'Ausentes hoy',        valor: ausentesHoy.toLocaleString('es-CO'), icono: UserX },
+            {
+                titulo: 'Total estudiantes',
+                valor: totalEstudiantes.toLocaleString('es-CO'),
+                icono: Users,
+                colorValor: undefined,
+            },
+            {
+                titulo: '% asistencia hoy',
+                valor: huboClaseHoy ? `${porcentajeHoy.toLocaleString('es-CO')}%` : '—',
+                subtitulo: !huboClaseHoy && cursoSeleccionado ? 'Sin clase registrada hoy' : undefined,
+                icono: Percent,
+                colorValor: !huboClaseHoy ? 'var(--color-muted)' : undefined,
+            },
+            {
+                titulo: 'Ausentes hoy',
+                valor: huboClaseHoy ? ausentesHoy.toLocaleString('es-CO') : '—',
+                subtitulo: !huboClaseHoy && cursoSeleccionado ? 'Sin clase registrada hoy' : undefined,
+                icono: UserX,
+                colorValor: !huboClaseHoy ? 'var(--color-muted)' : undefined,
+            },
         ],
-        [ausentesHoy, porcentajeHoy, totalEstudiantes],
+        [ausentesHoy, porcentajeHoy, totalEstudiantes, huboClaseHoy, cursoSeleccionado],
     );
 
     if (cargando) {
@@ -101,20 +129,18 @@ export default function PanelPrincipal() {
 
     return (
         <section className="space-y-6">
-            <header className="tarjeta">
-                <h2 className="text-2xl font-semibold">Panel Principal</h2>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    marginTop: '4px'
-                }}>
-                    <p className="text-sm text-texto-secundario">
-                        {!cursoSeleccionado ? 'Asistencia de hoy en todas las materias.' : 'Resumen diario del curso seleccionado.'}
-                    </p>
-                    <FiltrosGlobales />
+            <div className="tarjeta flex flex-wrap items-center gap-4">
+                <FiltrosGlobales />
+            </div>
+
+            <header className="tarjeta flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-semibold">Panel Principal</h2>
+                        <p className="mt-1 text-sm text-texto-secundario">
+                            {!cursoSeleccionado ? 'Asistencia de hoy en todas las materias.' : 'Resumen diario del curso seleccionado.'}
+                        </p>
+                    </div>
                 </div>
             </header>
 
@@ -182,11 +208,21 @@ export default function PanelPrincipal() {
                             const Icono = item.icono;
                             return (
                                 <article key={item.titulo} className="tarjeta">
-                                    <div className="mb-4 flex items-center gap-2 text-texto-secundario">
+                                    <div className="mb-3 flex items-center gap-2 text-texto-secundario">
                                         <Icono size={20} />
                                         <span className="text-sm">{item.titulo}</span>
                                     </div>
-                                    <p className="font-mono text-3xl">{item.valor}</p>
+                                    <p
+                                        className="font-mono text-3xl"
+                                        style={item.colorValor ? { color: item.colorValor } : undefined}
+                                    >
+                                        {item.valor}
+                                    </p>
+                                    {item.subtitulo && (
+                                        <p className="mt-1 text-xs" style={{ color: 'var(--color-muted)' }}>
+                                            {item.subtitulo}
+                                        </p>
+                                    )}
                                 </article>
                             );
                         })}

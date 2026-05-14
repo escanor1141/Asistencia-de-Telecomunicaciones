@@ -87,6 +87,11 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
             // --- Sin número registrado ---
             if (!estudiante.whatsapp) {
                 console.warn(`[whatsapp-job] Sin WhatsApp: ${estudiante.name} (${estudiante.documento})`);
+                await prisma.whatsappNotificationLog.upsert({
+                    where: { studentId_courseId_date: claveLog },
+                    update: { status: 'SKIPPED', error: 'Sin número de WhatsApp', sentAt: new Date() },
+                    create: { ...claveLog, status: 'SKIPPED', error: 'Sin número de WhatsApp' },
+                });
                 estadisticas.omitidos++;
                 continue;
             }

@@ -122,21 +122,19 @@ export default function Historial() {
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <section className="space-y-6">
+            <div className="tarjeta flex flex-wrap items-center gap-4">
+                <FiltrosGlobales />
+            </div>
+
             {/* Encabezado */}
-            <header className="tarjeta">
-                <h2 className="text-2xl font-semibold">Historial de Asistencia</h2>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: '8px',
-                    marginTop: '4px'
-                }}>
-                    <p className="text-sm text-texto-secundario">
-                        Consulta los registros históricos combinando filtros globales y locales.
-                    </p>
-                    <FiltrosGlobales />
+            <header className="tarjeta flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div>
+                        <h2 className="text-2xl font-semibold">Historial de Asistencia</h2>
+                        <p className="mt-1 text-sm text-texto-secundario">
+                            Consulta los registros históricos combinando filtros globales y locales.
+                        </p>
+                    </div>
                 </div>
             </header>
 

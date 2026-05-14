@@ -21,9 +21,9 @@ function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
     });
     const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(2px)' }}>
-            <div className="w-full max-w-lg rounded-[var(--card-radius)] border flex flex-col"
+            <div className="modal-panel w-full max-w-lg rounded-[var(--card-radius)] border flex flex-col"
                 style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '90vh' }}>
                 <div className="flex items-center justify-between px-6 py-4 border-b shrink-0"
                     style={{ borderColor: 'var(--color-border)' }}>
@@ -90,11 +90,11 @@ function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
 function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4"
             style={{ background: 'rgba(26,26,46,0.5)', backdropFilter: 'blur(2px)' }}
         >
             <div
-                className="w-full max-w-2xl rounded-[var(--card-radius)] border flex flex-col"
+                className="modal-panel w-full max-w-2xl rounded-[var(--card-radius)] border flex flex-col"
                 style={{
                     background: 'var(--color-surface)',
                     borderColor: 'var(--color-border)',
@@ -252,6 +252,7 @@ export default function Estudiantes() {
         whatsapp: '',
         telefono2: '',
     });
+    const [modalFormularioVisible, setModalFormularioVisible] = useState(false);
     const [guardandoEstudiante, setGuardandoEstudiante] = useState(false);
     const [eliminandoId, setEliminandoId] = useState(null);
     const [editandoId, setEditandoId] = useState(null);
@@ -328,6 +329,7 @@ export default function Estudiantes() {
                 telefono2: '',
             });
             toast.success('Estudiante añadido exitosamente');
+            setModalFormularioVisible(false);
         } catch (err) {
             toast.error(err.response?.data?.error || 'Error al añadir estudiante');
         } finally {
@@ -592,57 +594,62 @@ export default function Estudiantes() {
             )}
 
             <section className="space-y-6">
-                <header className="tarjeta">
-                    <h2 className="text-2xl font-semibold">Estudiantes</h2>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        flexWrap: 'wrap',
-                        gap: '8px',
-                        marginTop: '4px'
-                    }}>
-                        <p className="text-sm text-texto-secundario">Listado y porcentaje de asistencia por estudiante.</p>
-                        <FiltrosGlobales />
-                    </div>
-                </header>
+                <div className="tarjeta flex flex-wrap items-center gap-4">
+                    <FiltrosGlobales />
+                </div>
 
-                {/* Formulario de Nuevo Estudiante */}
-                {cursoSeleccionado && (
-                    <section className="tarjeta p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-medium flex items-center gap-2">
-                                <Plus size={20} className="text-primario" />
-                                Añadir Nuevo Estudiante
-                            </h3>
-                            {/* Input oculto para el archivo */}
-                            <input
-                                ref={inputArchivoRef}
-                                type="file"
-                                accept=".csv,.xlsx,.xls"
-                                className="hidden"
-                                aria-label="Seleccionar archivo de importación"
-                                onChange={manejarArchivoSeleccionado}
-                            />
-                            <div className="flex items-center gap-2">
+                <header className="tarjeta flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-2xl font-semibold">Estudiantes</h2>
+                            <p className="mt-1 text-sm text-texto-secundario">Listado y porcentaje de asistencia por estudiante.</p>
+                        </div>
+                        {cursoSeleccionado && (
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalFormularioVisible(true)}
+                                    className="boton-primario inline-flex items-center gap-2 h-[38px]"
+                                >
+                                    <Plus size={16} />
+                                    Nuevo Estudiante
+                                </button>
+                                <input
+                                    ref={inputArchivoRef}
+                                    type="file"
+                                    accept=".csv,.xlsx,.xls"
+                                    className="hidden"
+                                    aria-label="Seleccionar archivo de importación"
+                                    onChange={manejarArchivoSeleccionado}
+                                />
                                 <button
                                     type="button"
                                     onClick={() => inputArchivoRef.current?.click()}
-                                    className="inline-flex items-center gap-2 rounded-[var(--input-radius)] px-4 h-10 text-sm font-semibold transition-colors"
-                                    style={{
-                                        border: '1px solid var(--color-primary)',
-                                        color: 'var(--color-primary)',
-                                        background: 'var(--color-surface)',
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-primary-light)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--color-surface)'}
+                                    className="boton-secundario inline-flex items-center gap-2 h-[38px]"
                                 >
                                     <Upload size={16} />
                                     Importar Excel
                                 </button>
                             </div>
-                        </div>
-                        <form onSubmit={manejarCreacionEstudiante} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
+                        )}
+                    </div>
+                </header>
+
+                {/* Modal Formulario de Nuevo Estudiante */}
+                {cursoSeleccionado && modalFormularioVisible && (
+                    <div className="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(26,26,46,0.6)', backdropFilter: 'blur(2px)' }}>
+                        <div className="modal-panel w-full max-w-4xl rounded-[var(--card-radius)] border flex flex-col" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '90vh' }}>
+                            <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                                <h3 className="text-lg font-semibold flex items-center gap-2">
+                                    <Plus size={20} className="text-primario" />
+                                    Añadir Nuevo Estudiante
+                                </h3>
+                                <button type="button" onClick={() => setModalFormularioVisible(false)} disabled={guardandoEstudiante} className="p-1.5 rounded-md disabled:opacity-50" style={{ color: 'var(--color-muted)' }}>
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="overflow-auto flex-1 px-6 py-4">
+                                <form id="form-estudiante" onSubmit={manejarCreacionEstudiante} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 items-end">
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-texto-secundario">Documento</label>
                                 <input
@@ -741,18 +748,16 @@ export default function Estudiantes() {
                                     onChange={(e) => setFormularioEstudiante({ ...formularioEstudiante, telefono2: e.target.value })}
                                 />
                             </div>
-                            <div>
-                                <button
-                                    type="submit"
-                                    disabled={guardandoEstudiante || !cursoSeleccionado}
-                                    className="boton-primario w-full h-[38px] flex justify-center items-center gap-2"
-                                >
-                                    {guardandoEstudiante ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                                    {guardandoEstudiante ? 'Guardando...' : '+ Añadir'}
+                                </form>
+                            </div>
+                            <div className="flex justify-end gap-3 px-6 py-4 border-t shrink-0" style={{ borderColor: 'var(--color-border)' }}>
+                                <button type="button" onClick={() => setModalFormularioVisible(false)} disabled={guardandoEstudiante} className="boton-secundario">Cancelar</button>
+                                <button type="submit" form="form-estudiante" disabled={guardandoEstudiante} className="boton-primario inline-flex items-center gap-2 disabled:opacity-50">
+                                    {guardandoEstudiante ? <><Loader2 size={15} className="animate-spin" /> Guardando...</> : 'Guardar Estudiante'}
                                 </button>
                             </div>
-                        </form>
-                    </section>
+                        </div>
+                    </div>
                 )}
 
                 {/* Buscador */}
