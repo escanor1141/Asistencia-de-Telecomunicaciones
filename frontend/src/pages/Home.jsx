@@ -145,7 +145,8 @@ export default function PanelPrincipal() {
             </header>
 
             {!cursoSeleccionado && isAdmin ? (
-                // ── Vista: Todas las materias (Admin) ────────────────────────────────
+                // Vista: Todas las materias (Admin)
+
                 <section className="tarjeta">
                     <h3 className="mb-4 text-lg font-medium">% de Asistencia Hoy (Todas las materias)</h3>
                     {asistenciaTodas.length === 0 ? (
@@ -201,7 +202,8 @@ export default function PanelPrincipal() {
                     )}
                 </section>
             ) : (
-                // ── Vista: Materia Específica ──────────────────────────────────────
+                // Vista: Materia Específica
+
                 <>
                     <div className="grid gap-4 md:grid-cols-3">
                         {kpis.map((item) => {

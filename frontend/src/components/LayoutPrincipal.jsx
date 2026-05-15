@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { useCurso } from '../context/ContextoCurso';
-// ── Elementos del menú de navegación principal ───────────────────────────────
+// Elementos del menú de navegación principal
+
 const elementosNavegacion = [
     { ruta: '/', etiqueta: 'Panel Principal', icono: LayoutDashboard },
     { ruta: '/cursos', etiqueta: 'Materias', icono: BookOpen },
@@ -52,7 +53,8 @@ export default function LayoutPrincipal({ children }) {
 
     return (
         <div className="min-h-screen bg-fondo text-texto">
-            {/* ── Barra superior ──────────────────────────────────────────── */}
+            {/* Barra superior */}
+
             <header
                 className="fixed left-0 right-0 top-0 z-20 border-b bg-superficie"
                 style={{ minHeight: 'var(--topbar-height)' }}
@@ -128,7 +130,8 @@ export default function LayoutPrincipal({ children }) {
                 </div>
             </header>
 
-            {/* ── Sidebar de escritorio ────────────────────────────────────── */}
+            {/* Sidebar de escritorio */}
+
             <aside className="sidebar-nav fixed bottom-0 left-0 top-topbar z-10 hidden w-sidebar border-r md:block">
                 <nav className="flex h-full flex-col px-3 pt-24 pb-4">
                     <ul className="space-y-1">
@@ -153,14 +156,16 @@ export default function LayoutPrincipal({ children }) {
                 </nav>
             </aside>
 
-            {/* ── Contenido principal ──────────────────────────────────────── */}
+            {/* Contenido principal */}
+
             <main className="px-4 pb-24 pt-[calc(var(--topbar-height)+var(--space-8))] md:pl-[calc(var(--sidebar-width)+var(--space-8))] md:pr-8">
                 <div className="mx-auto w-full max-w-[var(--content-max-width)]">
                     {children}
                 </div>
             </main>
 
-            {/* ── Navegación inferior en mobile ────────────────────────────── */}
+            {/* Navegación inferior en mobile */}
+
             <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-superficie md:hidden">
                 <ul
                     className={`grid ${

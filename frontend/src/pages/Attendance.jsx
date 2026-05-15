@@ -50,41 +50,51 @@ export default function Asistencia() {
     };
 
     useEffect(() => {
+        let isCurrent = true;
+
+        const cargarDatosActuales = async () => {
+            if (!cursoSeleccionado) return;
+            setCargando(true);
+            try {
+                const [listaEstudiantes, asistenciaExistente] = await Promise.all([
+                    obtenerEstudiantes(cursoSeleccionado.id),
+                    obtenerAsistencia(cursoSeleccionado.id, fecha),
+                ]);
+                
+                if (!isCurrent) return;
+
+                const ordenados = [...listaEstudiantes].sort((a, b) => compararPorApellido(a.name, b.name));
+                setEstudiantes(ordenados);
+
+                const mapaAsistencia = {};
+                if (asistenciaExistente.length > 0) {
+                    asistenciaExistente.forEach((registro) => {
+                        // Si hay status guardado lo usamos; si no, inferimos del boolean
+                        mapaAsistencia[registro.studentId] =
+                            registro.status || (registro.present ? 'Presente' : 'Ausente');
+                    });
+                }
+                setAsistencia(mapaAsistencia);
+            } catch (_error) {
+                if (!isCurrent) return;
+                toast.error('Error al cargar datos');
+            } finally {
+                if (isCurrent) setCargando(false);
+            }
+        };
+
         if (cursoSeleccionado) {
-            cargarDatos();
+            cargarDatosActuales();
         } else {
             setEstudiantes([]);
             setAsistencia({});
             setCargando(false);
         }
+
+        return () => {
+            isCurrent = false;
+        };
     }, [fecha, cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
-
-    const cargarDatos = async () => {
-        if (!cursoSeleccionado) return;
-        setCargando(true);
-        try {
-            const [listaEstudiantes, asistenciaExistente] = await Promise.all([
-                obtenerEstudiantes(cursoSeleccionado.id, filtros),
-                obtenerAsistencia(cursoSeleccionado.id, fecha, filtros),
-            ]);
-            const ordenados = [...listaEstudiantes].sort((a, b) => compararPorApellido(a.name, b.name));
-            setEstudiantes(ordenados);
-
-            const mapaAsistencia = {};
-            if (asistenciaExistente.length > 0) {
-                asistenciaExistente.forEach((registro) => {
-                    // Si hay status guardado lo usamos; si no, inferimos del boolean
-                    mapaAsistencia[registro.studentId] =
-                        registro.status || (registro.present ? 'Presente' : 'Ausente');
-                });
-            }
-            setAsistencia(mapaAsistencia);
-        } catch (_error) {
-            toast.error('Error al cargar datos');
-        } finally {
-            setCargando(false);
-        }
-    };
 
     const cambiarEstado = (studentId, estado) => {
         setAsistencia((previo) => ({ ...previo, [studentId]: estado }));

@@ -12,7 +12,8 @@ export const ProveedorCurso = ({ children }) => {
     const [cursoSeleccionado, setCursoSeleccionado] = useState(null);
     const [cargandoCursos, setCargandoCursos] = useState(true);
 
-    // ── Filtros secundarios ──────────────────────────────────────────
+    // Filtros secundarios
+
     const [grupoSeleccionado, setGrupoSeleccionado] = useState(
         () => localStorage.getItem('selectedGroup') || null
     );
@@ -48,7 +49,8 @@ export const ProveedorCurso = ({ children }) => {
         }
     }, [docenteSeleccionado]);
 
-    // ── Carga de cursos ──────────────────────────────────────────────
+    // Carga de cursos
+
     const cargarCursos = async () => {
         if (!usuario) return;
         setCargandoCursos(true);
@@ -86,7 +88,8 @@ export const ProveedorCurso = ({ children }) => {
         // eslint-disable-next-line
     }, [usuario]);
 
-    // ── Selección de curso principal ─────────────────────────────────
+    // Selección de curso principal
+
     // Al cambiar la materia activa, resetear todos los filtros secundarios
     const seleccionarCurso = (curso) => {
         if (curso === undefined) return;

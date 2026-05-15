@@ -9,12 +9,10 @@ import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, PieChart, Pie, Cell, Legend,
-    LineChart, Line,
+    AreaChart, Area
 } from 'recharts';
 
-// ÔöÇÔöÇ Helper: resuelve variables CSS en tiempo de ejecuci├│n ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Recharts renderiza en SVG: los atributos fill no pasan por el cascade de CSS,
-// por eso hay que resolver los valores con getComputedStyle.
+
 function v(variable) {
     if (typeof window === 'undefined') return '#000';
     return getComputedStyle(document.documentElement)
@@ -22,29 +20,27 @@ function v(variable) {
         .trim();
 }
 
-// ÔöÇÔöÇ Colores Chart A (series) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Derivados del design system: primario + estados + acentos
-const COLORES_LINEAS = [
-    '#6B2D8B',  // var(--color-primary)
-    '#8DC63F',  // var(--color-present)
-    '#D97706',  // var(--color-late)
-    '#4E1F68',  // var(--color-primary-dark)
-    '#DC2626',  // var(--color-absent)
-    '#6A9E2F',  // var(--color-accent-dark)
+
+
+// Derivados del design system, resueltos en runtime
+const getColoresLineas = () => [
+    v('--color-primary'),
+    v('--color-accent'),
+    v('--color-primary-dark'),
+    v('--color-accent-dark'),
+    v('--color-text-secondary'),
+    v('--color-muted'),
 ];
 
-// ÔöÇÔöÇ Modos de agrupaci├│n para Chart A ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
 const MODOS_GRUPO = [
-    { id: 'materia',      label: 'Por materia' },
-    { id: 'periodo',      label: 'Por período académico' },
-    { id: 'modalidad',    label: 'Por modalidad (Tec/Ing)' },
-    { id: 'docente',      label: 'Por docente' },
-    { id: 'docentes_ti',  label: 'Docentes Tec/Ing' },
+    { id: 'materia', label: 'Por materia' },
+    { id: 'periodo', label: 'Por período académico' },
+    { id: 'modalidad', label: 'Por modalidad (Tec/Ing)' },
+    { id: 'docente', label: 'Por docente' },
+    { id: 'docentes_ti', label: 'Docentes Tec/Ing' },
 ];
 
-// ÔöÇÔöÇ Merge de semanas de m├║ltiples series para LineChart ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// series: [{ nombre: 'Tec', semanas: [{ semana, presente }] }, ...]
-// ÔåÆ [{ semana: 'Semana 1', Tec: 10, Ing: 15 }, ...]
+
 function mergeSemanales(series) {
     const mapa = {};
     series.forEach(({ nombre, semanas = [] }) => {
@@ -60,7 +56,8 @@ function mergeSemanales(series) {
     });
 }
 
-// ÔöÇÔöÇ Tooltip semanal compartido ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
 function TooltipSemanal({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     return (
@@ -79,18 +76,63 @@ function TooltipSemanal({ active, payload, label }) {
     );
 }
 
-// ÔöÇÔöÇ Paleta de brackets ÔÇö valores reales de index.css ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-const COLORES_BRACKETS = [
-    '#8DC63F',  // ÔëÑ 90%  ÔÇö var(--color-present)
-    '#6A9E2F',  // 80ÔÇô89% ÔÇö var(--color-accent-dark)
-    '#D97706',  // 70ÔÇô79% ÔÇö var(--color-late)
-    '#DC2626',  // < 70%  ÔÇö var(--color-absent)
+const getColoresBrackets = () => [
+    v('--color-accent'),
+    v('--color-accent-dark'),
+    v('--color-primary'),
+    v('--color-primary-dark'),
 ];
 
 const ETIQUETAS_BRACKETS = ['>= 90%', '80-89%', '70-79%', '< 70%'];
 
 
-// ÔöÇÔöÇ Tooltip personalizado del BarChart ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+const obtenerRangoFecha = (rango) => {
+    const hoy = new Date();
+    const formato = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    switch (rango) {
+        case 'hoy':
+            return { inicio: formato(hoy), fin: formato(hoy) };
+        case 'esta_semana': {
+            const inicio = new Date(hoy);
+            const dia = inicio.getDay() || 7; // 1-7 (Lunes-Domingo)
+            inicio.setDate(inicio.getDate() - dia + 1);
+            const fin = new Date(inicio);
+            fin.setDate(fin.getDate() + 6);
+            return { inicio: formato(inicio), fin: formato(fin) };
+        }
+        case 'semana_pasada': {
+            const inicio = new Date(hoy);
+            const dia = inicio.getDay() || 7;
+            inicio.setDate(inicio.getDate() - dia - 6);
+            const fin = new Date(inicio);
+            fin.setDate(fin.getDate() + 6);
+            return { inicio: formato(inicio), fin: formato(fin) };
+        }
+        case 'este_mes': {
+            const inicio = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+            return { inicio: formato(inicio), fin: formato(fin) };
+        }
+        case 'ultimos_3_meses': {
+            const inicio = new Date(hoy.getFullYear(), hoy.getMonth() - 2, 1);
+            const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+            return { inicio: formato(inicio), fin: formato(fin) };
+        }
+        default:
+            return null;
+    }
+};
+
+
+
+
 function TooltipBarra({ active, payload, label }) {
     if (!active || !payload?.length) return null;
     const { porcentaje, presentes, ausentes, justificados, clases } = payload[0].payload;
@@ -123,7 +165,8 @@ function TooltipBarra({ active, payload, label }) {
     );
 }
 
-// ÔöÇÔöÇ Tooltip personalizado del PieChart ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
 function TooltipTorta({ active, payload }) {
     if (!active || !payload?.length) return null;
     const { name, value } = payload[0];
@@ -146,9 +189,9 @@ function TooltipTorta({ active, payload }) {
 }
 
 const VISTAS = [
-    { id: 'distribucion', label: 'Distribuci\u00f3n',           Icono: PieIcon },
-    { id: 'tiempo',       label: 'Asistencia en el tiempo', Icono: TrendingUp },
-    { id: 'tabla',        label: 'Detalle por Estudiante',  Icono: Users },
+    { id: 'distribucion', label: 'Distribuci\u00f3n', Icono: PieIcon },
+    { id: 'tiempo', label: 'Asistencia en el tiempo', Icono: TrendingUp },
+    { id: 'tabla', label: 'Detalle por Estudiante', Icono: Users },
 ];
 
 
@@ -167,8 +210,32 @@ export default function Reportes() {
     const [fechaFin, setFechaFin] = useState('');
     const [vistaActiva, setVistaActiva] = useState('distribucion');
     const [exportando, setExportando] = useState(false);
+    const [rangoSeleccionado, setRangoSeleccionado] = useState('personalizado');
 
-    // ÔöÇÔöÇ State Chart A / B ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    const manejarCambioRango = (e) => {
+        const rango = e.target.value;
+        setRangoSeleccionado(rango);
+
+        if (rango === 'personalizado') {
+            setFechaInicio('');
+            setFechaFin('');
+            return;
+        }
+
+        const fechas = obtenerRangoFecha(rango);
+        if (fechas) {
+            setFechaInicio(fechas.inicio);
+            setFechaFin(fechas.fin);
+        }
+    };
+
+    const manejarCambioFechaManual = (setter) => (e) => {
+        setter(e.target.value);
+        setRangoSeleccionado('personalizado');
+    };
+
+
+
     const [modoGrupo, setModoGrupo] = useState('materia');
     const [datosLineChart, setDatosLineChart] = useState([]);  // merged weeks
     const [seriesNombres, setSeriesNombres] = useState([]);    // series keys for <Line>
@@ -177,8 +244,8 @@ export default function Reportes() {
     const [docentes, setDocentes] = useState([]);
 
     const filtros = {
-        codigo:    codigoSeleccionado,
-        grupo:     grupoSeleccionado,
+        codigo: codigoSeleccionado,
+        grupo: grupoSeleccionado,
         docenteId: docenteSeleccionado,
     };
 
@@ -189,7 +256,7 @@ export default function Reportes() {
             const params = {};
             if (fechaInicio) params.startDate = fechaInicio;
             if (fechaFin) params.endDate = fechaFin;
-            const respuesta = await obtenerReportes(cursoSeleccionado.id, params, filtros);
+            const respuesta = await obtenerReportes(cursoSeleccionado.id, params);
             setDatos([...respuesta].sort((a, b) => compararPorApellido(a.name, b.name)));
         } finally {
             setCargando(false);
@@ -205,12 +272,14 @@ export default function Reportes() {
         }
     }, [fechaInicio, fechaFin, cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
 
-    // ÔöÇÔöÇ Carga docentes para modo 'docente' ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
     useEffect(() => {
         obtenerDocentes().then(setDocentes).catch(() => setDocentes([]));
     }, []);
 
-    // ÔöÇÔöÇ Fetch datos semanales seg├║n modoGrupo ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
     useEffect(() => {
         if (!cursoSeleccionado && !usuario?.id) return;
         const tid = usuario?.id || null;
@@ -274,7 +343,8 @@ export default function Reportes() {
         fetchSemanal();
     }, [modoGrupo, cursoSeleccionado, docentes, usuario?.id]);
 
-    // ÔöÇÔöÇ KPIs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
     const promedioAsistencia = useMemo(() =>
         datos.length > 0
             ? Math.round(datos.reduce((a, i) => a + i.percentage, 0) / datos.length)
@@ -283,48 +353,51 @@ export default function Reportes() {
     );
     const estudiantesEnRiesgo = useMemo(() => datos.filter((i) => i.percentage < 80).length, [datos]);
 
-    // ÔöÇÔöÇ Datos para BarChart (top 20 si hay muchos) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
     const datosBarras = useMemo(() =>
         [...datos]
             .sort((a, b) => b.percentage - a.percentage)
             .slice(0, 20)
             .map((item) => ({
-                nombre:       item.name.split(' ').slice(0, 2).join(' '),
-                porcentaje:   item.percentage,
-                presentes:    item.present,
-                ausentes:     item.absent    ?? 0,
+                nombre: item.name.split(' ').slice(0, 2).join(' '),
+                porcentaje: item.percentage,
+                presentes: item.present,
+                ausentes: item.absent ?? 0,
                 justificados: item.justified ?? 0,
-                clases:       item.total,
+                clases: item.total,
             })),
         [datos]
     );
 
-    // ÔöÇÔöÇ Datos para PieChart de distribuci├│n por brackets ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
     const datosTorta = useMemo(() => {
         const brackets = [0, 0, 0, 0];   // ÔëÑ90, 80-89, 70-79, <70
         datos.forEach(({ percentage }) => {
-            if (percentage >= 90)      brackets[0]++;
+            if (percentage >= 90) brackets[0]++;
             else if (percentage >= 80) brackets[1]++;
             else if (percentage >= 70) brackets[2]++;
-            else                       brackets[3]++;
+            else brackets[3]++;
         });
         return ETIQUETAS_BRACKETS
             .map((name, i) => ({ name, value: brackets[i] }))
             .filter((d) => d.value > 0);
     }, [datos]);
 
-    // ── Exportar Excel ────────────────────────────────────────────────────────────────
+
+
     const exportarExcel = async () => {
         setExportando(true);
         try {
             const params = {};
             if (fechaInicio) params.startDate = fechaInicio;
             if (fechaFin) params.endDate = fechaFin;
-            
+
             const data = await obtenerDataExportacion(cursoSeleccionado?.id, params, filtros);
-            
+
             const wb = xlsx.utils.book_new();
-            
+
             // Hoja 1: Resumen
             const wsResumen = xlsx.utils.json_to_sheet(data.resumen.map(e => ({
                 'Documento': e.documento,
@@ -384,14 +457,14 @@ export default function Reportes() {
         }
     };
 
-    // ÔöÇÔöÇ Render ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+
+
     return (
         <section className="space-y-6">
             <div className="tarjeta flex flex-wrap items-center gap-4">
                 <FiltrosGlobales />
             </div>
 
-            {/* ÔöÇÔöÇ Encabezado con filtros de fechas ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <header className="tarjeta flex flex-col gap-4">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
@@ -401,20 +474,35 @@ export default function Reportes() {
                         </p>
                     </div>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <select
+                        className="campo"
+                        value={rangoSeleccionado}
+                        onChange={manejarCambioRango}
+                        aria-label="Rango de fechas"
+                    >
+                        <option value="personalizado">Rango personalizado</option>
+                        <option value="hoy">Hoy</option>
+                        <option value="esta_semana">Esta Semana</option>
+                        <option value="semana_pasada">Semana Pasada</option>
+                        <option value="este_mes">Este Mes</option>
+                        <option value="ultimos_3_meses">Últimos 3 Meses</option>
+                    </select>
                     <input
                         type="date"
                         className="campo"
                         value={fechaInicio}
                         aria-label="Fecha de inicio"
-                        onChange={(e) => setFechaInicio(e.target.value)}
+                        title="Fecha de inicio"
+                        onChange={manejarCambioFechaManual(setFechaInicio)}
                     />
                     <input
                         type="date"
                         className="campo"
                         value={fechaFin}
                         aria-label="Fecha de fin"
-                        onChange={(e) => setFechaFin(e.target.value)}
+                        title="Fecha de fin"
+                        onChange={manejarCambioFechaManual(setFechaFin)}
                     />
                     <button
                         type="button"
@@ -428,7 +516,6 @@ export default function Reportes() {
                 </div>
             </header>
 
-            {/* ÔöÇÔöÇ KPIs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <section className="grid gap-4 sm:grid-cols-3">
                 <article className="tarjeta">
                     <p className="text-sm text-texto-secundario">Estudiantes reportados</p>
@@ -460,9 +547,7 @@ export default function Reportes() {
                 </article>
             </section>
 
-            {/* ÔöÇÔöÇ Panel de visualizaci├│n con tabs ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
             <section className="tarjeta p-0">
-                {/* Tabs */}
                 <div
                     className="flex items-center gap-1 px-4 pt-4 pb-0 border-b"
                     style={{ borderColor: 'var(--color-border)' }}
@@ -490,7 +575,7 @@ export default function Reportes() {
                     })}
                 </div>
 
-                {/* ÔöÇÔöÇ Contenido de cada vista ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
+                { }
                 {cargando ? (
                     <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
                 ) : datos.length === 0 ? (
@@ -517,20 +602,25 @@ export default function Reportes() {
                                                 data={datosTorta}
                                                 cx="50%"
                                                 cy="50%"
-                                                innerRadius={70}
-                                                outerRadius={115}
-                                                paddingAngle={3}
+                                                innerRadius={65}
+                                                outerRadius={100}
+                                                paddingAngle={5}
+                                                cornerRadius={6}
                                                 dataKey="value"
                                                 stroke="none"
                                             >
-                                                {datosTorta.map((entry, index) => (
-                                                    <Cell
-                                                        key={entry.name}
-                                                        fill={COLORES_BRACKETS[ETIQUETAS_BRACKETS.indexOf(entry.name)]}
-                                                    />
-                                                ))}
+                                                {datosTorta.map((entry, index) => {
+                                                    const colorIdx = ETIQUETAS_BRACKETS.indexOf(entry.name);
+                                                    return (
+                                                        <Cell
+                                                            key={entry.name}
+                                                            fill={getColoresBrackets()[colorIdx]}
+                                                            style={{ outline: 'none' }}
+                                                        />
+                                                    );
+                                                })}
                                             </Pie>
-                                            <Tooltip content={<TooltipTorta />} />
+                                            <Tooltip content={<TooltipTorta />} cursor={false} />
                                         </PieChart>
                                     </ResponsiveContainer>
 
@@ -554,7 +644,7 @@ export default function Reportes() {
                                                             <span
                                                                 style={{
                                                                     width: 14, height: 14, borderRadius: 4,
-                                                                    background: COLORES_BRACKETS[colorIdx],
+                                                                    background: getColoresBrackets()[colorIdx],
                                                                     display: 'inline-block', flexShrink: 0,
                                                                 }}
                                                             />
@@ -571,7 +661,7 @@ export default function Reportes() {
                                                             style={{
                                                                 fontSize: '0.875rem', fontWeight: 700,
                                                                 fontFamily: 'var(--font-mono)',
-                                                                color: COLORES_BRACKETS[colorIdx],
+                                                                color: getColoresBrackets()[colorIdx],
                                                             }}
                                                         >
                                                             {pct}%
@@ -614,32 +704,47 @@ export default function Reportes() {
                                     <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Sin datos semanales para los filtros seleccionados.</p>
                                 ) : (
                                     <ResponsiveContainer width="100%" height={300}>
-                                        <LineChart data={datosLineChart} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                                        <AreaChart data={datosLineChart} margin={{ top: 12, right: 24, left: -10, bottom: 0 }}>
+                                            <defs>
+                                                {seriesNombres.map((nombre, i) => {
+                                                    const color = getColoresLineas()[i % 6];
+                                                    return (
+                                                        <linearGradient key={`colorUv${i}`} id={`colorUv${i}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+                                                            <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                        </linearGradient>
+                                                    );
+                                                })}
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="color-mix(in srgb, var(--color-border) 60%, transparent)" vertical={false} />
                                             <XAxis
                                                 dataKey="semana"
-                                                tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)' }}
+                                                tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}
                                                 axisLine={false} tickLine={false}
+                                                dy={12}
                                             />
                                             <YAxis
                                                 allowDecimals={false}
                                                 tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
                                                 axisLine={false} tickLine={false}
+                                                dx={-10}
                                             />
-                                            <Tooltip content={<TooltipSemanal />} />
-                                            <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 12 }} />
+                                            <Tooltip content={<TooltipSemanal />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                                            <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 20, fontWeight: 500 }} iconType="circle" />
                                             {seriesNombres.map((nombre, i) => (
-                                                <Line
+                                                <Area
                                                     key={nombre}
                                                     type="monotone"
                                                     dataKey={nombre}
-                                                    stroke={COLORES_LINEAS[i % COLORES_LINEAS.length]}
-                                                    strokeWidth={2.5}
-                                                    dot={{ r: 4 }}
-                                                    activeDot={{ r: 6 }}
+                                                    stroke={getColoresLineas()[i % 6]}
+                                                    fillOpacity={1}
+                                                    fill={`url(#colorUv${i})`}
+                                                    strokeWidth={3}
+                                                    activeDot={{ r: 6, strokeWidth: 0, fill: getColoresLineas()[i % 6] }}
+                                                    dot={{ r: 0 }} // Clean lines without overwhelming dots
                                                 />
                                             ))}
-                                        </LineChart>
+                                        </AreaChart>
                                     </ResponsiveContainer>
                                 )}
                             </div>
@@ -685,14 +790,14 @@ export default function Reportes() {
                                                         style={{
                                                             background:
                                                                 item.percentage >= 90 ? 'var(--color-present-bg)' :
-                                                                item.percentage >= 80 ? 'var(--color-accent-light)' :
-                                                                item.percentage >= 70 ? 'var(--color-late-bg)' :
-                                                                'var(--color-absent-bg)',
+                                                                    item.percentage >= 80 ? 'var(--color-accent-light)' :
+                                                                        item.percentage >= 70 ? 'var(--color-late-bg)' :
+                                                                            'var(--color-absent-bg)',
                                                             color:
                                                                 item.percentage >= 90 ? 'var(--color-present)' :
-                                                                item.percentage >= 80 ? 'var(--color-accent-dark)' :
-                                                                item.percentage >= 70 ? 'var(--color-late)' :
-                                                                'var(--color-absent)',
+                                                                    item.percentage >= 80 ? 'var(--color-accent-dark)' :
+                                                                        item.percentage >= 70 ? 'var(--color-late)' :
+                                                                            'var(--color-absent)',
                                                         }}
                                                     >
                                                         {Number(item.percentage).toLocaleString('es-CO')}%

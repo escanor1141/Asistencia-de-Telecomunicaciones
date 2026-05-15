@@ -227,7 +227,8 @@ export default function Cursos() {
         toast.success(`${cursos.length} materia${cursos.length !== 1 ? 's' : ''} exportada${cursos.length !== 1 ? 's' : ''}`);
     };
 
-    // ── Llave de deduplicación: mismo código + grupo + día1 + horaInicio1 + horaFin1
+    // Llave de deduplicación: mismo código + grupo + día1 + horaInicio1 + horaFin1
+
     const claveDuplicado = (c) =>
         `${(c.code || '').toUpperCase()}|${(c.groupCode || '').toUpperCase()}|${c.dia || ''}|${c.horaInicio || ''}|${c.horaFin || ''}`;
 

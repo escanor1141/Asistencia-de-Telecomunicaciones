@@ -8,7 +8,8 @@ import { useCurso } from '../context/ContextoCurso';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 
-// ── Modal de edición de estudiante ────────────────────────────────────────────
+// Modal de edición de estudiante
+
 function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
     const [form, setForm] = useState({
         name:      estudiante.nombre  || '',
@@ -86,7 +87,8 @@ function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
     );
 }
 
-// ── Modal de previsualización de importación ──────────────────────────────────
+// Modal de previsualización de importación
+
 function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
     return (
         <div
@@ -230,7 +232,8 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
     );
 }
 
-// ── Componente principal ──────────────────────────────────────────────────────
+// Componente principal
+
 export default function Estudiantes() {
     const {
         cursoSeleccionado,
@@ -262,7 +265,8 @@ export default function Estudiantes() {
     const [seleccionados, setSeleccionados] = useState(new Set());
     const [eliminandoMultiple, setEliminandoMultiple] = useState(false);
 
-    // ── Import state ─────────────────────────────────────────────────────────
+    // Import state
+
     const inputArchivoRef = useRef(null);
     const [filasImport, setFilasImport] = useState([]);
     const [modalVisible, setModalVisible] = useState(false);
@@ -275,7 +279,8 @@ export default function Estudiantes() {
         docenteId: docenteSeleccionado,
     };
 
-    // ── Carga de estudiantes ──────────────────────────────────────────────────
+    // Carga de estudiantes
+
     useEffect(() => {
         const cargarEstudiantes = async () => {
             if (!cursoSeleccionado) {
@@ -310,7 +315,8 @@ export default function Estudiantes() {
         cargarEstudiantes();
     }, [cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado, refrescar]);
 
-    // ── CRUD ──────────────────────────────────────────────────────────────────
+    // CRUD
+
     const manejarCreacionEstudiante = async (e) => {
         e.preventDefault();
         if (!cursoSeleccionado) return toast.error('Selecciona una materia primero');
@@ -416,7 +422,8 @@ export default function Estudiantes() {
         }
     };
 
-    // ── Importación ───────────────────────────────────────────────────────────
+    // Importación
+
     const normalizarColumnas = (fila) => ({
         documento: fila['Documento'] || fila['documento'] || fila['N Documento'] || fila['N° Documento'] || '',
         name: fila['Nombre'] || fila['nombre'] || fila['Name'] || '',
@@ -562,7 +569,8 @@ export default function Estudiantes() {
         setFilasImport([]);
     };
 
-    // ── Filtro local de búsqueda ──────────────────────────────────────────────
+    // Filtro local de búsqueda
+
     const filtrados = useMemo(
         () =>
             estudiantes.filter(

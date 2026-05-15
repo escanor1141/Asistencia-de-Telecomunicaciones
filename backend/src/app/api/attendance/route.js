@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
 
-// ── Helper: construye la condición WHERE para los filtros opcionales ──────────
+// Helper: construye la condición WHERE para los filtros opcionales
+
 function construirFiltro({ nombreMateria, codigo, grupo, docenteId, anio, periodo, modalidad }) {
     const where = {}
 
@@ -24,7 +25,8 @@ function construirFiltro({ nombreMateria, codigo, grupo, docenteId, anio, period
     return where
 }
 
-// GET — listar u obtener asistencia según parámetros
+// GET - listar u obtener asistencia según parámetros
+
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
@@ -95,7 +97,8 @@ export async function GET(request) {
     }
 }
 
-// POST — guardar asistencia de una clase
+// POST - guardar asistencia de una clase
+
 export async function POST(request) {
     try {
         const { date, courseId, records } = await request.json()

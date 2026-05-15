@@ -18,12 +18,14 @@ export default function Configuracion() {
     const [eliminandoId, setEliminandoId] = useState(null);
     const [modalFormularioVisible, setModalFormularioVisible] = useState(false);
 
-    // ── Estado panel de notificaciones ────────────────────────────────────────
+    // Estado panel de notificaciones
+
     const [enviandoNotificaciones, setEnviandoNotificaciones] = useState(false);
     const [resultadoNotificaciones, setResultadoNotificaciones] = useState(null);
     const [estadoCron, setEstadoCron] = useState(null);
 
-    // ── Estado panel de WhatsApp ───────────────────────────────────────────
+    // Estado panel de WhatsApp
+
     const [estadoWhatsApp, setEstadoWhatsApp] = useState(null);
     const [cargandoWa, setCargandoWa] = useState(false);
     const [modalWaVisible, setModalWaVisible] = useState(false);
@@ -145,7 +147,8 @@ export default function Configuracion() {
                 </article>
             </section>
 
-            {/* ── Panel de Notificaciones ─────────────────────────────────────── */}
+            {/* Panel de Notificaciones */}
+
             <section className="tarjeta">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
@@ -258,7 +261,6 @@ export default function Configuracion() {
                 )}
             </section>
 
-            {/* ── Panel WhatsApp ───────────────────────────────────────────── */}
             <section className="tarjeta">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
@@ -499,7 +501,8 @@ export default function Configuracion() {
             )}
         </section>
 
-        {/* \u2500\u2500 Modal Historial WhatsApp \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */ }
+        {/* Modal Historial WhatsApp */}
+
     {
         modalWaVisible && estadoWhatsApp && (
             <div

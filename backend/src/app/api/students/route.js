@@ -35,7 +35,8 @@ const hayCruce = (c1, c2) => {
     return false;
 };
 
-// GET — obtener lista de estudiantes de un curso con filtros opcionales
+// GET - obtener lista de estudiantes de un curso con filtros opcionales
+
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url)
@@ -74,7 +75,8 @@ export async function GET(request) {
     }
 }
 
-// POST — crear uno o múltiples estudiantes (importación CSV)
+// POST - crear uno o múltiples estudiantes (importación CSV)
+
 export async function POST(request) {
     try {
         const { searchParams } = new URL(request.url)

@@ -1,0 +1,48 @@
+const { Client } = require('pg');
+const dotenv = require('dotenv');
+const path = require('path');
+
+// Cargar variables de entorno desde el backend/.env
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+async function testConnection() {
+    console.log('--- Iniciando prueba de conexión (CommonJS) ---');
+    console.log('DATABASE_URL:', process.env.DATABASE_URL ? 'Cargada correctamente' : 'No encontrada');
+
+    if (!process.env.DATABASE_URL) {
+        console.error('❌ Error: DATABASE_URL no definida en .env');
+        process.exit(1);
+    }
+
+    const client = new Client({
+        connectionString: process.env.DATABASE_URL.replace(':5433', ':5432').replace(':Sopor1141@', ':Teleco2026@')
+    });
+
+    try {
+        await client.connect();
+        console.log('✅ Conexión exitosa a PostgreSQL.');
+
+        const tablesRes = await client.query(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        `);
+        
+        console.log('Tablas encontradas:', tablesRes.rows.map(r => r.table_name).join(', '));
+
+        if (tablesRes.rows.some(r => r.table_name === 'Student')) {
+            const countRes = await client.query('SELECT COUNT(*) FROM "Student"');
+            console.log(`Número de registros en 'Student': ${countRes.rows[0].count}`);
+        }
+
+    } catch (err) {
+        console.error('❌ Error durante la prueba:', err);
+        if (err.message) console.error('Mensaje de error:', err.message);
+        if (err.stack) console.error('Stack trace:', err.stack);
+    } finally {
+        await client.end();
+        console.log('--- Prueba finalizada ---');
+    }
+}
+
+testConnection();

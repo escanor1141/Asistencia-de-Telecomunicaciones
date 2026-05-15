@@ -8,10 +8,12 @@ import { useCurso } from '../context/ContextoCurso';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 
-// ── Años disponibles ──────────────────────────────────────────────────────────
+// Años disponibles
+
 const ANIOS = ['2024', '2025', '2026'];
 
-// ── Estilo reutilizable para selects locales ──────────────────────────────────
+// Estilo reutilizable para selects locales
+
 const estiloSelectLocal = {
     height: '36px',
     border: '1px solid var(--color-border)',
@@ -28,7 +30,8 @@ const estiloSelectLocal = {
 };
 
 export default function Historial() {
-    // ── Filtros globales del topbar ───────────────────────────────────────────
+    // Filtros globales del topbar
+
     const {
         cursoSeleccionado,
         codigoSeleccionado,
@@ -37,21 +40,24 @@ export default function Historial() {
     } = useCurso();
     const { usuario } = useAutenticacion();
 
-    // ── Filtros locales de esta página ────────────────────────────────────────
+    // Filtros locales de esta página
+
     const [anio, setAnio] = useState('');
     const [periodo, setPeriodo] = useState('');
     const [modalidad, setModalidad] = useState('');
     const [docenteIdLocal, setDocenteIdLocal] = useState('');
     const [docentes, setDocentes] = useState([]);
 
-    // ── Estado de datos ───────────────────────────────────────────────────────
+    // Estado de datos
+
     const [fechas, setFechas] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [fechaSeleccionada, setFechaSeleccionada] = useState(null);
     const [detallesFecha, setDetallesFecha] = useState([]);
     const [cargandoDetalles, setCargandoDetalles] = useState(false);
 
-    // ── Carga de docentes para el dropdown local ──────────────────────────────
+    // Carga de docentes para el dropdown local
+
     useEffect(() => {
         obtenerDocentes()
             .then(data => {
@@ -61,7 +67,8 @@ export default function Historial() {
             .catch(() => setDocentes([]));
     }, []);
 
-    // ── Filtros combinados (globales + locales) ────────────────────────────────
+    // Filtros combinados (globales + locales)
+
     const filtrosCombinados = {
         codigo:       codigoSeleccionado,
         grupo:        grupoSeleccionado,
@@ -72,7 +79,8 @@ export default function Historial() {
         modalidad:    modalidad|| null,
     };
 
-    // ── Recarga cuando cambia cualquier filtro ────────────────────────────────
+    // Recarga cuando cambia cualquier filtro
+
     useEffect(() => {
         setFechaSeleccionada(null);
         if (cursoSeleccionado) {
@@ -119,7 +127,8 @@ export default function Historial() {
         }
     };
 
-    // ── Render ────────────────────────────────────────────────────────────────
+    // Render
+
     return (
         <section className="space-y-6">
             <div className="tarjeta flex flex-wrap items-center gap-4">
@@ -138,7 +147,8 @@ export default function Historial() {
                 </div>
             </header>
 
-            {/* ── Filtros locales ─────────────────────────────────────────────── */}
+            {/* Filtros locales */}
+
             <div
                 className="tarjeta flex flex-wrap items-end gap-4"
             >
@@ -240,14 +250,16 @@ export default function Historial() {
                 )}
             </div>
 
-            {/* ── Sin materia seleccionada ─────────────────────────────────── */}
+            {/* Sin materia seleccionada */}
+
             {!cursoSeleccionado ? (
                 <div className="tarjeta text-center py-12">
                     <p className="text-texto-secundario">Selecciona una materia en el menú superior.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* ── Panel izquierdo: listado de fechas ─────────────────── */}
+                    {/* Panel izquierdo: listado de fechas */}
+
                     <div
                         className="tarjeta p-0 lg:col-span-1 overflow-hidden flex flex-col"
                         style={{ height: '580px' }}
@@ -330,7 +342,8 @@ export default function Historial() {
                         )}
                     </div>
 
-                    {/* ── Panel derecho: detalle de la fecha ────────────────── */}
+                    {/* Panel derecho: detalle de la fecha */}
+
                     <div
                         className="tarjeta p-0 lg:col-span-2 flex flex-col"
                         style={{ height: '580px' }}

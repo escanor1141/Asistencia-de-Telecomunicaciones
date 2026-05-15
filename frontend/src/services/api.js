@@ -26,7 +26,8 @@ api.interceptors.response.use(
     }
 );
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
+
 /**
  * Construye el objeto de query params para filtros opcionales.
  * Omite claves con valor null / undefined / ''.
@@ -49,13 +50,15 @@ function filtrosGlobales({ cursoId, codigo, grupo, docenteId, anio, periodo, mod
 }
 
 
-// ── Cursos ───────────────────────────────────────────────────────────────────
+// Cursos
+
 export const obtenerCursos   = ()         => api.get('/courses').then(res => res.data);
 export const crearCurso      = (datos)    => api.post('/courses', datos).then(res => res.data);
 export const actualizarCurso = (id, datos)=> api.put(`/courses/${id}`, datos).then(res => res.data);
 export const eliminarCurso   = (id)       => api.delete(`/courses/${id}`).then(res => res.data);
 
-// ── Estudiantes ───────────────────────────────────────────────────────────────
+// Estudiantes
+
 /**
  * @param {string} idCurso   - ID del curso activo (courseId legacy)
  * @param {object} filtros   - { codigo, grupo, docenteId } opcionales
@@ -77,7 +80,8 @@ export const actualizarEstudiante = (id, datos) =>
 export const eliminarEstudiante = (idCurso, id) =>
     api.delete(`/students/${id}`, { params: { courseId: idCurso } }).then(res => res.data);
 
-// ── Asistencia ────────────────────────────────────────────────────────────────
+// Asistencia
+
 /**
  * @param {string} idCurso   - ID del curso activo
  * @param {string} fecha     - Fecha ISO (opcional)
@@ -95,7 +99,8 @@ export const obtenerAsistencia = (idCurso, fecha, filtros = {}) => {
 export const guardarAsistencia = (datos) =>
     api.post('/attendance', datos).then(res => res.data);
 
-// ── Reportes ──────────────────────────────────────────────────────────────────
+// Reportes
+
 /**
  * @param {string} idCurso   - ID del curso activo
  * @param {object} params    - Parámetros adicionales (startDate, endDate, etc.)
@@ -130,7 +135,8 @@ export const obtenerDataExportacion = (idCurso, params = {}, filtros = {}) =>
 export const obtenerReportesSemanal = (params = {}) =>
     api.get('/reports/semanal', { params }).then(res => res.data);
 
-// ── Docentes ──────────────────────────────────────────────────────────────────
+// Docentes
+
 export const obtenerDocentes = () =>
     api.get('/teachers').then(res => res.data.filter(u => u.role === 'TEACHER' || u.role === 'DOCENTE'));
 
@@ -142,7 +148,8 @@ export const obtenerAsistenciaHoyPorCurso = (docenteId) =>
     api.get('/attendance/hoy', { params: docenteId ? { docenteId } : {} })
         .then(res => res.data.cursos);
 
-// ── Notificaciones ────────────────────────────────────────────────────────────
+// Notificaciones
+
 export const enviarNotificacionesSemanal = () =>
     api.post('/notifications/send-weekly').then(res => res.data);
 
