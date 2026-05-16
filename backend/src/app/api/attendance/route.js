@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
+import { obtenerUsuarioDePeticion, verificarAccesoCurso } from '@/lib/auth'
 
 // Helper: construye la condición WHERE para los filtros opcionales
 
@@ -29,6 +30,12 @@ function construirFiltro({ nombreMateria, codigo, grupo, docenteId, anio, period
 
 export async function GET(request) {
     try {
+        // Verificar autenticación
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const fecha     = searchParams.get('date')
         const idCurso   = searchParams.get('courseId')
@@ -43,14 +50,12 @@ export async function GET(request) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
-        const cursoBase = await prisma.course.findUnique({
-            where: { id: idCurso },
-            select: { name: true }
-        })
-
-        if (!cursoBase) {
-            return Response.json({ error: 'Curso no encontrado' }, { status: 404 })
+        // Verificar acceso al curso
+        const acceso = await verificarAccesoCurso(idCurso, usuario)
+        if (!acceso.permitido) {
+            return Response.json({ error: acceso.error }, { status: acceso.status })
         }
+        const cursoBase = acceso.curso
 
         const whereFiltros = construirFiltro({ nombreMateria: cursoBase.name, codigo, grupo, docenteId, anio, periodo, modalidad })
 
@@ -101,10 +106,22 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
+        // Verificar autenticación
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const { date, courseId, records } = await request.json()
         // records: Array<{ studentId: string, present: boolean }>
         if (!date || !courseId || !Array.isArray(records)) {
             return Response.json({ error: 'Datos inválidos en la petición' }, { status: 400 })
+        }
+
+        // Verificar acceso al curso antes de guardar
+        const acceso = await verificarAccesoCurso(courseId, usuario)
+        if (!acceso.permitido) {
+            return Response.json({ error: acceso.error }, { status: acceso.status })
         }
 
         // Guardar múltiples registros en una sola transacción con upsert

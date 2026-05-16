@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { obtenerUsuarioDePeticion, verificarAccesoCurso } from '@/lib/auth'
 
 // GET — reporte de asistencia por porcentaje de presencia con filtros opcionales
 export async function GET(request) {
     try {
+        // Verificar autenticación
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const fechaInicio = searchParams.get('startDate')
         const fechaFin    = searchParams.get('endDate')
@@ -16,6 +23,21 @@ export async function GET(request) {
 
         if (!idCurso && !docenteId && !anio) {
             return Response.json({ error: 'Se requiere courseId, docenteId o anio' }, { status: 400 })
+        }
+
+        // Control de acceso para TEACHER
+        if (usuario.role !== 'ADMIN') {
+            // Si viene courseId, verificar que le pertenece
+            if (idCurso) {
+                const acceso = await verificarAccesoCurso(idCurso, usuario)
+                if (!acceso.permitido) {
+                    return Response.json({ error: acceso.error }, { status: acceso.status })
+                }
+            }
+            // Si viene docenteId pero no es el suyo propio, bloquear
+            if (docenteId && docenteId !== usuario.id) {
+                return Response.json({ error: 'No podés ver reportes de otro docente' }, { status: 403 })
+            }
         }
 
         // Filtro de fechas — si se pasa anio/periodo, derivar fechas automáticamente

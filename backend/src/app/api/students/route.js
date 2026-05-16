@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { obtenerUsuarioDePeticion, verificarAccesoCurso } from '@/lib/auth'
 
 function limpiarTexto(valor) {
     if (valor === null || valor === undefined) return null
@@ -39,6 +40,12 @@ const hayCruce = (c1, c2) => {
 
 export async function GET(request) {
     try {
+        // Verificar autenticación
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const idCurso   = searchParams.get('courseId')
         const codigo    = searchParams.get('codigo')    || null
@@ -47,6 +54,12 @@ export async function GET(request) {
 
         if (!idCurso) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
+        }
+
+        // Verificar que el docente tenga acceso a esta materia
+        const acceso = await verificarAccesoCurso(idCurso, usuario)
+        if (!acceso.permitido) {
+            return Response.json({ error: acceso.error }, { status: acceso.status })
         }
 
         // Condición WHERE base sobre Student (relación N:M con courses)
@@ -79,6 +92,12 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
+        // Verificar autenticación
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const idCurso = searchParams.get('courseId')
 
@@ -86,10 +105,12 @@ export async function POST(request) {
             return Response.json({ error: 'courseId es requerido' }, { status: 400 })
         }
 
-        const curso = await prisma.course.findUnique({ where: { id: idCurso } })
-        if (!curso) {
-            return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
+        // Verificar que el docente tenga acceso a esta materia
+        const acceso = await verificarAccesoCurso(idCurso, usuario)
+        if (!acceso.permitido) {
+            return Response.json({ error: acceso.error }, { status: acceso.status })
         }
+        const curso = acceso.curso
 
         const cuerpo = await request.json()
         // Soporte para inserción masiva o individual de CSV no está completamente cubierto aquí con cruces de horarios.

@@ -27,8 +27,13 @@ export function ProveedorAutenticacion({ children }) {
     };
 
     const cerrarSesion = () => {
-        localStorage.removeItem('token');
-        setUsuario(null);
+        // Limpiar token y todos los filtros persistidos en localStorage
+        localStorage.removeItem('token')
+        localStorage.removeItem('selectedCourseId')
+        localStorage.removeItem('selectedGroup')
+        localStorage.removeItem('selectedCode')
+        localStorage.removeItem('selectedDocente')
+        setUsuario(null)
     };
 
     return (

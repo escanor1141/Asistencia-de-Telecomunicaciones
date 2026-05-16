@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma'
+import { obtenerUsuarioDePeticion } from '@/lib/auth'
 
 // GET /api/attendance/hoy
 // Devuelve el % de asistencia del día de hoy por materia.
@@ -6,8 +7,17 @@ import prisma from '@/lib/prisma'
 // Response: { cursos: [{ id, nombre, porcentaje, presentes, total }] }
 export async function GET(request) {
     try {
+        // Verificar autenticación
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const sp        = new URL(request.url).searchParams
-        const docenteId = sp.get('docenteId') || null
+        // TEACHER: solo ve sus propias materias. ADMIN: puede filtrar por docenteId o ver todo.
+        const docenteId = usuario.role === 'ADMIN'
+            ? (sp.get('docenteId') || null)
+            : usuario.id
         // Usar la fecha local de Colombia (America/Bogota = UTC-5) para no fallar
         // cuando el servidor corre en UTC y ya pasó la medianoche UTC pero no local.
         const hoy = new Intl.DateTimeFormat('en-CA', {

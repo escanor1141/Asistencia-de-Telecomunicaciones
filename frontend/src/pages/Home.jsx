@@ -52,7 +52,7 @@ export default function PanelPrincipal() {
             
             try {
                 if (!cursoSeleccionado && isAdmin) {
-                    // Modo "Todas las materias"
+                    // Modo "Todas las materias" — solo disponible para ADMIN
                     const datosHoy = await obtenerAsistenciaHoyPorCurso();
                     setAsistenciaTodas(datosHoy);
                 } else if (cursoSeleccionado) {
@@ -86,8 +86,20 @@ export default function PanelPrincipal() {
 
                     setActividadReciente(historial.slice(0, 8));
                 }
-            } catch (_error) {
-                setErrorCarga(true);
+                // TEACHER sin materia seleccionada: no hacer nada, panel vacío
+            } catch (err) {
+                // Error 403: el curso en localStorage no pertenece a este docente
+                // Se limpia el estado pero NO se muestra banner de error
+                if (err?.response?.status === 403) {
+                    setTotalEstudiantes(0);
+                    setPorcentajeHoy(null);
+                    setAusentesHoy(null);
+                    setHuboClaseHoy(false);
+                    setActividadReciente([]);
+                    setAsistenciaTodas([]);
+                } else {
+                    setErrorCarga(true);
+                }
             } finally {
                 setCargando(false);
             }

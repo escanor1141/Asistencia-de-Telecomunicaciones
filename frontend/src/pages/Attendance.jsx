@@ -49,11 +49,17 @@ export default function Asistencia() {
         docenteId: docenteSeleccionado,
     };
 
+    // Si el curso seleccionado no tiene clase el día de la fecha elegida
+    const diaDeFecha = obtenerDiaSemana(fecha);
+    const sinMateriaParaElDia = cursoSeleccionado
+        ? cursoSeleccionado.dia !== diaDeFecha && cursoSeleccionado.dia2 !== diaDeFecha
+        : false;
+
     useEffect(() => {
         let isCurrent = true;
 
         const cargarDatosActuales = async () => {
-            if (!cursoSeleccionado) return;
+            if (!cursoSeleccionado || sinMateriaParaElDia) return;
             setCargando(true);
             try {
                 const [listaEstudiantes, asistenciaExistente] = await Promise.all([
@@ -83,9 +89,10 @@ export default function Asistencia() {
             }
         };
 
-        if (cursoSeleccionado) {
+        if (cursoSeleccionado && !sinMateriaParaElDia) {
             cargarDatosActuales();
         } else {
+            // Sin materia para el día o sin materia seleccionada: limpiar estado
             setEstudiantes([]);
             setAsistencia({});
             setCargando(false);
@@ -94,7 +101,7 @@ export default function Asistencia() {
         return () => {
             isCurrent = false;
         };
-    }, [fecha, cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
+    }, [fecha, cursoSeleccionado, codigoSeleccionado, grupoSeleccionado, docenteSeleccionado, sinMateriaParaElDia]);
 
     const cambiarEstado = (studentId, estado) => {
         setAsistencia((previo) => ({ ...previo, [studentId]: estado }));
@@ -225,7 +232,7 @@ export default function Asistencia() {
                     <button
                         type="button"
                         onClick={manejarGuardarAsistencia}
-                        disabled={guardando || estudiantes.length === 0 || !fechaValida}
+                        disabled={guardando || estudiantes.length === 0 || !fechaValida || sinMateriaParaElDia}
                         className="boton-primario inline-flex items-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
                         title={!fechaValida ? "Solo puedes editar fechas de hoy o hasta 5 días atrás" : ""}
                     >
@@ -239,6 +246,13 @@ export default function Asistencia() {
                 ) : !cursoSeleccionado ? (
                     <div className="p-6 text-center">
                         <p className="text-texto-secundario">Selecciona una materia en el menú superior.</p>
+                    </div>
+                ) : sinMateriaParaElDia ? (
+                    <div className="p-6 text-center">
+                        <p className="text-texto-secundario">
+                            No hay clases asignadas para el día <strong>{diaDeFecha}</strong>.
+                        </p>
+                        <p className="mt-1 text-xs text-texto-secundario">Seleccione una fecha correspondiente a los días de clase.</p>
                     </div>
                 ) : estudiantes.length === 0 ? (
                     <p className="p-6 text-sm text-texto-secundario">No hay estudiantes para los filtros seleccionados.</p>
