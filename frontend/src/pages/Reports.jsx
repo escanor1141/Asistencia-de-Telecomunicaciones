@@ -351,7 +351,14 @@ export default function Reportes() {
             : 0,
         [datos]
     );
-    const estudiantesEnRiesgo = useMemo(() => datos.filter((i) => i.percentage < 80).length, [datos]);
+    const estudiantesEnRiesgo = useMemo(
+        () => datos.filter((i) => i.percentage < 80 || i.failedByAbsence).length,
+        [datos]
+    );
+    const tieneUmbralFaltas = useMemo(
+        () => datos.some((i) => typeof i.absencesAllowed === 'number'),
+        [datos]
+    );
 
 
 
@@ -372,8 +379,20 @@ export default function Reportes() {
 
 
 
+    const totalesEstados = useMemo(() =>
+        datos.reduce(
+            (acc, item) => ({
+                present: acc.present + (item.present ?? 0),
+                absent: acc.absent + (item.absent ?? 0),
+                justified: acc.justified + (item.justified ?? 0),
+            }),
+            { present: 0, absent: 0, justified: 0 }
+        ),
+        [datos]
+    );
+
     const datosTorta = useMemo(() => {
-        const brackets = [0, 0, 0, 0];   // ÔëÑ90, 80-89, 70-79, <70
+        const brackets = [0, 0, 0, 0];   // >=90, 80-89, 70-79, <70
         datos.forEach(({ percentage }) => {
             if (percentage >= 90) brackets[0]++;
             else if (percentage >= 80) brackets[1]++;
@@ -537,7 +556,7 @@ export default function Reportes() {
                     </p>
                 </article>
                 <article className="tarjeta">
-                    <p className="text-sm text-texto-secundario">Estudiantes bajo 80%</p>
+                    <p className="text-sm text-texto-secundario">Estudiantes bajo 80% o pérdida por faltas</p>
                     <p
                         className="mt-2 font-mono text-2xl"
                         style={{ color: estudiantesEnRiesgo > 0 ? 'var(--color-absent)' : 'var(--color-text-primary)' }}
@@ -595,6 +614,23 @@ export default function Reportes() {
                                 >
                                     Distribuci&oacute;n de estudiantes por rango de asistencia
                                 </p>
+                                <p className="mb-4 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+                                    Las inasistencias justificadas se registran como <strong>Justificados</strong> y no afectan el umbral de pérdida por faltas.
+                                </p>
+                                <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-6">
+                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                        <p className="text-xs text-texto-secundario">Presentes</p>
+                                        <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-present)' }}>{totalesEstados.present.toLocaleString('es-CO')}</p>
+                                    </div>
+                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                        <p className="text-xs text-texto-secundario">Ausentes no justificadas</p>
+                                        <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-absent)' }}>{totalesEstados.absent.toLocaleString('es-CO')}</p>
+                                    </div>
+                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                        <p className="text-xs text-texto-secundario">Justificados</p>
+                                        <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-excused)' }}>{totalesEstados.justified.toLocaleString('es-CO')}</p>
+                                    </div>
+                                </div>
                                 <div className="flex flex-col md:flex-row items-center justify-center gap-8">
                                     <ResponsiveContainer width={280} height={280}>
                                         <PieChart>
@@ -703,7 +739,31 @@ export default function Reportes() {
                                 ) : datosLineChart.length === 0 ? (
                                     <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Sin datos semanales para los filtros seleccionados.</p>
                                 ) : (
-                                    <ResponsiveContainer width="100%" height={300}>
+                                    <>
+                                        <div className="mb-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <div className="rounded-xl border px-4 py-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                                <p className="text-xs text-texto-secundario">Total presentes</p>
+                                                <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-present)' }}>
+                                                    {datosBarrasSemanales.reduce((sum, item) => sum + (item.presente ?? 0), 0).toLocaleString('es-CO')}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-xl border px-4 py-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                                <p className="text-xs text-texto-secundario">Total ausentes</p>
+                                                <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-absent)' }}>
+                                                    {datosBarrasSemanales.reduce((sum, item) => sum + (item.ausente ?? 0), 0).toLocaleString('es-CO')}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-xl border px-4 py-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                                <p className="text-xs text-texto-secundario">Total justificados</p>
+                                                <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-excused)' }}>
+                                                    {datosBarrasSemanales.reduce((sum, item) => sum + (item.justificado ?? 0), 0).toLocaleString('es-CO')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <p className="mb-4 text-sm text-texto-secundario">
+                                            La serie de asistencia en el tiempo separa las ausencias justificadas y no justificadas: las justificadas no implican pérdida de materia.
+                                        </p>
+                                        <ResponsiveContainer width="100%" height={300}>
                                         <AreaChart data={datosLineChart} margin={{ top: 12, right: 24, left: -10, bottom: 0 }}>
                                             <defs>
                                                 {seriesNombres.map((nombre, i) => {
@@ -746,6 +806,7 @@ export default function Reportes() {
                                             ))}
                                         </AreaChart>
                                     </ResponsiveContainer>
+                                    </>
                                 )}
                             </div>
                         )}
@@ -762,6 +823,12 @@ export default function Reportes() {
                                             <th className="px-4 py-3 font-medium">Presentes</th>
                                             <th className="px-4 py-3 font-medium">Ausentes</th>
                                             <th className="px-4 py-3 font-medium">Justificados</th>
+                                            {tieneUmbralFaltas && (
+                                                <th className="px-4 py-3 font-medium text-center">Límite faltas</th>
+                                            )}
+                                            {tieneUmbralFaltas && (
+                                                <th className="px-4 py-3 font-medium text-center">Perdida</th>
+                                            )}
                                             <th className="px-4 py-3 text-right font-medium">% Asistencia</th>
                                         </tr>
                                     </thead>
@@ -784,6 +851,16 @@ export default function Reportes() {
                                                 <td className="px-4 py-3" style={{ color: item.justified > 0 ? 'var(--color-excused)' : 'inherit', fontWeight: item.justified > 0 ? 600 : 400 }}>
                                                     {Number(item.justified ?? 0).toLocaleString('es-CO')}
                                                 </td>
+                                                {tieneUmbralFaltas && (
+                                                    <td className="px-4 py-3 text-center font-mono text-sm" style={{ color: item.failedByAbsence ? 'var(--color-absent)' : 'var(--color-text-secondary)' }}>
+                                                        {item.absencesAllowed ?? '-'}
+                                                    </td>
+                                                )}
+                                                {tieneUmbralFaltas && (
+                                                    <td className="px-4 py-3 text-center" style={{ color: item.failedByAbsence ? 'var(--color-absent)' : 'var(--color-text-secondary)', fontWeight: item.failedByAbsence ? 700 : 500 }}>
+                                                        {item.failedByAbsence ? 'Sí' : 'No'}
+                                                    </td>
+                                                )}
                                                 <td className="px-4 py-3 text-right">
                                                     <span
                                                         className="inline-flex items-center px-2 py-0.5 rounded-[var(--badge-radius)] font-mono font-semibold text-xs"

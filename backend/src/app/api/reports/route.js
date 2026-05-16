@@ -80,15 +80,25 @@ export async function GET(request) {
             else                          estadisticasPorEstudiante[idEst].absent++
         })
 
+        const calcularFaltasPermitidas = (present, absent) => {
+            const clasesQueCuentan = present + absent;
+            return clasesQueCuentan > 0
+                ? Math.max(1, Math.ceil(clasesQueCuentan * 0.2))
+                : 0;
+        };
+
         const resultado = Object.values(estadisticasPorEstudiante).map(est => {
             // El porcentaje se calcula sobre las clases que cuentan (no justificadas)
             const clasesQueCountan = est.present + est.absent;
             const percentage = clasesQueCountan > 0
                 ? Math.round((est.present / clasesQueCountan) * 100)
                 : 100; // si todo es justificado, no hay fallas
+            const absencesAllowed = calcularFaltasPermitidas(est.present, est.absent);
             return {
                 ...est,
                 percentage,
+                absencesAllowed,
+                failedByAbsence: est.absent >= absencesAllowed,
             };
         }).sort((a, b) => b.percentage - a.percentage)
 

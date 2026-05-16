@@ -161,7 +161,7 @@ export default function Asistencia() {
         <section className="space-y-6">
             <div className="tarjeta flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
-                    <FiltrosGlobales filtroDia={obtenerDiaSemana(fecha)} />
+                    <FiltrosGlobales filtroDia={obtenerDiaSemana(fecha)} mostrarTodas={false} />
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <label htmlFor="fecha-asistencia" style={{ fontSize: '0.8125rem', fontWeight: '500', fontFamily: 'var(--font-sans)', color: 'var(--color-text-secondary)' }}>
