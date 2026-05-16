@@ -52,11 +52,11 @@ export default function LayoutPrincipal({ children }) {
     }, []);
 
     return (
-        <div className="min-h-screen bg-fondo text-texto">
+        <div className="min-h-screen bg-beige text-texto">
             {/* Barra superior */}
 
             <header
-                className="fixed left-0 right-0 top-0 z-20 border-b bg-superficie"
+                className="fixed left-0 right-0 top-0 z-20 border-b topbar-bg"
                 style={{ minHeight: 'var(--topbar-height)' }}
             >
                 <div
@@ -94,12 +94,15 @@ export default function LayoutPrincipal({ children }) {
                             type="button"
                             onClick={() => setMenuAbierto(!menuAbierto)}
                             className="flex items-center gap-2 py-1.5 px-3 text-sm rounded-lg hover:bg-fondo transition-colors"
+                            aria-haspopup="true"
+                            aria-expanded={menuAbierto}
+                            aria-label="Menú de usuario"
                         >
-                            <User size={18} className="text-texto-secundario" />
+                            <User size={18} className="text-texto-secundario" aria-label="Cuenta" />
                             <span className="hidden sm:inline font-medium text-texto">
                                 {usuario?.name || 'Cuenta activa'}
                             </span>
-                            <ChevronDown size={14} className="text-texto-secundario" />
+                            <ChevronDown size={14} className="text-texto-secundario" aria-label="Abrir menú" />
                         </button>
 
                         {/* Menú Desplegable */}
@@ -146,7 +149,7 @@ export default function LayoutPrincipal({ children }) {
                                             to={item.ruta}
                                             className={`nav-item ${activo ? 'activo' : ''}`}
                                         >
-                                            <Icono size={18} />
+                                            <Icono size={18} aria-label={item.etiqueta} />
                                             <span>{item.etiqueta}</span>
                                         </Link>
                                     </li>
@@ -166,7 +169,7 @@ export default function LayoutPrincipal({ children }) {
 
             {/* Navegación inferior en mobile */}
 
-            <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-superficie md:hidden">
+            <nav className="fixed bottom-0 left-0 right-0 z-20 border-t topbar-bg md:hidden">
                 <ul
                     className={`grid ${
                         usuario?.role === 'ADMIN' ? 'grid-cols-7' : 'grid-cols-6'
@@ -185,7 +188,7 @@ export default function LayoutPrincipal({ children }) {
                                             activo ? 'text-primario' : 'text-texto-secundario'
                                         }`}
                                     >
-                                        <Icono size={18} />
+                                        <Icono size={18} aria-label={item.etiqueta} />
                                         <span className="truncate">{item.etiqueta}</span>
                                     </Link>
                                 </li>

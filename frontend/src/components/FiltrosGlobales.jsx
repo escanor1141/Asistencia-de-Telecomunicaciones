@@ -85,7 +85,7 @@ function SelectorFiltro({ label, id, value, onChange, children }) {
     );
 }
 
-export default function FiltrosGlobales({ soloMateria = false, filtroDia = null }) {
+export default function FiltrosGlobales({ soloMateria = false, filtroDia = null, mostrarTodas = true }) {
     const { usuario } = useAutenticacion();
     const {
         cursos,
@@ -185,10 +185,10 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null 
                 <SelectorFiltro
                     label="Materia activa:"
                     id="selector-materia"
-                    value={cursoSeleccionado ? cursoSeleccionado.name : (isAdmin ? 'TODAS' : '')}
+                    value={cursoSeleccionado ? cursoSeleccionado.name : (isAdmin && mostrarTodas ? 'TODAS' : '')}
                     onChange={handleCambioMateria}
                 >
-                    {isAdmin && <option value="TODAS">Todas las materias</option>}
+                    {isAdmin && mostrarTodas && <option value="TODAS">Todas las materias</option>}
                     {nombresUnicos.map((curso) => (
                         <option key={curso.id} value={curso.name}>{curso.name}</option>
                     ))}

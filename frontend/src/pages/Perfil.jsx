@@ -87,7 +87,7 @@ export default function Perfil() {
                         <div className={`p-4 rounded-lg flex items-start gap-3 ${
                             mensaje.tipo === 'error' 
                                 ? 'bg-red-50 text-red-700 border border-red-200' 
-                                : 'bg-green-50 text-green-700 border border-green-200'
+                                : 'bg-acento/10 text-acento border border-acento/20'
                         }`}>
                             {mensaje.tipo === 'error' ? (
                                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />

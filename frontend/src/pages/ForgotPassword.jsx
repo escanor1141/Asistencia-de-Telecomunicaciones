@@ -30,13 +30,13 @@ export default function ForgotPassword() {
         <div className="min-h-screen flex items-center justify-center bg-[#F0EBE1] p-4">
             <div className="w-full max-w-md -mt-16">
                 <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl">
-                    <button 
+                    <button
                         onClick={() => navegar('/login')}
                         className="flex items-center text-slate-500 hover:text-slate-700 transition mb-6"
                     >
                         <ArrowLeft size={18} className="mr-1" /> Volver al Login
                     </button>
-                    
+
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Recuperar Contraseña</h2>
                     <p className="text-slate-600 mb-6 text-sm">
                         Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.

@@ -510,7 +510,7 @@ export default function Reportes() {
                         disabled={datos.length === 0 || exportando}
                         className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
                     >
-                        {exportando ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                        {exportando ? <Loader2 size={15} className="animate-spin" aria-label="Exportando" /> : <Download size={15} aria-label="Descargar reporte" />}
                         {exportando ? 'Generando...' : 'Exportar Excel'}
                     </button>
                 </div>
@@ -568,7 +568,7 @@ export default function Reportes() {
                                     cursor: 'pointer',
                                 }}
                             >
-                                <Icono size={15} />
+                                <Icono size={15} aria-label={label} />
                                 {label}
                             </button>
                         );

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { UserPlus, Trash2, Loader2, Users, Eye, EyeOff, ShieldCheck, Send } from 'lucide-react';
+import { UserPlus, Trash2, Loader2, Users, Eye, EyeOff, ShieldCheck, Send, Pencil, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { format, parseISO } from 'date-fns';
@@ -12,8 +12,9 @@ export default function Profesores() {
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [mostrarContrasena, setMostrarContrasena] = useState(false);
-    const [formulario, setFormulario] = useState({ name: '', email: '', password: '', role: 'TEACHER' });
+    const [formulario, setFormulario] = useState({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
     const [eliminandoId, setEliminandoId] = useState(null);
+    const [editandoId, setEditandoId] = useState(null);
     const [enviandoNotificaciones, setEnviandoNotificaciones] = useState(false);
 
     useEffect(() => { obtenerProfesores(); }, []);
@@ -52,19 +53,45 @@ export default function Profesores() {
         }
     };
 
-    const manejarCreacion = async (e) => {
+    const manejarEnvio = async (e) => {
         e.preventDefault();
         setGuardando(true);
         try {
-            const nuevoProfesor = await api.post('/teachers', formulario).then(r => r.data);
-            setProfesores(prev => [...prev, nuevoProfesor]);
-            setFormulario({ name: '', email: '', password: '', role: 'TEACHER' });
-            toast.success('Profesor creado exitosamente');
+            if (editandoId) {
+                // Actualizar profesor existente
+                const res = await api.put(`/teachers/${editandoId}`, formulario);
+                setProfesores(prev => prev.map(p => p.id === editandoId ? res.data : p));
+                toast.success('Profesor actualizado exitosamente');
+                cancelarEdicion();
+            } else {
+                // Crear nuevo profesor
+                const nuevoProfesor = await api.post('/teachers', formulario).then(r => r.data);
+                setProfesores(prev => [...prev, nuevoProfesor]);
+                setFormulario({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
+                toast.success('Profesor creado exitosamente');
+            }
         } catch (err) {
-            toast.error(err.response?.data?.error || 'Error al crear profesor');
+            toast.error(err.response?.data?.error || `Error al ${editandoId ? 'actualizar' : 'crear'} profesor`);
         } finally {
             setGuardando(false);
         }
+    };
+
+    const iniciarEdicion = (profesor) => {
+        setEditandoId(profesor.id);
+        setFormulario({
+            documento: profesor.id,
+            name: profesor.name,
+            email: profesor.email,
+            password: '', // Password opcional en edición
+            role: profesor.role
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const cancelarEdicion = () => {
+        setEditandoId(null);
+        setFormulario({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
     };
 
     const manejarEliminacion = async (id, nombre) => {
@@ -96,10 +123,23 @@ export default function Profesores() {
                 {/* Formulario de creación */}
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 self-start">
                     <h2 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
-                        <UserPlus size={20} className="text-brand-purple" />
-                        Crear Nuevo Profesor
+                        {editandoId ? <Pencil size={20} className="text-amber-600" /> : <UserPlus size={20} className="text-brand-purple" />}
+                        {editandoId ? 'Editar Profesor' : 'Crear Nuevo Profesor'}
                     </h2>
-                    <form onSubmit={manejarCreacion} className="space-y-4">
+                    <form onSubmit={manejarEnvio} className="space-y-4">
+                        {!editandoId && (
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-600 mb-1.5">Documento / ID</label>
+                                <input
+                                    type="text"
+                                    value={formulario.documento}
+                                    onChange={e => setFormulario(p => ({ ...p, documento: e.target.value }))}
+                                    placeholder="Ej. 1098765432"
+                                    required
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent transition"
+                                />
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-semibold text-gray-600 mb-1.5">Nombre completo</label>
                             <input
@@ -123,15 +163,17 @@ export default function Profesores() {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-semibold text-gray-600 mb-1.5">Contraseña</label>
+                            <label className="block text-sm font-semibold text-gray-600 mb-1.5">
+                                Contraseña {editandoId && <span className="text-[10px] font-normal text-gray-400">(deja en blanco para no cambiar)</span>}
+                            </label>
                             <div className="relative">
                                 <input
                                     type={mostrarContrasena ? 'text' : 'password'}
                                     value={formulario.password}
                                     onChange={e => setFormulario(p => ({ ...p, password: e.target.value }))}
-                                    placeholder="Mínimo 6 caracteres"
-                                    required
-                                    minLength={6}
+                                    placeholder={editandoId ? "Nueva contraseña" : "Mínimo 8 caracteres"}
+                                    required={!editandoId}
+                                    minLength={8}
                                     className="w-full border border-gray-200 rounded-xl px-4 py-2.5 pr-11 text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent transition"
                                 />
                                 <button
@@ -154,14 +196,26 @@ export default function Profesores() {
                                 <option value="ADMIN">Administrador (Gestión total)</option>
                             </select>
                         </div>
-                        <button
-                            type="submit"
-                            disabled={guardando}
-                            className="w-full flex items-center justify-center gap-2 bg-brand-purple hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 transform hover:-translate-y-0.5"
-                        >
-                            {guardando ? <Loader2 size={18} className="animate-spin" /> : <UserPlus size={18} />}
-                            {guardando ? 'Creando...' : 'Crear Profesor'}
-                        </button>
+                        <div className="flex gap-3">
+                            {editandoId && (
+                                <button
+                                    type="button"
+                                    onClick={cancelarEdicion}
+                                    className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-xl transition-all"
+                                >
+                                    <X size={18} />
+                                    Cancelar
+                                </button>
+                            )}
+                            <button
+                                type="submit"
+                                disabled={guardando}
+                                className={`flex-[2] flex items-center justify-center gap-2 ${editandoId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-purple hover:bg-purple-700'} text-white font-bold py-3 rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 transform hover:-translate-y-0.5`}
+                            >
+                                {guardando ? <Loader2 size={18} className="animate-spin" /> : (editandoId ? <Pencil size={18} /> : <UserPlus size={18} />)}
+                                {guardando ? (editandoId ? 'Actualizando...' : 'Creando...') : (editandoId ? 'Actualizar Profesor' : 'Crear Profesor')}
+                            </button>
+                        </div>
                     </form>
                 </div>
 
@@ -234,17 +288,28 @@ export default function Profesores() {
                                             </p>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => manejarEliminacion(profesor.id, profesor.name)}
-                                        disabled={eliminandoId === profesor.id || profesor.id === usuario?.id}
-                                        className="p-2 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-                                        title={profesor.id === usuario?.id ? 'No puedes eliminar tu propia cuenta' : 'Eliminar profesor'}
-                                    >
-                                        {eliminandoId === profesor.id
-                                            ? <Loader2 size={18} className="animate-spin" />
-                                            : <Trash2 size={18} />
-                                        }
-                                    </button>
+                                    <div className="flex gap-1">
+                                        {usuario?.role === 'ADMIN' && (
+                                            <button
+                                                onClick={() => iniciarEdicion(profesor)}
+                                                className="p-2 rounded-xl text-gray-400 hover:bg-amber-50 hover:text-amber-600 transition-all"
+                                                title="Editar profesor"
+                                            >
+                                                <Pencil size={18} />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => manejarEliminacion(profesor.id, profesor.name)}
+                                            disabled={eliminandoId === profesor.id || profesor.id === usuario?.id}
+                                            className="p-2 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                            title={profesor.id === usuario?.id ? 'No puedes eliminar tu propia cuenta' : 'Eliminar profesor'}
+                                        >
+                                            {eliminandoId === profesor.id
+                                                ? <Loader2 size={18} className="animate-spin" />
+                                                : <Trash2 size={18} />
+                                            }
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

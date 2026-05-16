@@ -12,9 +12,11 @@ export default {
             },
             colors: {
                 fondo: 'var(--color-bg)',
+                beige: 'var(--color-beige)',
                 superficie: 'var(--color-surface)',
                 borde: 'var(--color-border)',
                 primario: 'var(--color-primary)',
+                'primario-oscuro': 'var(--color-primary-dark)',
                 'primario-suave': 'var(--color-primary-light)',
                 acento: 'var(--color-accent)',
                 texto: 'var(--color-text-primary)',

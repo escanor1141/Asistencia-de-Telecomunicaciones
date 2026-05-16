@@ -3,16 +3,20 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 :root {
-    --color-primary: #8A1538;
+    --color-primary: #6D100A;
     --color-primary-light: #F5E1E6;
-    --color-primary-dark: #5C0E25;
+    --color-primary-dark: #4A0B07;
     --color-accent: #8DC63F;
     --color-accent-light: #F2F9E7;
     --color-accent-dark: #6A9E2F;
     --color-bg: #F8F9FC;
+    --color-beige: #F8E9D4;
     --color-surface: #FFFFFF;
     --color-border: #E2E6EF;
+    --color-topbar-bg: #FFF8F0; /* tono un poco más claro que el beige */
+    --color-sidebar-bg: #F7F1E6; /* sidebar ligeramente más claro */
     --color-muted: #8A93A8;
     --color-text-primary: #1A1A2E;
     --color-text-secondary: #4B5563;
@@ -24,6 +28,18 @@
     --color-late-bg: #FFFBEB;
     --color-excused: #2563EB;
     --color-excused-bg: #EFF6FF;
+    --color-course-1: #6B2D8B;
+    --color-course-2: #8DC63F;
+    --color-course-3: #D97706;
+    --color-course-4: #4E1F68;
+    --color-course-5: #DC2626;
+    --color-course-6: #2563EB;
+    --color-course-7: #10B981;
+    --color-course-8: #F59E0B;
+    --color-course-9: #EF4444;
+    --color-course-10: #8B5CF6;
+    --color-warning: #F59E0B;
+    --color-warning-bg: color-mix(in srgb, var(--color-warning) 15%, transparent);
     --font-sans: 'DM Sans', sans-serif;
     --font-mono: 'DM Mono', monospace;
     --space-1: 4px;
@@ -54,7 +70,7 @@
 
     body {
         @apply antialiased;
-        background: var(--color-bg);
+        background: var(--color-beige);
         color: var(--color-text-primary);
         font-family: var(--font-sans);
     }
@@ -88,6 +104,38 @@
     /* Sidebar con fondo diferenciado */
     .sidebar-nav {
         background: var(--color-sidebar-bg, #F7F8FA);
+    }
+
+    .topbar-bg {
+        background: var(--color-topbar-bg);
+    }
+
+    /* Badge para mostrar el periodo con salto hasta 2 líneas */
+    .periodo-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.35rem 0.5rem;
+        border-radius: 6px;
+        min-width: 88px;
+        max-width: 140px;
+        text-align: center;
+        background: var(--color-accent-light, color-mix(in srgb, var(--color-accent) 10%, transparent));
+        color: var(--color-accent);
+        border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+        flex: 0 0 auto;
+        white-space: normal;
+    }
+
+    .periodo-badge__text {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+        line-height: 1rem;
+        font-size: 0.8rem;
+        font-weight: 700;
     }
 
     /* Badge de rol */

@@ -30,7 +30,7 @@ function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
                     style={{ borderColor: 'var(--color-border)' }}>
                     <h3 className="text-lg font-semibold">Editar Estudiante</h3>
                     <button type="button" onClick={onCancelar} disabled={guardando}
-                        className="p-1.5 rounded-md disabled:opacity-50" style={{ color: 'var(--color-muted)' }}>
+                        className="p-1.5 rounded-md disabled:opacity-50" style={{ color: 'var(--color-muted)' }} aria-label="Cerrar modal">
                         <X size={20} />
                     </button>
                 </div>
@@ -177,7 +177,7 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                                             </span>
                                         ) : fila.esDuplicado ? (
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
-                                                style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#f59e0b' }}>
+                                                style={{ background: 'var(--color-warning-bg)', color: 'var(--color-warning)' }}>
                                                 Ya existe
                                             </span>
                                         ) : fila.error ? (
@@ -603,7 +603,7 @@ export default function Estudiantes() {
 
             <section className="space-y-6">
                 <div className="tarjeta flex flex-wrap items-center gap-4">
-                    <FiltrosGlobales />
+                    <FiltrosGlobales mostrarTodas={false} />
                 </div>
 
                 <header className="tarjeta flex flex-col gap-4">
@@ -642,6 +642,20 @@ export default function Estudiantes() {
                         )}
                     </div>
                 </header>
+
+                {cursoSeleccionado && (
+                    <section className="tarjeta">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-lg font-semibold">{cursoSeleccionado.name || cursoSeleccionado.nombre}</p>
+                                <div className="mt-1 text-xs text-texto-secundario">{cursoSeleccionado.code || cursoSeleccionado.codigo} · Grupo {grupoSeleccionado || cursoSeleccionado.groupCode || cursoSeleccionado.grupo}</div>
+                            </div>
+                            <div className="periodo-badge" style={{ background: 'var(--color-accent)', color: 'white', borderColor: 'color-mix(in srgb, var(--color-accent) 90%, transparent)' }}>
+                                <span className="periodo-badge__text">Periodo {cursoSeleccionado.academicPeriod || cursoSeleccionado.periodo || cursoSeleccionado.period} ({cursoSeleccionado.academicYear || cursoSeleccionado.anio || new Date().getFullYear()})</span>
+                            </div>
+                        </div>
+                    </section>
+                )}
 
                 {/* Modal Formulario de Nuevo Estudiante */}
                 {cursoSeleccionado && modalFormularioVisible && (
