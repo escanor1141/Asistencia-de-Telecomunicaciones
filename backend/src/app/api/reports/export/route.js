@@ -114,19 +114,33 @@ export async function GET(request) {
             return clasesQueCuentan > 0 ? Math.round((est.present / clasesQueCuentan) * 100) : 100
         }
 
+        const calcFaltasPermitidas = (est) => {
+            const clasesQueCuentan = est.present + est.absent
+            return clasesQueCuentan > 0 ? Math.max(1, Math.ceil(clasesQueCuentan * 0.2)) : 0
+        }
+
+        const asignaturas = Object.values(statsAsignatura).map(est => {
+            const absencesAllowed = calcFaltasPermitidas(est)
+            return {
+                ...est,
+                percentage: calcPorcentaje(est),
+                absencesAllowed,
+                failedByAbsence: est.absent >= absencesAllowed,
+            }
+        }).sort((a, b) => a.estudiante.localeCompare(b.estudiante))
+
+        const estudiantesConPérdidaPorFalta = new Set(
+            asignaturas.filter(est => est.failedByAbsence).map(est => est.documento)
+        )
+
         const resumen = Object.values(statsGeneral).map(est => ({
             ...est,
-            percentage: calcPorcentaje(est)
-        })).sort((a, b) => b.percentage - a.percentage) // de menor a mayor asistencia
+            percentage: calcPorcentaje(est),
+            failedByAbsence: estudiantesConPérdidaPorFalta.has(est.documento),
+        })).sort((a, b) => b.percentage - a.percentage) // de mayor a menor asistencia
 
-        // Filtrar <= 80% (Estudiantes que reprueban por inasistencia)
-        const enRiesgo = resumen.filter(est => est.percentage <= 80)
-
-        // Asignaturas
-        const asignaturas = Object.values(statsAsignatura).map(est => ({
-            ...est,
-            percentage: calcPorcentaje(est)
-        })).sort((a, b) => a.estudiante.localeCompare(b.estudiante))
+        // Filtrar <= 80% o con pérdida por faltas
+        const enRiesgo = resumen.filter(est => est.percentage <= 80 || est.failedByAbsence)
 
         // El directorio solo debe incluir a estudiantes que aparecen en "enRiesgo" o tienen alguna materia perdida (<80)
         // Pero para ser más exactos, el usuario pidió "la informacion de contacto del estudiante que presenta fallas"

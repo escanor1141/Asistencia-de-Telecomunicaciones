@@ -1,7 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useCurso } from '../context/ContextoCurso';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
-import { obtenerDocentes } from '../services/api';
 
 const estiloSelector = {
     height: '36px',
@@ -62,6 +61,7 @@ function SelectorFiltro({ label, id, value, onChange, children }) {
             <label htmlFor={id} style={estiloLabel}>
                 {label}
             </label>
+
             <div style={{ position: 'relative' }}>
                 <select
                     id={id}
@@ -70,7 +70,8 @@ function SelectorFiltro({ label, id, value, onChange, children }) {
                     style={estiloSelector}
                     onFocus={(e) => {
                         e.target.style.borderColor = 'var(--color-primary)';
-                        e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)';
+                        e.target.style.boxShadow =
+                            '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)';
                     }}
                     onBlur={(e) => {
                         e.target.style.borderColor = 'var(--color-border)';
@@ -79,14 +80,20 @@ function SelectorFiltro({ label, id, value, onChange, children }) {
                 >
                     {children}
                 </select>
+
                 <ChevronAbajo />
             </div>
         </div>
     );
 }
 
-export default function FiltrosGlobales({ soloMateria = false, filtroDia = null, mostrarTodas = true }) {
+export default function FiltrosGlobales({
+    soloMateria = false,
+    filtroDia = null,
+    mostrarTodas = true,
+}) {
     const { usuario } = useAutenticacion();
+
     const {
         cursos,
         cursoSeleccionado,
@@ -96,109 +103,200 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null,
         setGrupoSeleccionado,
     } = useCurso();
 
-    // 1. Filtrar por día si aplica
+    // SOLO UNA VEZ
+    const isAdmin = usuario?.role === 'ADMIN';
+
+    // 1. Filtrar cursos por día
     const cursosFiltrados = useMemo(() => {
         if (!filtroDia) return cursos;
-        return cursos.filter(c => c.dia === filtroDia || c.dia2 === filtroDia);
+
+        return cursos.filter(
+            (c) => c.dia === filtroDia || c.dia2 === filtroDia
+        );
     }, [cursos, filtroDia]);
 
-    // 2. Nombres únicos de materias (sin duplicados por grupo)
+    // 2. Materias únicas
     const nombresUnicos = useMemo(() => {
         const vistos = new Set();
-        return cursosFiltrados.filter(c => {
+
+        return cursosFiltrados.filter((c) => {
             if (vistos.has(c.name)) return false;
+
             vistos.add(c.name);
             return true;
         });
     }, [cursosFiltrados]);
 
-    // 3. Grupos disponibles para la materia seleccionada (todos los cursos con ese nombre y día)
+    // 3. Grupos disponibles
     const gruposDisponibles = useMemo(() => {
         if (!cursoSeleccionado) return [];
+
         return cursosFiltrados
-            .filter(c => c.name === cursoSeleccionado.name)
-            .filter(c => c.groupCode)
-            .sort((a, b) => a.groupCode.localeCompare(b.groupCode));
+            .filter((c) => c.name === cursoSeleccionado.name)
+            .filter((c) => c.groupCode)
+            .sort((a, b) =>
+                (a.groupCode || '').localeCompare(b.groupCode || '')
+            );
     }, [cursosFiltrados, cursoSeleccionado]);
 
-    // 4. Cuando cambia el filtroDia, autoseleccionar primer curso válido
+    // 4. Auto seleccionar curso cuando cambia el día
     useEffect(() => {
         if (filtroDia && cursosFiltrados.length > 0) {
-            const isSelectedValid = cursoSeleccionado === null || cursosFiltrados.some(c => c.id === cursoSeleccionado?.id);
+            const isSelectedValid =
+                cursoSeleccionado &&
+                cursosFiltrados.some(
+                    (c) => c.id === cursoSeleccionado.id
+                );
+
             if (!isSelectedValid) {
-                seleccionarCurso(cursosFiltrados[0]);
+                const debeSeleccionarPrimero = !(
+                    cursoSeleccionado === null &&
+                    isAdmin &&
+                    mostrarTodas
+                );
+
+                if (debeSeleccionarPrimero) {
+                    seleccionarCurso(cursosFiltrados[0]);
+                }
             }
         }
-    }, [filtroDia, cursosFiltrados, cursoSeleccionado?.id, seleccionarCurso]);
+    }, [
+        filtroDia,
+        cursosFiltrados,
+        cursoSeleccionado,
+        seleccionarCurso,
+        isAdmin,
+        mostrarTodas,
+    ]);
 
-    // 5. Cuando cambian los grupos disponibles, sincronizar grupoSeleccionado
-    const gruposDisponiblesKey = gruposDisponibles.map(g => g.groupCode).join(',');
+    // 5. Sincronizar grupo seleccionado
+    const gruposDisponiblesKey = gruposDisponibles
+        .map((g) => g.groupCode)
+        .join(',');
+
     useEffect(() => {
-        if (!cursoSeleccionado) return; // Si es 'TODAS', no hay grupos
+        if (!cursoSeleccionado) return;
+
         if (gruposDisponibles.length === 0) {
             setGrupoSeleccionado(null);
             return;
         }
-        const existe = gruposDisponibles.some(g => g.groupCode === grupoSeleccionado);
+
+        const existe = gruposDisponibles.some(
+            (g) => g.groupCode === grupoSeleccionado
+        );
+
         if (!existe) {
-            // Autoseleccionar el primer grupo y actualizar el curso seleccionado
             const primerGrupo = gruposDisponibles[0];
+
             setGrupoSeleccionado(primerGrupo.groupCode);
             seleccionarCurso(primerGrupo);
         }
-    }, [gruposDisponiblesKey, setGrupoSeleccionado, seleccionarCurso, cursoSeleccionado]);
+    }, [
+        gruposDisponiblesKey,
+        gruposDisponibles,
+        grupoSeleccionado,
+        setGrupoSeleccionado,
+        seleccionarCurso,
+        cursoSeleccionado,
+    ]);
 
+    // Cambio de materia
     const handleCambioMateria = (e) => {
         if (e.target.value === 'TODAS') {
             seleccionarCurso(null);
             setGrupoSeleccionado(null);
             return;
         }
-        // Al elegir una materia, seleccionar el primer curso de ese nombre (primer grupo en orden ascendente)
+
         const cursosMateria = cursosFiltrados
-            .filter(c => c.name === e.target.value)
-            .sort((a, b) => (a.groupCode || '').localeCompare(b.groupCode || ''));
-            
+            .filter((c) => c.name === e.target.value)
+            .sort((a, b) =>
+                (a.groupCode || '').localeCompare(
+                    b.groupCode || ''
+                )
+            );
+
         const primerCurso = cursosMateria[0];
+
         if (primerCurso) {
             seleccionarCurso(primerCurso);
             setGrupoSeleccionado(primerCurso.groupCode);
         }
     };
 
+    // Cambio de grupo
     const handleCambioGrupo = (e) => {
-        // Al elegir un grupo, actualizar tanto el grupo como el curso activo
-        const cursoDelGrupo = gruposDisponibles.find(c => c.groupCode === e.target.value);
+        const cursoDelGrupo = gruposDisponibles.find(
+            (c) => c.groupCode === e.target.value
+        );
+
         if (cursoDelGrupo) {
-            seleccionarCurso(cursoDelGrupo); // Cambia el ID del curso activo al correcto
+            seleccionarCurso(cursoDelGrupo);
             setGrupoSeleccionado(cursoDelGrupo.groupCode);
         }
     };
 
-    const isAdmin = usuario?.role === 'ADMIN';
-
     return (
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px',
+            }}
+        >
             {cargandoCursos ? (
-                <span style={{ ...estiloLabel, color: 'var(--color-muted)' }}>Cargando...</span>
+                <span
+                    style={{
+                        ...estiloLabel,
+                        color: 'var(--color-muted)',
+                    }}
+                >
+                    Cargando...
+                </span>
             ) : nombresUnicos?.length > 0 || isAdmin ? (
                 <SelectorFiltro
                     label="Materia activa:"
                     id="selector-materia"
-                    value={cursoSeleccionado ? cursoSeleccionado.name : (isAdmin && mostrarTodas ? 'TODAS' : '')}
+                    value={
+                        cursoSeleccionado
+                            ? cursoSeleccionado.name
+                            : isAdmin && mostrarTodas
+                            ? 'TODAS'
+                            : ''
+                    }
                     onChange={handleCambioMateria}
                 >
-                    {isAdmin && mostrarTodas && <option value="TODAS">Todas las materias</option>}
+                    {isAdmin && mostrarTodas && (
+                        <option value="TODAS">
+                            Todas las materias
+                        </option>
+                    )}
+
                     {nombresUnicos.map((curso) => (
-                        <option key={curso.id} value={curso.name}>{curso.name}</option>
+                        <option
+                            key={curso.id}
+                            value={curso.name}
+                        >
+                            {curso.name}
+                        </option>
                     ))}
                 </SelectorFiltro>
             ) : (
-                <span style={{ ...estiloLabel, fontStyle: 'italic' }}>Sin materias para este día</span>
+                <span
+                    style={{
+                        ...estiloLabel,
+                        fontStyle: 'italic',
+                    }}
+                >
+                    Sin materias para este día
+                </span>
             )}
 
-            {!soloMateria && cursoSeleccionado && gruposDisponibles.length > 0 && (
-                <>
+            {!soloMateria &&
+                cursoSeleccionado &&
+                gruposDisponibles.length > 0 && (
                     <SelectorFiltro
                         label="Grupo:"
                         id="selector-grupo"
@@ -206,11 +304,16 @@ export default function FiltrosGlobales({ soloMateria = false, filtroDia = null,
                         onChange={handleCambioGrupo}
                     >
                         {gruposDisponibles.map((c) => (
-                            <option key={c.id} value={c.groupCode}>{c.groupCode}</option>
+                            <option
+                                key={c.id}
+                                value={c.groupCode}
+                            >
+                                {c.groupCode}
+                            </option>
                         ))}
                     </SelectorFiltro>
-                </>
-            )}
+                )}
         </div>
     );
 }
+``

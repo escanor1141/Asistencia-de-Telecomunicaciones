@@ -676,7 +676,7 @@ export default function Cursos() {
                 {!cargandoCursos &&
                     !cargandoEstadisticas &&
                     estadisticasCursos.map((curso) => (
-                        <article key={curso.id} className="tarjeta relative group">
+                        <article key={curso.id} className="tarjeta relative group pb-14 min-h-[16rem] sm:min-h-[18rem]">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="flex items-start gap-3">
                                     <div className="p-2 rounded-md bg-primario/10 flex items-center justify-center">
