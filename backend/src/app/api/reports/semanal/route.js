@@ -1,19 +1,5 @@
 import prisma from '@/lib/prisma'
-
-// Devuelve la fecha del lunes de la semana que contiene la fecha dada
-// Trabaja con las partes de la fecha como string para evitar desfases de UTC
-function lunesDeSemana(dateStr) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const d = new Date(year, month - 1, day); // fecha local sin desfase UTC
-    const dow  = d.getDay();                  // 0=Dom…6=Sáb
-    const diff = dow === 0 ? -6 : 1 - dow;   // días al lunes
-    d.setDate(d.getDate() + diff);
-    // Formatear como YYYY-MM-DD sin pasar por UTC
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const dy = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${dy}`;
-}
+import { getLunesSemana } from '@/lib/dateUtils'
 
 // GET — reporte semanal agregado
 // Params: courseId?, codigo?, grupo?, docenteId?, anio?, periodo?, modalidad?,
@@ -70,7 +56,7 @@ export async function GET(request) {
         // ── Agrupar por tiempo ───────────────────────────────────────────────
         const porTiempo = {}
         registros.forEach(({ date, present, status }) => {
-            const clave = agrupacion === 'semana' ? lunesDeSemana(date) : date
+            const clave = agrupacion === 'semana' ? getLunesSemana(date) : date
             if (!porTiempo[clave]) {
                 porTiempo[clave] = { presente: 0, ausente: 0, justificado: 0 }
             }

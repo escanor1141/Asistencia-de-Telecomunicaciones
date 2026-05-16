@@ -148,6 +148,17 @@ export async function POST(request) {
         })
 
         await prisma.$transaction(operaciones)
+        
+        // Registro de auditoría
+        const { registrarAccion } = await import('@/lib/auditService');
+        registrarAccion({
+            usuario,
+            accion: 'GUARDAR_ASISTENCIA',
+            target: 'ATTENDANCE',
+            targetId: courseId,
+            detalles: { fecha: date, total_registros: records.length },
+            ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
+        });
 
         // Disparar notificaciones WhatsApp solo para 'Ausente' (no Justificado)
         const ausentes = records.filter(r => r.status === 'Ausente');

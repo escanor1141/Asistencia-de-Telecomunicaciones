@@ -100,3 +100,16 @@ model WhatsappNotificationLog {
 
   @@unique([studentId, courseId, date])
 }
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  userName  String
+  userRole  String
+  action    String
+  target    String
+  targetId  String?
+  details   Json?
+  ip        String?
+  createdAt DateTime @default(now())
+}

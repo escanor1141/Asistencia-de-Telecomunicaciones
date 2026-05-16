@@ -14,14 +14,23 @@ api.interceptors.request.use(config => {
     return config;
 });
 
-// Interceptor de respuesta: redirige al login si el token expiró
+// Interceptor de respuesta: manejo centralizado de errores
 api.interceptors.response.use(
     res => res,
     err => {
-        if (err.response?.status === 401 && err.config?.url !== '/auth/login') {
-            localStorage.removeItem('token');
+        const status = err.response?.status;
+        
+        // 401: Token expirado o inválido -> Login
+        if (status === 401 && err.config?.url !== '/auth/login') {
+            localStorage.clear(); // Limpiar todo el estado
             window.location.href = '/login';
         }
+        
+        // 403: Prohibido (acceso a materia ajena) -> Log para debugging pero dejar que el componente lo maneje
+        if (status === 403) {
+            console.error('[API] Acceso denegado:', err.config.url);
+        }
+
         return Promise.reject(err);
     }
 );

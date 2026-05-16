@@ -37,6 +37,16 @@ export async function POST(request) {
         )
 
         console.log(`[Login] Sesión iniciada: ${email} (${docente.role})`)
+        
+        // Registro de auditoría
+        const { registrarAccion } = await import('@/lib/auditService');
+        registrarAccion({
+            usuario: { id: docente.id, name: docente.name, role: docente.role },
+            accion: 'LOGIN',
+            target: 'AUTH',
+            ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
+        });
+
         return Response.json({ 
             token, 
             teacher: { id: docente.id, email: docente.email, name: docente.name, role: docente.role } 

@@ -7,6 +7,7 @@ import Historial from './pages/History.jsx';
 import Reportes from './pages/Reports.jsx';
 import Configuracion from './pages/Configuracion.jsx';
 import Perfil from './pages/Perfil.jsx';
+import AuditLogs from './pages/AuditLogs.jsx';
 import Login from './pages/Login.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
@@ -31,6 +32,7 @@ export default function EnrutadorApp() {
                                 <Route path="/asistencia" element={<Asistencia />} />
                                 <Route path="/historial" element={<Historial />} />
                                 <Route path="/reportes" element={<Reportes />} />
+                                <Route path="/auditoria" element={<AuditLogs />} />
                                 <Route path="/configuracion" element={<Configuracion />} />
                                 <Route path="/perfil" element={<Perfil />} />
                                 <Route path="*" element={<Navigate to="/" replace />} />

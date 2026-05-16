@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { obtenerUsuarioDePeticion } from '@/lib/auth'
 
 // GET — endpoint dedicado para generar la data del Excel de reportes con filtros
 export async function GET(request) {
     try {
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) {
+            return Response.json({ error: 'No autorizado' }, { status: 401 })
+        }
+
         const { searchParams } = new URL(request.url)
         const fechaInicio = searchParams.get('startDate')
         const fechaFin    = searchParams.get('endDate')
@@ -152,6 +158,23 @@ export async function GET(request) {
         const directorio = Object.values(contactoEstudiantes)
             .filter(est => estudiantesConFallas.has(est.documento))
             .sort((a, b) => a.name.localeCompare(b.name))
+
+        // Registro de auditoría
+        const { registrarAccion } = await import('@/lib/auditService');
+        registrarAccion({
+            usuario,
+            accion: 'EXPORTAR_REPORTE',
+            target: 'REPORT',
+            detalles: { 
+                courseId: idCurso, 
+                codigo, 
+                grupo, 
+                fechaInicio, 
+                fechaFin,
+                totalEstudiantes: resumen.length
+            },
+            ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
+        });
 
         return Response.json({
             resumen,

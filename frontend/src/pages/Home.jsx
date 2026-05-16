@@ -6,10 +6,18 @@ import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Paleta de colores para la torta (resuelta desde variables CSS)
+// Cache para variables CSS (evita llamadas costosas a getComputedStyle en cada render)
+const cssCache = new Map();
 function v(variable) {
     if (typeof window === 'undefined') return '#000';
-    return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+    if (cssCache.has(variable)) return cssCache.get(variable);
+    
+    const value = getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+    if (value) {
+        cssCache.set(variable, value);
+        return value;
+    }
+    return '#000';
 }
 
 const _COLORES_FALLBACK = ['#6B2D8B', '#8DC63F', '#D97706', '#4E1F68', '#DC2626', '#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
@@ -39,11 +47,11 @@ export default function PanelPrincipal() {
 
     const isAdmin = usuario?.role === 'ADMIN';
 
-    const filtros = {
+    const filtros = useMemo(() => ({
         codigo:    codigoSeleccionado,
         grupo:     grupoSeleccionado,
         docenteId: docenteSeleccionado,
-    };
+    }), [codigoSeleccionado, grupoSeleccionado, docenteSeleccionado]);
 
     useEffect(() => {
         const cargarPanel = async () => {

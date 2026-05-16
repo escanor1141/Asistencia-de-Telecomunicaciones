@@ -10,7 +10,8 @@ import {
     LogOut,
     History,
     User,
-    ChevronDown
+    ChevronDown,
+    ShieldCheck
 } from 'lucide-react';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { useCurso } from '../context/ContextoCurso';
@@ -23,6 +24,7 @@ const elementosNavegacion = [
     { ruta: '/asistencia', etiqueta: 'Asistencia', icono: ClipboardCheck },
     { ruta: '/historial', etiqueta: 'Historial', icono: History },
     { ruta: '/reportes', etiqueta: 'Reportes', icono: BarChart3 },
+    { ruta: '/auditoria', etiqueta: 'Auditoría', icono: ShieldCheck, adminOnly: true },
     { ruta: '/configuracion', etiqueta: 'Configuración', icono: Settings, adminOnly: true },
 ];
 

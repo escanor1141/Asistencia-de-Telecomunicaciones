@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
+import { fmtBogota } from '@/lib/dateUtils'
 
 // GET /api/attendance/hoy
 // Devuelve el % de asistencia del día de hoy por materia.
@@ -18,12 +19,8 @@ export async function GET(request) {
         const docenteId = usuario.role === 'ADMIN'
             ? (sp.get('docenteId') || null)
             : usuario.id
-        // Usar la fecha local de Colombia (America/Bogota = UTC-5) para no fallar
-        // cuando el servidor corre en UTC y ya pasó la medianoche UTC pero no local.
-        const hoy = new Intl.DateTimeFormat('en-CA', {
-            timeZone: 'America/Bogota',
-            year: 'numeric', month: '2-digit', day: '2-digit',
-        }).format(new Date()) // → "YYYY-MM-DD"
+            
+        const hoy = fmtBogota(new Date())
 
         // 1. Obtener todos los cursos (opcionalmente filtrados por docente)
         const cursosWhere = docenteId ? { teacherId: docenteId } : {}

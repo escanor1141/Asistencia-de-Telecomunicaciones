@@ -4,39 +4,7 @@
  */
 
 import prisma from './prisma.js';
-
-// ── Helper: formatea una fecha a "YYYY-MM-DD" en hora de Colombia ────────────
-const fmtBogota = (d) => new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-}).format(d);
-
-/**
- * Calcula el lunes (inicio) y el sábado (fin) de la semana actual
- * usando la fecha local de Colombia para evitar errores de timezone.
- * @param {Date} [referenceDate=new Date()] - Fecha de referencia (default: hoy)
- * @returns {{ weekStart: string, weekEnd: string }} - Fechas en formato YYYY-MM-DD
- */
-export function getCurrentWeekRange(referenceDate = new Date()) {
-    // Obtener la fecha local de Colombia para calcular el día de la semana correcto
-    const localStr = fmtBogota(referenceDate); // "YYYY-MM-DD"
-    const [year, month, day] = localStr.split('-').map(Number);
-    const date = new Date(year, month - 1, day); // fecha local sin desfase UTC
-
-    const dayOfWeek = date.getDay(); // 0=Dom, 1=Lun, ..., 6=Sáb
-    const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-
-    const monday = new Date(date);
-    monday.setDate(date.getDate() + daysToMonday);
-
-    const saturday = new Date(monday);
-    saturday.setDate(monday.getDate() + 5);
-
-    return {
-        weekStart: fmtBogota(monday),
-        weekEnd:   fmtBogota(saturday),
-    };
-}
+import { fmtBogota, getCurrentWeekRange } from './dateUtils.js';
 
 /**
  * Obtiene las inasistencias de la semana actual agrupadas por estudiante.

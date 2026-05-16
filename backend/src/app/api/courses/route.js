@@ -49,6 +49,18 @@ export async function POST(request) {
                 teacherId: usuario.id
             }
         })
+
+        // Registro de auditoría
+        const { registrarAccion } = await import('@/lib/auditService');
+        registrarAccion({
+            usuario,
+            accion: 'CREAR_MATERIA',
+            target: 'COURSE',
+            targetId: course.id,
+            detalles: { nombre: course.name, codigo: course.code },
+            ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
+        });
+
         return Response.json(course, { status: 201 })
     } catch (error) {
         console.error('[Course API Error]:', error);

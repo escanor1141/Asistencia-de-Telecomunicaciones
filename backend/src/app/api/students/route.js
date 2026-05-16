@@ -221,6 +221,18 @@ export async function POST(request) {
                 courses: { connect: { id: idCurso } }
             }
         })
+
+        // Registro de auditoría
+        const { registrarAccion } = await import('@/lib/auditService');
+        registrarAccion({
+            usuario,
+            accion: 'CREAR_ESTUDIANTE',
+            target: 'STUDENT',
+            targetId: documentoLimpio,
+            detalles: { cursoId: idCurso, masivo: Array.isArray(cuerpo) },
+            ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
+        });
+
         return Response.json({ ...estudiante, id: estudiante.documento }, { status: 201 })
     } catch (error) {
         console.error(error)
