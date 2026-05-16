@@ -6,11 +6,14 @@ import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Paleta de colores para la torta
-const COLORES_CURSOS = [
-    '#6B2D8B', '#8DC63F', '#D97706', '#4E1F68', '#DC2626', 
-    '#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'
-];
+// Paleta de colores para la torta (resuelta desde variables CSS)
+function v(variable) {
+    if (typeof window === 'undefined') return '#000';
+    return getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+}
+
+const _COLORES_FALLBACK = ['#6B2D8B', '#8DC63F', '#D97706', '#4E1F68', '#DC2626', '#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+const COLORES_CURSOS = _COLORES_FALLBACK.map((f, i) => v(`--color-course-${i + 1}`) || f);
 
 export default function PanelPrincipal() {
     const { usuario } = useAutenticacion();
@@ -210,21 +213,27 @@ export default function PanelPrincipal() {
                             const Icono = item.icono;
                             return (
                                 <article key={item.titulo} className="tarjeta">
-                                    <div className="mb-3 flex items-center gap-2 text-texto-secundario">
-                                        <Icono size={20} />
-                                        <span className="text-sm">{item.titulo}</span>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 rounded-md bg-acento/10 flex items-center justify-center">
+                                                <Icono size={18} className="text-acento" />
+                                            </div>
+                                            <div>
+                                                <span className="text-sm text-texto-secundario">{item.titulo}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <div className="font-mono text-3xl font-bold" style={item.colorValor ? { color: item.colorValor } : undefined}>
+                                                {item.valor}
+                                            </div>
+                                            {item.subtitulo && (
+                                                <p className="mt-1 text-xs" style={{ color: 'var(--color-muted)' }}>
+                                                    {item.subtitulo}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
-                                    <p
-                                        className="font-mono text-3xl"
-                                        style={item.colorValor ? { color: item.colorValor } : undefined}
-                                    >
-                                        {item.valor}
-                                    </p>
-                                    {item.subtitulo && (
-                                        <p className="mt-1 text-xs" style={{ color: 'var(--color-muted)' }}>
-                                            {item.subtitulo}
-                                        </p>
-                                    )}
                                 </article>
                             );
                         })}

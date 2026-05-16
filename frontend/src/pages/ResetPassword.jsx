@@ -52,7 +52,7 @@ export default function ResetPassword() {
             <div className="w-full max-w-md -mt-16">
                 <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl">
                     <div className="flex justify-center mb-4">
-                        <div className="bg-blue-100 text-blue-600 p-3 rounded-full">
+                        <div className="bg-acento/10 text-acento p-3 rounded-full">
                             <KeyRound size={28} />
                         </div>
                     </div>
@@ -62,7 +62,7 @@ export default function ResetPassword() {
                     </p>
 
                     {exito ? (
-                        <div className="bg-green-50 border border-green-200 text-green-700 p-5 rounded-xl text-center">
+                        <div className="bg-acento/10 border border-acento/20 text-acento p-5 rounded-xl text-center">
                             <p className="font-semibold mb-2">¡Contraseña actualizada!</p>
                             <p className="text-sm">Serás redirigido al inicio de sesión en unos segundos...</p>
                         </div>
@@ -79,7 +79,7 @@ export default function ResetPassword() {
                                     placeholder="••••••••"
                                     required
                                     disabled={!token}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-primario focus:border-transparent transition"
                                 />
                             </div>
 
@@ -94,7 +94,7 @@ export default function ResetPassword() {
                                     placeholder="••••••••"
                                     required
                                     disabled={!token}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:ring-2 focus:ring-primario focus:border-transparent transition"
                                 />
                             </div>
 
@@ -107,7 +107,7 @@ export default function ResetPassword() {
                             <button
                                 type="submit"
                                 disabled={cargando || !token}
-                                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 disabled:opacity-60 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0"
+                                className="w-full flex items-center justify-center gap-2 bg-primario hover:bg-primario-oscuro text-white font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-primario/20 hover:shadow-primario/40 disabled:opacity-60 disabled:cursor-not-allowed transform hover:-translate-y-0.5 active:translate-y-0"
                             >
                                 {cargando ? (
                                     <Loader2 size={20} className="animate-spin" />

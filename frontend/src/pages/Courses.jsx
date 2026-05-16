@@ -677,11 +677,43 @@ export default function Cursos() {
                     !cargandoEstadisticas &&
                     estadisticasCursos.map((curso) => (
                         <article key={curso.id} className="tarjeta relative group">
-                            <div className="mb-3 flex items-center gap-2 text-primario pr-8">
-                                <BookOpen size={18} />
-                                <p className="text-sm font-medium truncate">{curso.nombre}</p>
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-md bg-primario/10 flex items-center justify-center">
+                                        <BookOpen size={18} className="text-primario" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium truncate">{curso.nombre}</p>
+                                        <div className="mt-1 text-xs text-texto-secundario">{curso.codigo} · Grupo {curso.grupo}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-2">
+                                    <div className="periodo-badge" style={{ background: 'var(--color-accent)', color: 'white', borderColor: 'color-mix(in srgb, var(--color-accent) 90%, transparent)' }}>
+                                        <span className="periodo-badge__text">Periodo {curso.periodo} ({curso.anio})</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-texto-secundario">
+                                
+                                <div>
+                                    <p className="text-xs text-texto-secundario">Programa</p>
+                                    <p className="font-medium text-texto">{curso.programa}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-texto-secundario">Franja</p>
+                                    <p className="text-texto">{curso.franja}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-texto-secundario">Horario</p>
+                                    <p className="text-texto">{curso.horario}</p>
+                                </div>
+                            </div>
+                            <div className="mt-4 flex items-center justify-between">
+                                <div />
+                            </div>
+
+                            <div className="absolute left-3 bottom-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
                                 <button
                                     onClick={() => iniciarEdicionCurso(curso)}
                                     className="p-1.5 text-texto-secundario hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
@@ -698,31 +730,11 @@ export default function Cursos() {
                                     {eliminandoId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
                                 </button>
                             </div>
-                            <div className="space-y-2 text-sm mt-1">
-                                <div className="flex gap-2">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                        {curso.codigo} - Grupo {curso.grupo}
-                                    </span>
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                        Periodo {curso.periodo} ({curso.anio})
-                                    </span>
+
+                            <div className="absolute right-3 bottom-3 z-10">
+                                <div className="rounded-md px-3 py-1 bg-acento/10 border border-acento/20">
+                                    <span className="font-mono font-semibold text-lg text-acento">{curso.porcentaje.toLocaleString('es-CO')}%</span>
                                 </div>
-                                <p className="pt-2">
-                                    <span className="text-texto-secundario">Profesor:</span> {curso.profesor}
-                                </p>
-                                <p>
-                                    <span className="text-texto-secundario">Programa:</span> {curso.programa}
-                                </p>
-                                <p>
-                                    <span className="text-texto-secundario">Franja:</span> {curso.franja}
-                                </p>
-                                <p>
-                                    <span className="text-texto-secundario">Horario:</span> {curso.horario}
-                                </p>
-                                <p className="font-mono">
-                                    <span className="font-sans text-texto-secundario">% asistencia:</span>{' '}
-                                    {curso.porcentaje.toLocaleString('es-CO')}%
-                                </p>
                             </div>
                         </article>
                     ))}

@@ -7,9 +7,9 @@ import FiltrosGlobales from '../components/FiltrosGlobales';
 import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 
 const estadosAsistencia = [
-    { valor: 'Presente',    icono: CheckCircle2, colorTexto: 'text-presente',    colorFondo: 'var(--color-present-bg)' },
-    { valor: 'Ausente',     icono: XCircle,      colorTexto: 'text-ausente',     colorFondo: 'var(--color-absent-bg)' },
-    { valor: 'Justificado', icono: FileText,     colorTexto: 'text-justificado', colorFondo: 'var(--color-excused-bg)' },
+    { valor: 'Presente', icono: CheckCircle2, colorTexto: 'text-presente', colorFondo: 'var(--color-present-bg)' },
+    { valor: 'Ausente', icono: XCircle, colorTexto: 'text-ausente', colorFondo: 'var(--color-absent-bg)' },
+    { valor: 'Justificado', icono: FileText, colorTexto: 'text-justificado', colorFondo: 'var(--color-excused-bg)' },
 ];
 
 const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -44,9 +44,9 @@ export default function Asistencia() {
     const [guardando, setGuardando] = useState(false);
 
     const filtros = {
-        codigo:     codigoSeleccionado,
-        grupo:      grupoSeleccionado,
-        docenteId:  docenteSeleccionado,
+        codigo: codigoSeleccionado,
+        grupo: grupoSeleccionado,
+        docenteId: docenteSeleccionado,
     };
 
     useEffect(() => {
@@ -60,7 +60,7 @@ export default function Asistencia() {
                     obtenerEstudiantes(cursoSeleccionado.id),
                     obtenerAsistencia(cursoSeleccionado.id, fecha),
                 ]);
-                
+
                 if (!isCurrent) return;
 
                 const ordenados = [...listaEstudiantes].sort((a, b) => compararPorApellido(a.name, b.name));
@@ -126,15 +126,15 @@ export default function Asistencia() {
     const getLimitesFecha = () => {
         const hoy = new Date();
         const hoyStr = formatearFechaLocal(hoy);
-        
+
         // Regla 1: Máximo 5 días atrás
         const hace5Dias = new Date(hoy);
         hace5Dias.setDate(hace5Dias.getDate() - 5);
-        
+
         // Regla 2: Corte semanal (Domingos a las 02:00 AM)
         const diaSemana = hoy.getDay(); // 0 = Domingo
         const hora = hoy.getHours();
-        
+
         const fechaCorte = new Date(hoy);
         if (diaSemana === 0 && hora < 2) {
             // Si es domingo antes de las 02:00, el corte vigente es del domingo pasado
@@ -144,7 +144,7 @@ export default function Asistencia() {
             fechaCorte.setDate(fechaCorte.getDate() - diaSemana);
         }
         // Si es domingo y hora >= 2, fechaCorte queda como hoy
-        
+
         fechaCorte.setHours(0, 0, 0, 0); // El domingo de corte es el primer día editable post-corte
 
         // El mínimo absoluto es la fecha más reciente entre hace5Dias y fechaCorte
@@ -153,7 +153,7 @@ export default function Asistencia() {
 
         return { max: hoyStr, min: minStr };
     };
-    
+
     const { min: minFecha, max: maxFecha } = getLimitesFecha();
     const fechaValida = fecha >= minFecha && fecha <= maxFecha;
 
@@ -168,34 +168,34 @@ export default function Asistencia() {
                         Fecha:
                     </label>
                     <input
-                                id="fecha-asistencia"
-                                type="date"
-                                min={minFecha}
-                                max={maxFecha}
-                                value={fecha}
-                                onChange={(evento) => setFecha(evento.target.value)}
-                                style={{
-                                    height: '36px',
-                                    border: '1px solid var(--color-border)',
-                                    borderRadius: 'var(--input-radius)',
-                                    padding: '0 10px',
-                                    fontSize: '0.8125rem',
-                                    fontFamily: 'var(--font-sans)',
-                                    fontWeight: '500',
-                                    color: 'var(--color-text-primary)',
-                                    background: 'var(--color-surface)',
-                                    width: '140px',
-                                    outline: 'none'
-                                }}
-                                onFocus={(e) => {
-                                    e.target.style.borderColor = 'var(--color-primary)';
-                                    e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)';
-                                }}
-                                onBlur={(e) => {
-                                    e.target.style.borderColor = 'var(--color-border)';
-                                    e.target.style.boxShadow = 'none';
-                                }}
-                            />
+                        id="fecha-asistencia"
+                        type="date"
+                        min={minFecha}
+                        max={maxFecha}
+                        value={fecha}
+                        onChange={(evento) => setFecha(evento.target.value)}
+                        style={{
+                            height: '36px',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--input-radius)',
+                            padding: '0 10px',
+                            fontSize: '0.8125rem',
+                            fontFamily: 'var(--font-sans)',
+                            fontWeight: '500',
+                            color: 'var(--color-text-primary)',
+                            background: 'var(--color-surface)',
+                            width: '140px',
+                            outline: 'none'
+                        }}
+                        onFocus={(e) => {
+                            e.target.style.borderColor = 'var(--color-primary)';
+                            e.target.style.boxShadow = '0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent)';
+                        }}
+                        onBlur={(e) => {
+                            e.target.style.borderColor = 'var(--color-border)';
+                            e.target.style.boxShadow = 'none';
+                        }}
+                    />
                 </div>
             </div>
 
@@ -267,9 +267,8 @@ export default function Asistencia() {
                                                             key={estado.valor}
                                                             type="button"
                                                             onClick={() => cambiarEstado(estudiante.id, estado.valor)}
-                                                            className={`inline-flex items-center gap-1 rounded-[var(--badge-radius)] border px-3 py-1 text-xs font-semibold ${
-                                                                activo ? estado.colorTexto : 'text-texto-secundario'
-                                                            }`}
+                                                            className={`inline-flex items-center gap-1 rounded-[var(--badge-radius)] border px-3 py-1 text-xs font-semibold ${activo ? estado.colorTexto : 'text-texto-secundario'
+                                                                }`}
                                                             style={{
                                                                 background: activo ? estado.colorFondo : 'var(--color-surface)',
                                                             }}

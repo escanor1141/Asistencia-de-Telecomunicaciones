@@ -1,7 +1,16 @@
 import jwt from 'jsonwebtoken'
 
 // Clave secreta para firmar y verificar tokens JWT
-const SECRETO = process.env.JWT_SECRET || 'telecom_secret_key_2024'
+const SECRETO = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production' ? null : 'telecom_secret_key_2024')
+
+if (!SECRETO) {
+    console.error('[auth] JWT_SECRET no definido en variables de entorno. El servidor no iniciará en producción sin este valor.');
+    throw new Error('JWT_SECRET no definido');
+}
+
+if (process.env.NODE_ENV !== 'production' && !process.env.JWT_SECRET) {
+    console.warn('[auth] Usando secreto JWT de desarrollo por defecto. Configura JWT_SECRET en tu .env para mayor seguridad.');
+}
 
 /**
  * Extrae y verifica el usuario desde el encabezado Authorization de la petición.
