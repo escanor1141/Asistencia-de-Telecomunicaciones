@@ -20,9 +20,10 @@ export const ProveedorCurso = ({ children }) => {
     const [codigoSeleccionado, setCodigoSeleccionado] = useState(
         () => localStorage.getItem('selectedCode') || null
     );
-    const [docenteSeleccionado, setDocenteSeleccionado] = useState(
-        () => localStorage.getItem('selectedDocente') || null
-    );
+    const [docenteSeleccionado, setDocenteSeleccionado] = useState(() => {
+        const guardado = localStorage.getItem('selectedDocente');
+        return (guardado === 'null' || !guardado) ? null : guardado;
+    });
 
     // Persist secondary filters in localStorage
     useEffect(() => {
@@ -55,24 +56,39 @@ export const ProveedorCurso = ({ children }) => {
         if (!usuario) return;
         setCargandoCursos(true);
         try {
-            const datos = await obtenerCursos();
-            setCursos(datos);
+            // El ADMIN puede filtrar por docenteSeleccionado (traído del localStorage o seteado en UI)
+            const idDocente = usuario?.role === 'ADMIN' ? docenteSeleccionado : null;
+            const datos = await obtenerCursos(idDocente);
+            
+            // Ordenar cursos alfabéticamente por nombre
+            const datosOrdenados = datos.sort((a, b) => 
+                (a.name || a.nombre || '').localeCompare(b.name || b.nombre || '')
+            );
+            
+            setCursos(datosOrdenados);
             const idCursoGuardado = localStorage.getItem('selectedCourseId');
 
             if (idCursoGuardado === 'TODAS' && usuario?.role === 'ADMIN') {
                 // Admin eligió "Todas las materias" — mantener null
                 setCursoSeleccionado(null);
-            } else if (datos.length > 0) {
-                const encontrado = datos.find(c => c.id === idCursoGuardado);
+            } else if (datosOrdenados.length > 0) {
+                const encontrado = datosOrdenados.find(c => c.id === idCursoGuardado);
                 if (encontrado) {
                     setCursoSeleccionado(encontrado);
+                    // Si no hay grupo seleccionado en el estado/localStorage, sincronizar con el del curso encontrado
+                    if (!grupoSeleccionado) {
+                        setGrupoSeleccionado(encontrado.groupCode || encontrado.grupo || null);
+                    }
                 } else if (!cursoSeleccionado) {
-                    // Sin selección guardada válida → elegir el primero
-                    setCursoSeleccionado(datos[0]);
-                    localStorage.setItem('selectedCourseId', datos[0].id);
+                    // Sin selección guardada válida o primera vez → elegir el primero ordenado
+                    const primero = datosOrdenados[0];
+                    setCursoSeleccionado(primero);
+                    setGrupoSeleccionado(primero.groupCode || primero.grupo || null);
+                    localStorage.setItem('selectedCourseId', primero.id);
                 }
             } else {
                 setCursoSeleccionado(null);
+                setGrupoSeleccionado(null);
                 localStorage.removeItem('selectedCourseId');
             }
         } catch (error) {
@@ -86,24 +102,37 @@ export const ProveedorCurso = ({ children }) => {
     useEffect(() => {
         cargarCursos();
         // eslint-disable-next-line
-    }, [usuario]);
+    }, [usuario, docenteSeleccionado]);
 
     // Selección de curso principal
 
-    // Al cambiar la materia activa, resetear todos los filtros secundarios
+    // Al cambiar la materia activa, resetear todos los filtros secundarios solo si es una MATERIA distinta
     const seleccionarCurso = (curso) => {
         if (curso === undefined) return;
+        
+        // Comparar nombres para saber si cambiamos de materia (ignorando grupo/sección)
+        const nombreAnterior = (cursoSeleccionado?.name || cursoSeleccionado?.nombre || '').trim().toLowerCase();
+        const nombreNuevo = (curso?.name || curso?.nombre || '').trim().toLowerCase();
+        const esMateriaDistinta = nombreAnterior !== nombreNuevo;
+
         setCursoSeleccionado(curso);
+
         if (curso) {
             localStorage.setItem('selectedCourseId', curso.id);
         } else {
             localStorage.setItem('selectedCourseId', 'TODAS');
         }
 
-        // Reset filtros secundarios
-        setGrupoSeleccionado(null);
-        setCodigoSeleccionado(null);
-        setDocenteSeleccionado(null);
+        // Solo resetear filtros secundarios si de verdad cambiamos de materia
+        if (esMateriaDistinta) {
+            setGrupoSeleccionado(null);
+            setCodigoSeleccionado(null);
+            
+            // No resetear el filtro de docente si es admin (queremos mantener la supervisión)
+            if (usuario?.role !== 'ADMIN') {
+                setDocenteSeleccionado(null);
+            }
+        }
     };
 
     return (

@@ -61,7 +61,8 @@ function filtrosGlobales({ cursoId, codigo, grupo, docenteId, anio, periodo, mod
 
 // Cursos
 
-export const obtenerCursos   = ()         => api.get('/courses').then(res => res.data);
+export const obtenerCursos   = (docenteId) => 
+    api.get('/courses', { params: docenteId ? { docenteId } : {} }).then(res => res.data);
 export const crearCurso      = (datos)    => api.post('/courses', datos).then(res => res.data);
 export const actualizarCurso = (id, datos)=> api.put(`/courses/${id}`, datos).then(res => res.data);
 export const eliminarCurso   = (id)       => api.delete(`/courses/${id}`).then(res => res.data);
@@ -147,7 +148,10 @@ export const obtenerReportesSemanal = (params = {}) =>
 // Docentes
 
 export const obtenerDocentes = () =>
-    api.get('/teachers').then(res => res.data.filter(u => u.role === 'TEACHER' || u.role === 'DOCENTE'));
+    api.get('/teachers').then(res => res.data.filter(u => {
+        const role = String(u.role).toUpperCase();
+        return role === 'TEACHER' || role === 'DOCENTE';
+    }));
 
 /**
  * Asistencia de hoy por materia (para el dashboard del admin).

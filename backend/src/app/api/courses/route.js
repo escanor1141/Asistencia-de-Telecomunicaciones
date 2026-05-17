@@ -7,10 +7,30 @@ export async function GET(request) {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
 
-        const whereClause = usuario.role === 'ADMIN' ? {} : { teacherId: usuario.id }
+        const { searchParams } = new URL(request.url)
+        let docenteId = searchParams.get('docenteId')
+        
+        if (docenteId === 'null' || docenteId === 'undefined' || docenteId === '') {
+            docenteId = null
+        }
+
+        let whereClause = {}
+        
+        if (usuario.role === 'ADMIN') {
+            if (docenteId) {
+                whereClause = { teacherId: docenteId }
+            }
+        } else {
+            whereClause = { teacherId: usuario.id }
+        }
 
         const cursos = await prisma.course.findMany({
             where: whereClause,
+            include: {
+                teacher: {
+                    select: { name: true }
+                }
+            },
             orderBy: { name: 'asc' }
         })
         return Response.json(cursos)
@@ -24,6 +44,11 @@ export async function POST(request) {
     try {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
+        
+        // El ADMIN solo puede visualizar, no crear materias.
+        if (usuario.role === 'ADMIN') {
+            return Response.json({ error: 'El administrador no puede crear materias' }, { status: 403 })
+        }
 
         const { name, code, groupCode, academicPeriod, academicYear, dia, horaInicio, horaFin, dia2, horaInicio2, horaFin2, franja, programa } = await request.json()
 

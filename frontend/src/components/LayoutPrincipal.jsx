@@ -21,7 +21,7 @@ const elementosNavegacion = [
     { ruta: '/', etiqueta: 'Panel Principal', icono: LayoutDashboard },
     { ruta: '/cursos', etiqueta: 'Materias', icono: BookOpen },
     { ruta: '/estudiantes', etiqueta: 'Estudiantes', icono: Users },
-    { ruta: '/asistencia', etiqueta: 'Asistencia', icono: ClipboardCheck },
+    { ruta: '/asistencia', etiqueta: 'Asistencia', icono: ClipboardCheck, docenteOnly: true },
     { ruta: '/historial', etiqueta: 'Historial', icono: History },
     { ruta: '/reportes', etiqueta: 'Reportes', icono: BarChart3 },
     { ruta: '/auditoria', etiqueta: 'Auditoría', icono: ShieldCheck, adminOnly: true },
@@ -141,7 +141,11 @@ export default function LayoutPrincipal({ children }) {
                 <nav className="flex h-full flex-col px-3 pt-24 pb-4">
                     <ul className="space-y-1">
                         {elementosNavegacion
-                            .filter((item) => !item.adminOnly || usuario?.role === 'ADMIN')
+                            .filter((item) => {
+                                if (item.adminOnly && usuario?.role !== 'ADMIN') return false;
+                                if (item.docenteOnly && usuario?.role === 'ADMIN') return false;
+                                return true;
+                            })
                             .map((item) => {
                                 const Icono = item.icono;
                                 const activo = ubicacion.pathname === item.ruta;
@@ -178,7 +182,11 @@ export default function LayoutPrincipal({ children }) {
                     }`}
                 >
                     {elementosNavegacion
-                        .filter((item) => !item.adminOnly || usuario?.role === 'ADMIN')
+                        .filter((item) => {
+                            if (item.adminOnly && usuario?.role !== 'ADMIN') return false;
+                            if (item.docenteOnly && usuario?.role === 'ADMIN') return false;
+                            return true;
+                        })
                         .map((item) => {
                             const Icono = item.icono;
                             const activo = ubicacion.pathname === item.ruta;

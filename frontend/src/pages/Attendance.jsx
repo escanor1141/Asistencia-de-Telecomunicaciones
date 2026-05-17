@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { obtenerAsistencia, obtenerEstudiantes, guardarAsistencia } from '../services/api';
 import { useCurso } from '../context/ContextoCurso';
 import FiltrosGlobales from '../components/FiltrosGlobales';
+import { Navigate } from 'react-router-dom';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 
 const estadosAsistencia = [
@@ -30,12 +32,18 @@ const formatearFechaLocal = (fechaDate) => {
 };
 
 export default function Asistencia() {
+    const { usuario } = useAutenticacion();
+    
     const {
         cursoSeleccionado,
         codigoSeleccionado,
         grupoSeleccionado,
         docenteSeleccionado,
     } = useCurso();
+
+    if (usuario?.role === 'ADMIN') {
+        return <Navigate to="/" replace />;
+    }
 
     const [estudiantes, setEstudiantes] = useState([]);
     const [fecha, setFecha] = useState(formatearFechaLocal(new Date()));

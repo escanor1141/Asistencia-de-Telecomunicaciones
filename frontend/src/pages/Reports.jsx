@@ -203,6 +203,7 @@ export default function Reportes() {
         docenteSeleccionado,
     } = useCurso();
     const { usuario } = useAutenticacion();
+    const isAdmin = usuario?.role === 'ADMIN';
 
     const [datos, setDatos] = useState([]);
     const [cargando, setCargando] = useState(true);

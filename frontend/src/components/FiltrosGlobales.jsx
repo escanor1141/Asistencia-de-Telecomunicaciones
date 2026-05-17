@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCurso } from '../context/ContextoCurso';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
+import { obtenerDocentes } from '../services/api';
 
 const estiloSelector = {
     height: '36px',
@@ -91,8 +92,10 @@ export default function FiltrosGlobales({
     soloMateria = false,
     filtroDia = null,
     mostrarTodas = true,
+    soloDocente = false, // Nueva prop para pantalla de Materias
 }) {
     const { usuario } = useAutenticacion();
+    const isAdmin = usuario?.role === 'ADMIN';
 
     const {
         cursos,
@@ -101,10 +104,24 @@ export default function FiltrosGlobales({
         cargandoCursos,
         grupoSeleccionado,
         setGrupoSeleccionado,
+        docenteSeleccionado,
+        setDocenteSeleccionado,
     } = useCurso();
 
-    // SOLO UNA VEZ
-    const isAdmin = usuario?.role === 'ADMIN';
+    const [docentes, setDocentes] = useState([]);
+
+    // Cargar docentes si es admin
+    useEffect(() => {
+        if (isAdmin) {
+            obtenerDocentes().then(lista => {
+                setDocentes(lista);
+                // Si no hay docente seleccionado, elegir el primero de la lista
+                if (!docenteSeleccionado && lista.length > 0) {
+                    setDocenteSeleccionado(lista[0].id);
+                }
+            }).catch(console.error);
+        }
+    }, [isAdmin, docenteSeleccionado, setDocenteSeleccionado]);
 
     // 1. Filtrar cursos por día
     const cursosFiltrados = useMemo(() => {
@@ -115,14 +132,15 @@ export default function FiltrosGlobales({
         );
     }, [cursos, filtroDia]);
 
-    // 2. Materias únicas
+    // 2. Materias únicas (por nombre)
     const nombresUnicos = useMemo(() => {
         const vistos = new Set();
 
         return cursosFiltrados.filter((c) => {
-            if (vistos.has(c.name)) return false;
+            const nombre = (c.name || c.nombre || '').trim();
+            if (!nombre || vistos.has(nombre)) return false;
 
-            vistos.add(c.name);
+            vistos.add(nombre);
             return true;
         });
     }, [cursosFiltrados]);
@@ -131,11 +149,19 @@ export default function FiltrosGlobales({
     const gruposDisponibles = useMemo(() => {
         if (!cursoSeleccionado) return [];
 
+        const nombreActual = (cursoSeleccionado.name || cursoSeleccionado.nombre || '').trim().toLowerCase();
+
         return cursosFiltrados
-            .filter((c) => c.name === cursoSeleccionado.name)
-            .filter((c) => c.groupCode)
+            .filter((c) => {
+                const nombreCurso = (c.name || c.nombre || '').trim().toLowerCase();
+                return nombreCurso === nombreActual;
+            })
+            .map(c => ({
+                ...c,
+                groupCode: c.groupCode || c.grupo || 'Sin grupo'
+            }))
             .sort((a, b) =>
-                (a.groupCode || '').localeCompare(b.groupCode || '')
+                String(a.groupCode).localeCompare(String(b.groupCode))
             );
     }, [cursosFiltrados, cursoSeleccionado]);
 
@@ -175,10 +201,10 @@ export default function FiltrosGlobales({
         .join(',');
 
     useEffect(() => {
-        if (!cursoSeleccionado) return;
+        if (!cursoSeleccionado || soloDocente) return;
 
         if (gruposDisponibles.length === 0) {
-            setGrupoSeleccionado(null);
+            if (grupoSeleccionado !== null) setGrupoSeleccionado(null);
             return;
         }
 
@@ -188,9 +214,14 @@ export default function FiltrosGlobales({
 
         if (!existe) {
             const primerGrupo = gruposDisponibles[0];
-
-            setGrupoSeleccionado(primerGrupo.groupCode);
-            seleccionarCurso(primerGrupo);
+            
+            // Evitar loop: Solo actualizar si es necesario
+            if (grupoSeleccionado !== primerGrupo.groupCode) {
+                setGrupoSeleccionado(primerGrupo.groupCode);
+            }
+            if (cursoSeleccionado.id !== primerGrupo.id) {
+                seleccionarCurso(primerGrupo);
+            }
         }
     }, [
         gruposDisponiblesKey,
@@ -199,21 +230,27 @@ export default function FiltrosGlobales({
         setGrupoSeleccionado,
         seleccionarCurso,
         cursoSeleccionado,
+        soloDocente
     ]);
 
     // Cambio de materia
     const handleCambioMateria = (e) => {
-        if (e.target.value === 'TODAS') {
+        const selectedName = e.target.value;
+        if (selectedName === 'TODAS') {
             seleccionarCurso(null);
             setGrupoSeleccionado(null);
             return;
         }
 
         const cursosMateria = cursosFiltrados
-            .filter((c) => c.name === e.target.value)
+            .filter((c) => {
+                const nombreCurso = (c.name || c.nombre || '').trim().toLowerCase();
+                const nombreBuscado = selectedName.trim().toLowerCase();
+                return nombreCurso === nombreBuscado;
+            })
             .sort((a, b) =>
-                (a.groupCode || '').localeCompare(
-                    b.groupCode || ''
+                String(a.groupCode || a.grupo || '').localeCompare(
+                    String(b.groupCode || b.grupo || '')
                 )
             );
 
@@ -246,73 +283,95 @@ export default function FiltrosGlobales({
                 gap: '12px',
             }}
         >
-            {cargandoCursos ? (
-                <span
-                    style={{
-                        ...estiloLabel,
-                        color: 'var(--color-muted)',
+            {isAdmin && (
+                <SelectorFiltro
+                    label="Docente:"
+                    id="selector-docente"
+                    value={docenteSeleccionado || ''}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setDocenteSeleccionado(val);
+                        // Al cambiar docente, resetear materia para evitar inconsistencias
+                        seleccionarCurso(null);
                     }}
                 >
-                    Cargando...
-                </span>
-            ) : nombresUnicos?.length > 0 || isAdmin ? (
-                <SelectorFiltro
-                    label="Materia activa:"
-                    id="selector-materia"
-                    value={
-                        cursoSeleccionado
-                            ? cursoSeleccionado.name
-                            : isAdmin && mostrarTodas
-                            ? 'TODAS'
-                            : ''
-                    }
-                    onChange={handleCambioMateria}
-                >
-                    {isAdmin && mostrarTodas && (
-                        <option value="TODAS">
-                            Todas las materias
-                        </option>
-                    )}
-
-                    {nombresUnicos.map((curso) => (
-                        <option
-                            key={curso.id}
-                            value={curso.name}
-                        >
-                            {curso.name}
+                    {docentes.map((d) => (
+                        <option key={d.id} value={d.id}>
+                            {d.name}
                         </option>
                     ))}
                 </SelectorFiltro>
-            ) : (
-                <span
-                    style={{
-                        ...estiloLabel,
-                        fontStyle: 'italic',
-                    }}
-                >
-                    Sin materias para este día
-                </span>
             )}
 
-            {!soloMateria &&
-                cursoSeleccionado &&
-                gruposDisponibles.length > 0 && (
-                    <SelectorFiltro
-                        label="Grupo:"
-                        id="selector-grupo"
-                        value={grupoSeleccionado ?? ''}
-                        onChange={handleCambioGrupo}
-                    >
-                        {gruposDisponibles.map((c) => (
-                            <option
-                                key={c.id}
-                                value={c.groupCode}
-                            >
-                                {c.groupCode}
-                            </option>
-                        ))}
-                    </SelectorFiltro>
-                )}
+            {!soloDocente && (
+                <>
+                    {cargandoCursos ? (
+                        <span
+                            style={{
+                                ...estiloLabel,
+                                color: 'var(--color-muted)',
+                            }}
+                        >
+                            Cargando...
+                        </span>
+                    ) : nombresUnicos?.length > 0 || isAdmin ? (
+                        <SelectorFiltro
+                            label="Materia activa:"
+                            id="selector-materia"
+                            value={
+                                cursoSeleccionado
+                                    ? cursoSeleccionado.name
+                                    : isAdmin && mostrarTodas
+                                    ? 'TODAS'
+                                    : ''
+                            }
+                            onChange={handleCambioMateria}
+                        >
+                            {isAdmin && mostrarTodas && (
+                                <option value="TODAS">
+                                    Todas las materias
+                                </option>
+                            )}
+
+                            {nombresUnicos.map((curso) => (
+                                <option
+                                    key={curso.id}
+                                    value={curso.name || curso.nombre}
+                                >
+                                    {curso.name || curso.nombre}
+                                </option>
+                            ))}
+                        </SelectorFiltro>
+                    ) : (
+                        <span
+                            style={{
+                                ...estiloLabel,
+                                fontStyle: 'italic',
+                            }}
+                        >
+                            Sin materias para este día
+                        </span>
+                    )}
+
+                    {cursoSeleccionado && (
+                        <SelectorFiltro
+                            label="Grupo:"
+                            id="selector-group"
+                            value={grupoSeleccionado || (gruposDisponibles[0]?.groupCode)}
+                            onChange={handleCambioGrupo}
+                        >
+                            {gruposDisponibles.map((c) => (
+                                <option
+                                    key={c.id}
+                                    value={c.groupCode}
+                                >
+                                    {c.groupCode}
+                                </option>
+                            ))}
+                        </SelectorFiltro>
+                    )}
+                </>
+            )}
         </div>
     );
 }

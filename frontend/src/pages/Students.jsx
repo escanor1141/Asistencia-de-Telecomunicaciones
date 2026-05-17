@@ -5,6 +5,7 @@ import Papa from 'papaparse';
 import { obtenerReportes, obtenerEstudiantes, crearEstudiante, actualizarEstudiante, eliminarEstudiante } from '../services/api';
 import toast from 'react-hot-toast';
 import { useCurso } from '../context/ContextoCurso';
+import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 
@@ -235,6 +236,9 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
 // Componente principal
 
 export default function Estudiantes() {
+    const { usuario } = useAutenticacion();
+    const isAdmin = usuario?.role === 'ADMIN';
+
     const {
         cursoSeleccionado,
         codigoSeleccionado,
@@ -612,7 +616,7 @@ export default function Estudiantes() {
                             <h2 className="text-2xl font-semibold">Estudiantes</h2>
                             <p className="mt-1 text-sm text-texto-secundario">Listado y porcentaje de asistencia por estudiante.</p>
                         </div>
-                        {cursoSeleccionado && (
+                        {!isAdmin && cursoSeleccionado && (
                             <div className="flex items-center gap-2 shrink-0">
                                 <button
                                     type="button"
@@ -800,6 +804,7 @@ export default function Estudiantes() {
                 {/* Tabla */}
                 <section className="tarjeta p-0">
                     {/* Barra de acciones de la tabla */}
+                    {!isAdmin && (
                     <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
                         <div className="flex items-center gap-3">
                             {seleccionados.size > 0 && (
@@ -826,6 +831,7 @@ export default function Estudiantes() {
                             </button>
                         )}
                     </div>
+                )}
 
                     {cargando ? (
                         <p className="p-6 text-sm text-texto-secundario">Cargando...</p>
@@ -834,68 +840,74 @@ export default function Estudiantes() {
                             <table className="w-full min-w-[700px] text-sm">
                                 <thead style={{ background: 'color-mix(in srgb, var(--color-border) 50%, transparent)' }}>
                                     <tr className="text-left text-texto-secundario">
-                                        <th className="px-4 py-3">
-                                            <button type="button" onClick={toggleTodos} className="flex items-center" title="Seleccionar todos">
-                                                {seleccionados.size === filtrados.length && filtrados.length > 0
-                                                    ? <CheckSquare size={16} style={{ color: 'var(--color-primary)' }} />
-                                                    : <Square size={16} style={{ color: 'var(--color-muted)' }} />}
-                                            </button>
-                                        </th>
+                                        {!isAdmin && (
+                                            <th className="px-4 py-3">
+                                                <button type="button" onClick={toggleTodos} className="flex items-center" title="Seleccionar todos">
+                                                    {seleccionados.size === filtrados.length && filtrados.length > 0
+                                                        ? <CheckSquare size={16} style={{ color: 'var(--color-primary)' }} />
+                                                        : <Square size={16} style={{ color: 'var(--color-muted)' }} />}
+                                                </button>
+                                            </th>
+                                        )}
                                         <th className="px-4 py-3 font-medium">Documento</th>
                                         <th className="px-4 py-3 font-medium">Nombre</th>
                                         <th className="px-4 py-3 font-medium">Materia</th>
                                         <th className="px-4 py-3 text-right font-medium">% asistencia</th>
-                                        <th className="px-4 py-3 font-medium text-right">Acciones</th>
+                                        {!isAdmin && <th className="px-4 py-3 font-medium text-right">Acciones</th>}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filtrados.map((est) => (
                                         <tr key={est.id} className="border-b"
                                             style={{ borderColor: 'var(--color-border)', background: seleccionados.has(est.id) ? 'color-mix(in srgb, var(--color-primary) 6%, transparent)' : 'transparent' }}>
-                                            <td className="px-4 py-3">
-                                                <button type="button" onClick={() => toggleSeleccion(est.id)} className="flex items-center">
-                                                    {seleccionados.has(est.id)
-                                                        ? <CheckSquare size={16} style={{ color: 'var(--color-primary)' }} />
-                                                        : <Square size={16} style={{ color: 'var(--color-muted)' }} />}
-                                                </button>
-                                            </td>
+                                            {!isAdmin && (
+                                                <td className="px-4 py-3">
+                                                    <button type="button" onClick={() => toggleSeleccion(est.id)} className="flex items-center">
+                                                        {seleccionados.has(est.id)
+                                                            ? <CheckSquare size={16} style={{ color: 'var(--color-primary)' }} />
+                                                            : <Square size={16} style={{ color: 'var(--color-muted)' }} />}
+                                                    </button>
+                                                </td>
+                                            )}
                                             <td className="px-4 py-3 font-mono text-xs text-texto-secundario">{est.documento}</td>
                                             <td className="px-4 py-3 font-medium text-texto">{est.nombreFormateado}</td>
                                             <td className="px-4 py-3 text-texto-secundario">{est.curso}</td>
                                             <td className="px-4 py-3 text-right font-mono">
                                                 {Number(est.porcentaje).toLocaleString('es-CO')}%
                                             </td>
-                                            <td className="px-4 py-3 text-right">
-                                                <button
-                                                    onClick={() => setEstudianteEnEdicion(est)}
-                                                    disabled={editandoId === est.id || eliminandoId === est.id}
-                                                    className="mr-2 p-1.5 rounded-md transition-colors disabled:opacity-50"
-                                                    style={{ color: 'var(--color-muted)' }}
-                                                    title="Editar estudiante"
-                                                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-primary-light)'; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                                                >
-                                                    <Pencil size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => manejarEliminacionEstudiante(est.id, est.nombre)}
-                                                    disabled={eliminandoId === est.id || editandoId === est.id}
-                                                    className="p-1.5 rounded-md transition-colors disabled:opacity-50"
-                                                    style={{ color: 'var(--color-muted)' }}
-                                                    title="Eliminar estudiante"
-                                                    onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-absent)'; e.currentTarget.style.background = 'var(--color-absent-bg)'; }}
-                                                    onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.background = 'transparent'; }}
-                                                >
-                                                    {eliminandoId === est.id
-                                                        ? <Loader2 size={16} className="animate-spin" />
-                                                        : <Trash2 size={16} />}
-                                                </button>
-                                            </td>
+                                            {!isAdmin && (
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        onClick={() => setEstudianteEnEdicion(est)}
+                                                        disabled={editandoId === est.id || eliminandoId === est.id}
+                                                        className="mr-2 p-1.5 rounded-md transition-colors disabled:opacity-50"
+                                                        style={{ color: 'var(--color-muted)' }}
+                                                        title="Editar estudiante"
+                                                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-primary)'; e.currentTarget.style.background = 'var(--color-primary-light)'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => manejarEliminacionEstudiante(est.id, est.nombre)}
+                                                        disabled={eliminandoId === est.id || editandoId === est.id}
+                                                        className="p-1.5 rounded-md transition-colors disabled:opacity-50"
+                                                        style={{ color: 'var(--color-muted)' }}
+                                                        title="Eliminar estudiante"
+                                                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-absent)'; e.currentTarget.style.background = 'var(--color-absent-bg)'; }}
+                                                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                                                    >
+                                                        {eliminandoId === est.id
+                                                            ? <Loader2 size={16} className="animate-spin" />
+                                                            : <Trash2 size={16} />}
+                                                    </button>
+                                                </td>
+                                            )}
                                         </tr>
                                     ))}
                                     {filtrados.length === 0 && (
                                         <tr>
-                                            <td colSpan="6" className="px-4 py-8 text-center text-texto-secundario">
+                                            <td colSpan={isAdmin ? "4" : "6"} className="px-4 py-8 text-center text-texto-secundario">
                                                 No hay estudiantes para los filtros seleccionados.
                                             </td>
                                         </tr>

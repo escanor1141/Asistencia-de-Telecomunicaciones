@@ -98,6 +98,11 @@ export async function POST(request) {
             return Response.json({ error: 'No autorizado' }, { status: 401 })
         }
 
+        // El ADMIN solo puede visualizar, no crear estudiantes.
+        if (usuario.role === 'ADMIN') {
+            return Response.json({ error: 'El administrador no puede crear estudiantes' }, { status: 403 })
+        }
+
         const { searchParams } = new URL(request.url)
         const idCurso = searchParams.get('courseId')
 

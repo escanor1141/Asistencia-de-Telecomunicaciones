@@ -39,6 +39,7 @@ export default function Historial() {
         docenteSeleccionado,
     } = useCurso();
     const { usuario } = useAutenticacion();
+    const isAdmin = usuario?.role === 'ADMIN';
 
     // Filtros locales de esta página
 

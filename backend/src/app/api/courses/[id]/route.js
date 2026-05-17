@@ -21,7 +21,11 @@ export async function PUT(request, { params }) {
             return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
         }
 
-        if (usuario.role !== 'ADMIN' && cursoExistente.teacherId !== usuario.id) {
+        if (usuario.role === 'ADMIN') {
+            return Response.json({ error: 'El administrador no puede modificar materias' }, { status: 403 })
+        }
+
+        if (cursoExistente.teacherId !== usuario.id) {
             return Response.json({ error: 'No autorizado para editar esta materia' }, { status: 403 })
         }
 
@@ -63,7 +67,11 @@ export async function DELETE(request, { params }) {
             return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
         }
 
-        if (usuario.role !== 'ADMIN' && existing.teacherId !== usuario.id) {
+        if (usuario.role === 'ADMIN') {
+            return Response.json({ error: 'El administrador no puede eliminar materias' }, { status: 403 })
+        }
+
+        if (existing.teacherId !== usuario.id) {
             return Response.json({ error: 'No autorizado para eliminar esta materia' }, { status: 403 })
         }
 

@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useCurso } from '../context/ContextoCurso';
 import { obtenerReportes, crearCurso, eliminarCurso, actualizarCurso } from '../services/api';
-import { BookOpen, Trash2, Plus, Loader2, ChevronDown, Pencil, Download, Upload, X, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BookOpen, Trash2, Plus, Loader2, ChevronDown, Pencil, Download, Upload, X, CheckCircle2, AlertCircle, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import * as XLSX from 'xlsx';
+import FiltrosGlobales from '../components/FiltrosGlobales';
 
 export default function Cursos() {
     const { cursos, cargandoCursos, cargarCursos } = useCurso();
     const { usuario } = useAutenticacion();
+    const isAdmin = usuario?.role === 'ADMIN';
     const [estadisticasCursos, setEstadisticasCursos] = useState([]);
     const [cargandoEstadisticas, setCargandoEstadisticas] = useState(false);
     const [formularioCurso, setFormularioCurso] = useState({ name: '', code: '', groupCode: '', academicPeriod: '1', academicYear: new Date().getFullYear().toString(), dia: '', horaInicio: '', horaFin: '', dia2: '', horaInicio2: '', horaFin2: '', franja: '', programa: '' });
@@ -52,7 +54,7 @@ export default function Cursos() {
                             grupo: curso.groupCode || 'A',
                             periodo: curso.academicPeriod || '1',
                             anio: curso.academicYear || '2024',
-                            profesor: usuario?.name || 'Sin profesor asignado',
+                            profesor: curso.teacher?.name || usuario?.name || 'Sin profesor asignado',
                             horario: (curso.dia && curso.horaInicio && curso.horaFin) 
                                 ? `${curso.dia} de ${curso.horaInicio} a ${curso.horaFin}${curso.dia2 ? ` y ${curso.dia2} de ${curso.horaInicio2} a ${curso.horaFin2}` : ''}` 
                                 : curso.schedule || 'Sin horario asignado',
@@ -387,35 +389,41 @@ export default function Cursos() {
                         <h2 className="text-2xl font-semibold">Materias</h2>
                         <p className="mt-1 text-sm text-texto-secundario">Resumen de materias asignadas y su asistencia promedio.</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <div className="flex flex-wrap items-center gap-4 shrink-0">
+                        {isAdmin && <FiltrosGlobales mostrarTodas={false} soloDocente={true} />}
+                        
+                        {!isAdmin && (
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setModalFormularioVisible(true)}
+                                    className="boton-primario inline-flex items-center gap-2"
+                                    title="Crear Nueva Materia"
+                                >
+                                    <Plus size={16} />
+                                    Nueva Materia
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => inputArchivoCursoRef.current?.click()}
+                                    className="boton-secundario inline-flex items-center gap-2"
+                                    title="Importar materias desde Excel"
+                                >
+                                    <Upload size={16} />
+                                    Importar
+                                </button>
+                            </div>
+                        )}
                         <button
-                        type="button"
-                        onClick={() => setModalFormularioVisible(true)}
-                        className="boton-primario inline-flex items-center gap-2"
-                        title="Crear Nueva Materia"
-                    >
-                        <Plus size={16} />
-                        Nueva Materia
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => inputArchivoCursoRef.current?.click()}
-                        className="boton-secundario inline-flex items-center gap-2"
-                        title="Importar materias desde Excel"
-                    >
-                        <Upload size={16} />
-                        Importar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={exportarPlantilla}
-                        className="boton-secundario inline-flex items-center gap-2"
-                        title="Exportar materias a Excel"
-                    >
-                        <Download size={16} />
-                        Exportar
-                    </button>
-                </div>
+                            type="button"
+                            onClick={exportarPlantilla}
+                            className="boton-secundario inline-flex items-center gap-2"
+                            title="Exportar materias a Excel"
+                        >
+                            <Download size={16} />
+                            Exportar
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -695,7 +703,15 @@ export default function Cursos() {
                                 </div>
                             </div>
                             <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-texto-secundario">
-                                
+                                {isAdmin && (
+                                    <div className="col-span-2">
+                                        <p className="text-xs text-texto-secundario">Docente</p>
+                                        <p className="font-medium text-texto flex items-center gap-1">
+                                            <User size={14} className="text-primario" />
+                                            {curso.profesor}
+                                        </p>
+                                    </div>
+                                )}
                                 <div>
                                     <p className="text-xs text-texto-secundario">Programa</p>
                                     <p className="font-medium text-texto">{curso.programa}</p>
@@ -713,23 +729,25 @@ export default function Cursos() {
                                 <div />
                             </div>
 
-                            <div className="absolute left-3 bottom-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                <button
-                                    onClick={() => iniciarEdicionCurso(curso)}
-                                    className="p-1.5 text-texto-secundario hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                                    title="Editar materia"
-                                >
-                                    <Pencil size={16} />
-                                </button>
-                                <button
-                                    onClick={() => manejarEliminacionCurso(curso.id, curso.nombre)}
-                                    disabled={eliminandoId === curso.id}
-                                    className="p-1.5 text-texto-secundario hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
-                                    title="Eliminar materia"
-                                >
-                                    {eliminandoId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                                </button>
-                            </div>
+                            {!isAdmin && (
+                                <div className="absolute left-3 bottom-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                    <button
+                                        onClick={() => iniciarEdicionCurso(curso)}
+                                        className="p-1.5 text-texto-secundario hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                        title="Editar materia"
+                                    >
+                                        <Pencil size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => manejarEliminacionCurso(curso.id, curso.nombre)}
+                                        disabled={eliminandoId === curso.id}
+                                        className="p-1.5 text-texto-secundario hover:text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                                        title="Eliminar materia"
+                                    >
+                                        {eliminandoId === curso.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                    </button>
+                                </div>
+                            )}
 
                             <div className="absolute right-3 bottom-3 z-10">
                                 <div className="rounded-md px-3 py-1 bg-acento/10 border border-acento/20">

@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { obtenerUsuarioDePeticion } from '@/lib/auth'
 
 // PUT — actualizar datos de un estudiante
 export async function PUT(request, { params }) {
     try {
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
+        if (usuario.role === 'ADMIN') return Response.json({ error: 'El administrador no puede modificar estudiantes' }, { status: 403 })
+
         const { name, email, correo2, whatsapp, telefono2, franja, programa } = await request.json()
         if (!name || name.trim() === '') {
             return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
@@ -29,6 +34,10 @@ export async function PUT(request, { params }) {
 // DELETE — eliminar o desconectar un estudiante de un curso
 export async function DELETE(request, { params }) {
     try {
+        const usuario = obtenerUsuarioDePeticion(request)
+        if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
+        if (usuario.role === 'ADMIN') return Response.json({ error: 'El administrador no puede eliminar estudiantes' }, { status: 403 })
+
         const { searchParams } = new URL(request.url);
         const idCurso = searchParams.get('courseId');
 
