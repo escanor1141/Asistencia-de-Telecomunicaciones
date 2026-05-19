@@ -4,8 +4,8 @@
  */
 
 import prisma from '../lib/prisma.js';
-import { sendEmail, buildAbsenceEmailHTML } from '../lib/emailService.js';
-import { getWeeklyAbsences } from '../lib/attendanceService.js';
+import { sendEmail, buildAbsenceEmailHTML, buildWeeklyReportEmailHTML } from '../lib/emailService.js';
+import { getWeeklyAbsences, createWeeklyCourseExcelReport } from '../lib/attendanceService.js';
 
 /**
  * Ejecuta el proceso de notificación semanal de inasistencias.
@@ -20,7 +20,35 @@ export async function runWeeklyNotification() {
     const resultados = { sent: 0, skipped: 0, errors: 0, details: [] };
 
     try {
-        // 1. Obtener inasistencias agrupadas por estudiante
+        // 1. Generar y enviar reporte Excel semanal de materias activas
+        const weeklyReportRecipient = process.env.WEEKLY_REPORT_RECIPIENT_EMAIL || process.env.BREVO_SENDER_EMAIL;
+        if (weeklyReportRecipient) {
+            try {
+                const { buffer, weekStart, weekEnd, courseCount, totalRecords } = await createWeeklyCourseExcelReport();
+                const attachmentName = `reporte-semanal-materias-${weekStart}.xlsx`;
+                const htmlContent = buildWeeklyReportEmailHTML({ weekStart, weekEnd, courseCount, totalRecords });
+
+                const reportResult = await sendEmail({
+                    to: weeklyReportRecipient,
+                    toName: process.env.WEEKLY_REPORT_RECIPIENT_NAME || 'Coordinador',
+                    subject: `Reporte semanal de materias activas (${weekStart} - ${weekEnd})`,
+                    htmlContent,
+                    attachments: [{ name: attachmentName, content: buffer.toString('base64') }],
+                });
+
+                if (reportResult.success) {
+                    console.log(`[notification-job] ✅ Reporte semanal enviado a: ${weeklyReportRecipient}`);
+                } else {
+                    console.error(`[notification-job] ❌ Error enviando reporte semanal a ${weeklyReportRecipient}: ${reportResult.error}`);
+                }
+            } catch (err) {
+                console.error('[notification-job] Error generando o enviando reporte semanal:', err.message);
+            }
+        } else {
+            console.log('[notification-job] No hay WEEKLY_REPORT_RECIPIENT_EMAIL configurado. Se omite envío de reporte semanal en Excel.');
+        }
+
+        // 2. Obtener inasistencias agrupadas por estudiante
         const listaInasistencias = await getWeeklyAbsences();
 
         if (listaInasistencias.length === 0) {

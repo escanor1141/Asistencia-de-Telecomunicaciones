@@ -15,7 +15,7 @@ const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
  * @param {string} options.htmlContent - Contenido HTML del correo
  * @returns {Promise<{success: boolean, messageId?: string, error?: string}>}
  */
-export async function sendEmail({ to, toName, subject, htmlContent }) {
+export async function sendEmail({ to, toName, subject, htmlContent, attachments = [] }) {
     const apiKey = process.env.BREVO_API_KEY;
     const senderEmail = process.env.BREVO_SENDER_EMAIL;
     const senderName = process.env.BREVO_SENDER_NAME || 'Sistema de Asistencia';
@@ -32,6 +32,10 @@ export async function sendEmail({ to, toName, subject, htmlContent }) {
         subject,
         htmlContent,
     };
+
+    if (attachments.length > 0) {
+        payload.attachment = attachments.map(({ name, content }) => ({ name, content }));
+    }
 
     try {
         const response = await fetch(BREVO_API_URL, {
@@ -124,6 +128,39 @@ export function buildAbsenceEmailHTML({ studentName, totalAbsences, courses, wee
         Este mensaje es una notificación automática del sistema de control de asistencia.<br>
         Por favor no responda a este correo.
       </p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+export function buildWeeklyReportEmailHTML({ weekStart, weekEnd, courseCount, totalRecords }) {
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <div style="background: linear-gradient(135deg, #1e3a8a, #2563eb); padding: 32px 24px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">📦 Reporte Semanal de Materias Activas</h1>
+      <p style="color: #bfdbfe; margin: 8px 0 0; font-size: 14px;">Semana del ${weekStart} al ${weekEnd}</p>
+    </div>
+    <div style="padding: 32px 24px;">
+      <p style="color: #374151; font-size: 16px; margin: 0 0 16px;">Adjuntamos el reporte en formato Excel con una hoja por materia activa.</p>
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+        <p style="color: #1e40af; font-size: 16px; margin: 0 0 8px;"><strong>Resumen del reporte</strong></p>
+        <ul style="color: #4b5563; font-size: 14px; margin: 0; padding-left: 20px;">
+          <li>Total de materias activas: <strong>${courseCount}</strong></li>
+          <li>Total de registros de asistencia en la semana: <strong>${totalRecords}</strong></li>
+        </ul>
+      </div>
+      <p style="color: #4b5563; font-size: 14px; line-height: 1.6; margin: 0;">El archivo contiene una hoja separada por cada materia activa y muestra los registros de asistencia del periodo.</p>
+    </div>
+    <div style="background: #f9fafb; border-top: 1px solid #e5e7eb; padding: 20px 24px; text-align: center;">
+      <p style="color: #9ca3af; font-size: 12px; margin: 0;">Este es un correo automático generado por el sistema de asistencia.</p>
     </div>
   </div>
 </body>

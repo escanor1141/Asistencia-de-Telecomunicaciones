@@ -83,7 +83,9 @@ const getColoresBrackets = () => [
     v('--color-primary-dark'),
 ];
 
-const ETIQUETAS_BRACKETS = ['>= 90%', '80-89%', '70-79%', '< 70%'];
+const ETIQUETAS_BRACKETS = ['90% o más', '80 - 89%', '70 - 79%', 'Menos de 70%'];
+
+const etiquetaTorta = ({ name, percent }) => `${name} · ${Math.round(percent * 100)}%`;
 
 
 
@@ -182,7 +184,7 @@ function TooltipTorta({ active, payload }) {
             }}
         >
             <p style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                {name}: <span style={{ fontFamily: 'var(--font-mono)' }}>{value} est.</span>
+                {name}: <span style={{ fontFamily: 'var(--font-mono)' }}>{value} estudiantes</span>
             </p>
         </div>
     );
@@ -204,6 +206,7 @@ export default function Reportes() {
     } = useCurso();
     const { usuario } = useAutenticacion();
     const isAdmin = usuario?.role === 'ADMIN';
+    const esDocente = usuario?.role === 'DOCENTE' || usuario?.role === 'TEACHER';
 
     const [datos, setDatos] = useState([]);
     const [cargando, setCargando] = useState(true);
@@ -212,6 +215,9 @@ export default function Reportes() {
     const [vistaActiva, setVistaActiva] = useState('distribucion');
     const [exportando, setExportando] = useState(false);
     const [rangoSeleccionado, setRangoSeleccionado] = useState('personalizado');
+    const [mostrarPreviewSemanal, setMostrarPreviewSemanal] = useState(false);
+    const [previewSemanalData, setPreviewSemanalData] = useState(null);
+    const [cargandoPreviewSemanal, setCargandoPreviewSemanal] = useState(false);
 
     const manejarCambioRango = (e) => {
         const rango = e.target.value;
@@ -405,6 +411,12 @@ export default function Reportes() {
             .filter((d) => d.value > 0);
     }, [datos]);
 
+    // Modal simple para previsualizar la data semanal
+    const cerrarPreview = () => {
+        setMostrarPreviewSemanal(false);
+        setPreviewSemanalData(null);
+    };
+
 
 
     const exportarExcel = async () => {
@@ -524,15 +536,39 @@ export default function Reportes() {
                         title="Fecha de fin"
                         onChange={manejarCambioFechaManual(setFechaFin)}
                     />
-                    <button
-                        type="button"
-                        onClick={exportarExcel}
-                        disabled={datos.length === 0 || exportando}
-                        className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
-                    >
-                        {exportando ? <Loader2 size={15} className="animate-spin" aria-label="Exportando" /> : <Download size={15} aria-label="Descargar reporte" />}
-                        {exportando ? 'Generando...' : 'Exportar Excel'}
-                    </button>
+                    <div className="flex flex-col items-start gap-2">
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (!cursoSeleccionado) return;
+                                setCargandoPreviewSemanal(true);
+                                try {
+                                    const res = await obtenerReportesSemanal({ courseId: cursoSeleccionado.id });
+                                    setPreviewSemanalData(res);
+                                    setMostrarPreviewSemanal(true);
+                                } catch (err) {
+                                    console.error('Error cargando preview semanal:', err);
+                                } finally {
+                                    setCargandoPreviewSemanal(false);
+                                }
+                            }}
+                            disabled={!cursoSeleccionado || cargandoPreviewSemanal}
+                            className="boton-secundario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
+                        >
+                            {cargandoPreviewSemanal ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
+                            {cargandoPreviewSemanal ? 'Cargando...' : 'Visualizar reporte semanal'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={exportarExcel}
+                            disabled={datos.length === 0 || exportando}
+                            className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
+                        >
+                            {exportando ? <Loader2 size={15} className="animate-spin" aria-label="Exportando" /> : <Download size={15} aria-label="Descargar reporte" />}
+                            {exportando ? 'Generando...' : esDocente ? 'Descargar reporte' : 'Exportar Excel'}
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -616,7 +652,7 @@ export default function Reportes() {
                                     Distribuci&oacute;n de estudiantes por rango de asistencia
                                 </p>
                                 <p className="mb-4 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                                    Las inasistencias justificadas se registran como <strong>Justificados</strong> y no afectan el umbral de pérdida por faltas.
+                                    Las inasistencias justificadas se registran como <strong>Justificados</strong> y no inciden en el umbral de pérdida por faltas.
                                 </p>
                                 <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-6">
                                     <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
@@ -639,14 +675,18 @@ export default function Reportes() {
                                                 data={datosTorta}
                                                 cx="50%"
                                                 cy="50%"
-                                                innerRadius={65}
-                                                outerRadius={100}
-                                                paddingAngle={5}
-                                                cornerRadius={6}
+                                                innerRadius={58}
+                                                outerRadius={104}
+                                                startAngle={90}
+                                                endAngle={-270}
+                                                paddingAngle={4}
+                                                cornerRadius={8}
                                                 dataKey="value"
                                                 stroke="none"
+                                                label={etiquetaTorta}
+                                                labelLine={false}
                                             >
-                                                {datosTorta.map((entry, index) => {
+                                                {datosTorta.map((entry) => {
                                                     const colorIdx = ETIQUETAS_BRACKETS.indexOf(entry.name);
                                                     return (
                                                         <Cell
@@ -777,7 +817,7 @@ export default function Reportes() {
                                                     );
                                                 })}
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="color-mix(in srgb, var(--color-border) 60%, transparent)" vertical={false} />
+                                            <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.45} />
                                             <XAxis
                                                 dataKey="semana"
                                                 tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}
@@ -791,7 +831,16 @@ export default function Reportes() {
                                                 dx={-10}
                                             />
                                             <Tooltip content={<TooltipSemanal />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                            <Legend wrapperStyle={{ fontSize: '0.8125rem', paddingTop: 20, fontWeight: 500 }} iconType="circle" />
+                                            <Legend
+                                                wrapperStyle={{
+                                                    fontSize: '0.8125rem',
+                                                    paddingTop: 20,
+                                                    fontWeight: 500,
+                                                    color: 'var(--color-text-secondary)',
+                                                }}
+                                                iconType="circle"
+                                                formatter={(value) => <span style={{ color: 'var(--color-text-primary)' }}>{value}</span>}
+                                            />
                                             {seriesNombres.map((nombre, i) => (
                                                 <Area
                                                     key={nombre}
@@ -890,6 +939,47 @@ export default function Reportes() {
                     </>
                 )}
             </section>
+
+            {/* Modal de previsualización semanal */}
+            {mostrarPreviewSemanal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/40" onClick={cerrarPreview} />
+                    <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6 z-10">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">Previsualización - Reporte Semanal</h3>
+                            <button onClick={cerrarPreview} className="text-sm text-texto-secundario">Cerrar</button>
+                        </div>
+                        {!previewSemanalData ? (
+                            <p className="text-sm text-texto-secundario">Sin datos disponibles.</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {(previewSemanalData.semanas || []).length === 0 ? (
+                                    <p className="text-sm text-texto-secundario">No hay registros semanales.</p>
+                                ) : (
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="text-left text-texto-secundario">
+                                                <th className="pb-2">Semana</th>
+                                                <th className="pb-2">Presentes</th>
+                                                <th className="pb-2">Ausentes</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {previewSemanalData.semanas.map((s) => (
+                                                <tr key={s.semana} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
+                                                    <td className="py-2">{s.semana}</td>
+                                                    <td className="py-2">{s.presente ?? '-'}</td>
+                                                    <td className="py-2">{s.ausente ?? '-'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </section>
     );
 }

@@ -8,8 +8,8 @@ export default function RutaPrivada({ children }) {
 
     if (cargando) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <Loader2 className="animate-spin text-brand-purple" size={48} />
+            <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-bg)' }}>
+                <Loader2 className="animate-spin" style={{ color: 'var(--color-primary)' }} size={48} />
             </div>
         );
     }

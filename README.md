@@ -34,5 +34,7 @@ npm run dev
 ```
 Esto iniciará simultáneamente el Backend en `http://localhost:3001` y el Frontend en `http://localhost:3000`.
 
+> Si el puerto `3000` ya está ocupado, Vite usará automáticamente el siguiente puerto disponible.
+
 ## Docker (Producción Backend)
 Puedes usar el `Dockerfile` ubicado en la carpeta `backend` para desplegar la API en Railway, Render o cualquier plataforma de contenedores.
