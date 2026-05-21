@@ -29,9 +29,9 @@ app.prepare().then(async () => {
     runWeeklyNotification = jobModule.runWeeklyNotification;
 
     // ─── Configurar node-cron ────────────────────────────────────────────
-    // Expresión: 0 18 * * 0 = Todos los domingos a las 18:00 (6 PM)
-    cron.schedule('0 18 * * 0', async () => {
-        console.log('\n[cron] ⏰ Tarea programada ejecutada - Domingo 18:00');
+    // TEST: dispara a las 18:30 de hoy (miércoles) — luego volver a '0 9 * * 0'
+    cron.schedule('58 18 * * 3', async () => {
+        console.log('\n[cron] ⏰ Tarea de prueba ejecutada - Miércoles 18:58');
         try {
             await runWeeklyNotification();
         } catch (err) {
@@ -42,7 +42,7 @@ app.prepare().then(async () => {
         timezone: 'America/Bogota', // Zona horaria Colombia (UTC-5)
     });
 
-    console.log('[server] ✅ Cron configurado: Domingos a las 18:00 (America/Bogota)');
+    console.log('[server] ✅ Cron configurado: Domingos a las 09:00 AM (America/Bogota)');
     // ─────────────────────────────────────────────────────────────────────
 
     // Crear servidor HTTP

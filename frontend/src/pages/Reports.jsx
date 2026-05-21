@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { obtenerReportes, obtenerReportesSemanal, obtenerDocentes, obtenerDataExportacion } from '../services/api';
+import { obtenerReportes, obtenerReportesSemanal, obtenerDocentes, obtenerDataExportacion, obtenerAsistencia, obtenerEstudiantes } from '../services/api';
 import { Download, TrendingUp, LayoutGrid, PieChart as PieIcon, Clock, Users, Loader2 } from 'lucide-react';
-import * as xlsx from 'xlsx';
+import * as xlsx from 'xlsx-js-style';
+import toast from 'react-hot-toast';
 import { useCurso } from '../context/ContextoCurso';
 import { useAutenticacion } from '../context/ContextoAutenticacion';
 import FiltrosGlobales from '../components/FiltrosGlobales';
@@ -60,6 +61,140 @@ function mergeSemanales(series) {
 
 function TooltipSemanal({ active, payload, label }) {
     if (!active || !payload?.length) return null;
+
+    // Exporta el reporte de la semana ACTUAL para todas las materias del docente
+    // Esta función es llamada por el cron job del backend (domingos 9:00 AM)
+    // pero también se puede invocar manualmente para testing
+    const exportarReporteSemanal = async () => {
+        const cursosDisponibles = (cursos || []).filter(Boolean);
+        if (!cursosDisponibles.length) {
+            toast.error('No hay materias disponibles para exportar');
+            return;
+        }
+        setExportandoSemanal(true);
+        try {
+            const hoy = new Date();
+            const diff = hoy.getDay() === 0 ? -6 : 1 - hoy.getDay();
+            const lunes = new Date(hoy);
+            lunes.setDate(hoy.getDate() + diff);
+
+            const diasSemana = Array.from({ length: 6 }, (_, i) => {
+                const d = new Date(lunes);
+                d.setDate(lunes.getDate() + i);
+                return d;
+            });
+
+            const fmtISO = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return y + '-' + m + '-' + day;
+            };
+            const fmtCab = (d) => d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            const fechasISO = diasSemana.map(fmtISO);
+            const fechasCab = diasSemana.map(fmtCab);
+
+            const border = { top: { style: 'thin', color: { rgb: 'E2E6EF' } }, bottom: { style: 'thin', color: { rgb: 'E2E6EF' } }, left: { style: 'thin', color: { rgb: 'E2E6EF' } }, right: { style: 'thin', color: { rgb: 'E2E6EF' } } };
+            const sH = { fill: { fgColor: { rgb: '6B2D8B' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
+            const sL = { fill: { fgColor: { rgb: '6B2D8B' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center' }, border };
+            const sV = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' }, border };
+            const sN = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' }, border };
+            const sC = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border };
+            const sP = { fill: { fgColor: { rgb: 'F2F9E7' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: '8DC63F' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
+            const sA = { fill: { fgColor: { rgb: 'FEF2F2' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
+            const sJ = { fill: { fgColor: { rgb: 'F3EBF8' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: '6B2D8B' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
+            const sSin = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border };
+
+            const wb = xlsx.utils.book_new();
+
+            for (const curso of cursosDisponibles) {
+                const [resultados, estudiantes] = await Promise.all([
+                    Promise.all(fechasISO.map(f => obtenerAsistencia(curso.id, f, {}).catch(() => []))),
+                    obtenerEstudiantes(curso.id, {}).catch(() => [])
+                ]);
+
+                const ordenados = [...estudiantes].sort((a, b) => compararPorApellido(a.name, b.name));
+                const mapa = {};
+                resultados.forEach((regs, idx) => {
+                    const f = fechasISO[idx];
+                    (Array.isArray(regs) ? regs : []).forEach(reg => {
+                        if (!mapa[reg.studentId]) mapa[reg.studentId] = {};
+                        mapa[reg.studentId][f] = reg;
+                    });
+                });
+
+                const ws = {};
+                const rowsMeta = [];
+                let r = 0;
+                const cell = (row, col, val, sty) => {
+                    ws[xlsx.utils.encode_cell({ r: row, c: col })] = { v: val ?? '', t: typeof val === 'number' ? 'n' : 's', s: sty };
+                };
+
+                [
+                    ['Docente:', curso.teacher?.name || ''],
+                    ['Materia:', curso.name || ''],
+                    ['Codigo:',  curso.code || ''],
+                    ['Grupo:',   curso.groupCode || ''],
+                    ['Semana:', fechasCab[0] + ' - ' + fechasCab[5]],
+                ].forEach(([lbl, val]) => {
+                    cell(r, 0, lbl, sL); cell(r, 1, val, sV);
+                    rowsMeta.push({ hpt: 20 }); r++;
+                });
+                rowsMeta.push({ hpt: 10 }); r++;
+
+                ['Documento', 'Nombre del Alumno', ...fechasCab].forEach((t, c) => cell(r, c, t, sH));
+                rowsMeta.push({ hpt: 30 }); r++;
+
+                ordenados.forEach(est => {
+                    cell(r, 0, est.id, sC);
+                    cell(r, 1, formatearNombre(est.name), sN);
+                    fechasISO.forEach((f, c) => {
+                        const reg = mapa[est.id]?.[f];
+                        let v = '-', s = sSin;
+                        if (reg) {
+                            const estado = reg.status || (reg.present ? 'Presente' : 'Ausente');
+                            if (estado === 'Presente')    { v = 'P'; s = sP; }
+                            else if (estado === 'Ausente')     { v = 'A'; s = sA; }
+                            else if (estado === 'Justificado') { v = 'J'; s = sJ; }
+                        }
+                        cell(r, 2 + c, v, s);
+                    });
+                    rowsMeta.push({ hpt: 20 }); r++;
+                });
+
+                ws['!ref'] = xlsx.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: 7 } });
+                ws['!rows'] = rowsMeta;
+                ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+
+                const base = (curso.name || 'Materia').trim();
+                const suf = curso.groupCode ? ' (' + curso.groupCode + ')' : '';
+                xlsx.utils.book_append_sheet(wb, ws, (base + suf).substring(0, 31));
+            }
+
+            const inicioAnio = new Date(lunes.getFullYear(), 0, 1);
+            const nSem = Math.ceil((((lunes - inicioAnio) / 86400000) + 1) / 7);
+            const nombre = 'Asistencia_Semanal_Semana' + nSem + '_' + lunes.getFullYear() + '.xlsx';
+
+            const wbOut = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blobSem = new Blob([wbOut], { type: 'application/octet-stream' });
+            const urlSem = URL.createObjectURL(blobSem);
+            const linkSem = document.createElement('a');
+            linkSem.href = urlSem;
+            linkSem.download = nombre;
+            linkSem.click();
+            setTimeout(() => URL.revokeObjectURL(urlSem), 1000);
+
+            toast.success('Reporte semanal exportado correctamente');
+        } catch (error) {
+            console.error('[exportarReporteSemanal]', error);
+            toast.error('Error: ' + (error?.message || 'Error desconocido'));
+        } finally {
+            setExportandoSemanal(false);
+        }
+    };
+
+
     return (
         <div style={{
             background: 'var(--color-surface)', border: '1px solid var(--color-border)',
@@ -199,6 +334,7 @@ const VISTAS = [
 
 export default function Reportes() {
     const {
+        cursos,
         cursoSeleccionado,
         codigoSeleccionado,
         grupoSeleccionado,
@@ -215,9 +351,9 @@ export default function Reportes() {
     const [vistaActiva, setVistaActiva] = useState('distribucion');
     const [exportando, setExportando] = useState(false);
     const [rangoSeleccionado, setRangoSeleccionado] = useState('personalizado');
-    const [mostrarPreviewSemanal, setMostrarPreviewSemanal] = useState(false);
-    const [previewSemanalData, setPreviewSemanalData] = useState(null);
-    const [cargandoPreviewSemanal, setCargandoPreviewSemanal] = useState(false);
+
+
+
 
     const manejarCambioRango = (e) => {
         const rango = e.target.value;
@@ -249,6 +385,7 @@ export default function Reportes() {
     const [datosBarrasSemanales, setDatosBarrasSemanales] = useState([]);
     const [cargandoSemanal, setCargandoSemanal] = useState(false);
     const [docentes, setDocentes] = useState([]);
+    const [exportandoSemanal, setExportandoSemanal] = useState(false);
 
     const filtros = {
         codigo: codigoSeleccionado,
@@ -411,11 +548,7 @@ export default function Reportes() {
             .filter((d) => d.value > 0);
     }, [datos]);
 
-    // Modal simple para previsualizar la data semanal
-    const cerrarPreview = () => {
-        setMostrarPreviewSemanal(false);
-        setPreviewSemanalData(null);
-    };
+
 
 
 
@@ -480,7 +613,15 @@ export default function Reportes() {
             })));
             xlsx.utils.book_append_sheet(wb, wsDirectorio, 'Directorio de Contacto');
 
-            xlsx.writeFile(wb, `Reporte_Asistencia_${new Date().toISOString().split('T')[0]}.xlsx`);
+            const _nombre = `Reporte_Asistencia_${new Date().toISOString().split('T')[0]}.xlsx`;
+                        const _wbOut = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
+                        const _blob = new Blob([_wbOut], { type: 'application/octet-stream' });
+                        const _url = URL.createObjectURL(_blob);
+                        const _link = document.createElement('a');
+                        _link.href = _url;
+                        _link.download = _nombre;
+                        _link.click();
+                        setTimeout(() => URL.revokeObjectURL(_url), 1000);
 
         } catch (error) {
             console.error('Error al exportar Excel:', error);

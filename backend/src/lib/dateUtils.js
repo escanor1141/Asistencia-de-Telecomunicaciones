@@ -50,3 +50,27 @@ export const getCurrentWeekRange = (referenceDate = new Date()) => {
         weekEnd: fmtBogota(sabado)
     };
 };
+
+/**
+ * Obtiene el rango Lunes-Sábado de la semana ANTERIOR.
+ * Cuando el cron corre el domingo, esta función retorna la semana que acaba de terminar.
+ */
+export const getPreviousWeekRange = (referenceDate = new Date()) => {
+    const hoyStr = fmtBogota(referenceDate);
+    const lunesActualStr = getLunesSemana(hoyStr);
+
+    const [y, m, d] = lunesActualStr.split('-').map(Number);
+    const lunesActual = new Date(y, m - 1, d);
+
+    // Retroceder 7 días al lunes anterior
+    const lunesAnterior = new Date(lunesActual);
+    lunesAnterior.setDate(lunesActual.getDate() - 7);
+
+    const sabadoAnterior = new Date(lunesAnterior);
+    sabadoAnterior.setDate(lunesAnterior.getDate() + 5);
+
+    return {
+        weekStart: fmtBogota(lunesAnterior),
+        weekEnd:   fmtBogota(sabadoAnterior),
+    };
+};

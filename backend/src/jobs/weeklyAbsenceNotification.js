@@ -1,16 +1,17 @@
 /**
- * notificacionSemanalAusencias.js
- * Job principal que orquesta el envío de notificaciones de inasistencias semanales.
+ * weeklyAbsenceNotification.js
+ * Job principal: orquesta el envío del reporte semanal de asistencia.
+ *
+ * Lógica:
+ *   1. Genera un Excel POR DOCENTE con solo sus materias (semana anterior).
+ *   2. Envía un email por docente al destinatario configurado (WEEKLY_REPORT_RECIPIENT_EMAIL).
+ *   3. También envía notificaciones individuales a estudiantes con inasistencias.
  */
 
 import prisma from '../lib/prisma.js';
 import { sendEmail, buildAbsenceEmailHTML, buildWeeklyReportEmailHTML } from '../lib/emailService.js';
-import { getWeeklyAbsences, createWeeklyCourseExcelReport } from '../lib/attendanceService.js';
+import { getWeeklyAbsences, createWeeklyReportsByTeacher } from '../lib/attendanceService.js';
 
-/**
- * Ejecuta el proceso de notificación semanal de inasistencias.
- * @returns {Promise<{ sent: number, skipped: number, errors: number, details: Array }>}
- */
 export async function runWeeklyNotification() {
     console.log('\n========================================');
     console.log('[notification-job] Iniciando envío de notificaciones semanales...');
@@ -18,55 +19,79 @@ export async function runWeeklyNotification() {
     console.log('========================================\n');
 
     const resultados = { sent: 0, skipped: 0, errors: 0, details: [] };
+    const destinatario = process.env.WEEKLY_REPORT_RECIPIENT_EMAIL;
 
-    try {
-        // 1. Generar y enviar reporte Excel semanal de materias activas
-        const weeklyReportRecipient = process.env.WEEKLY_REPORT_RECIPIENT_EMAIL || process.env.BREVO_SENDER_EMAIL;
-        if (weeklyReportRecipient) {
-            try {
-                const { buffer, weekStart, weekEnd, courseCount, totalRecords } = await createWeeklyCourseExcelReport();
-                const attachmentName = `reporte-semanal-materias-${weekStart}.xlsx`;
-                const htmlContent = buildWeeklyReportEmailHTML({ weekStart, weekEnd, courseCount, totalRecords });
+    // ── 1. Generar y enviar un Excel por docente ──────────────────────────
+    if (destinatario) {
+        try {
+            const reportesPorDocente = await createWeeklyReportsByTeacher();
 
-                const reportResult = await sendEmail({
-                    to: weeklyReportRecipient,
-                    toName: process.env.WEEKLY_REPORT_RECIPIENT_NAME || 'Coordinador',
-                    subject: `Reporte semanal de materias activas (${weekStart} - ${weekEnd})`,
-                    htmlContent,
-                    attachments: [{ name: attachmentName, content: buffer.toString('base64') }],
-                });
-
-                if (reportResult.success) {
-                    console.log(`[notification-job] ✅ Reporte semanal enviado a: ${weeklyReportRecipient}`);
-                } else {
-                    console.error(`[notification-job] ❌ Error enviando reporte semanal a ${weeklyReportRecipient}: ${reportResult.error}`);
-                }
-            } catch (err) {
-                console.error('[notification-job] Error generando o enviando reporte semanal:', err.message);
+            if (reportesPorDocente.length === 0) {
+                console.log('[notification-job] Sin reportes por docente para enviar.');
             }
-        } else {
-            console.log('[notification-job] No hay WEEKLY_REPORT_RECIPIENT_EMAIL configurado. Se omite envío de reporte semanal en Excel.');
-        }
 
-        // 2. Obtener inasistencias agrupadas por estudiante
+            for (const reporte of reportesPorDocente) {
+                try {
+                    const { teacherName, buffer, weekStart, weekEnd, courseCount } = reporte;
+                    const nombreArchivo = `reporte-${teacherName.replace(/\s+/g, '-').toLowerCase()}-${weekStart}.xlsx`;
+
+                    const htmlContent = buildWeeklyReportEmailHTML({
+                        weekStart,
+                        weekEnd,
+                        courseCount,
+                        totalRecords: 0,
+                        teacherName,
+                    });
+
+                    const resultado = await sendEmail({
+                        to:          destinatario,
+                        toName:      process.env.WEEKLY_REPORT_RECIPIENT_NAME || 'Administrador',
+                        subject:     `Reporte semanal — ${teacherName} (${weekStart} al ${weekEnd})`,
+                        htmlContent,
+                        attachments: [{
+                            name:    nombreArchivo,
+                            content: buffer.toString('base64'),
+                        }],
+                    });
+
+                    if (resultado.success) {
+                        console.log(`[notification-job] ✅ Reporte enviado — Docente: ${teacherName}`);
+                        resultados.sent++;
+                    } else {
+                        console.error(`[notification-job] ❌ Error enviando reporte de ${teacherName}: ${resultado.error}`);
+                        resultados.errors++;
+                    }
+                } catch (errDocente) {
+                    console.error(`[notification-job] Error procesando docente ${reporte.teacherName}:`, errDocente.message);
+                    resultados.errors++;
+                }
+            }
+        } catch (err) {
+            console.error('[notification-job] Error generando reportes por docente:', err.message);
+            resultados.errors++;
+        }
+    } else {
+        console.log('[notification-job] Sin WEEKLY_REPORT_RECIPIENT_EMAIL configurado. Se omiten reportes Excel.');
+    }
+
+    // ── 2. Notificaciones individuales a estudiantes con inasistencias ────
+    try {
         const listaInasistencias = await getWeeklyAbsences();
 
         if (listaInasistencias.length === 0) {
-            console.log('[notification-job] Sin inasistencias en la semana. No se envían correos.');
-            return resultados;
+            console.log('[notification-job] Sin inasistencias en la semana. No se envían correos a estudiantes.');
         }
 
         for (const estudiante of listaInasistencias) {
             const entradaLog = {
-                studentId: estudiante.studentId,
+                studentId:   estudiante.studentId,
                 studentName: estudiante.studentName,
-                email: estudiante.email,
-                weekStart: estudiante.weekStart,
-                status: null,
-                reason: null,
+                email:       estudiante.email,
+                weekStart:   estudiante.weekStart,
+                status:      null,
+                reason:      null,
             };
 
-            // 2. Saltar si no tiene email registrado
             if (!estudiante.email) {
                 console.warn(`[notification-job] Sin email: ${estudiante.studentName} (${estudiante.studentId})`);
                 entradaLog.status = 'SKIPPED';
@@ -76,7 +101,7 @@ export async function runWeeklyNotification() {
                 continue;
             }
 
-            // 3. Verificar si ya se envió correo esta semana (evitar duplicados)
+            // Evitar duplicados
             const existente = await prisma.notificationLog.findUnique({
                 where: {
                     studentId_weekStart: {
@@ -87,7 +112,7 @@ export async function runWeeklyNotification() {
             });
 
             if (existente) {
-                console.log(`[notification-job] Duplicado omitido: ${estudiante.studentName} (semana ${estudiante.weekStart})`);
+                console.log(`[notification-job] Duplicado omitido: ${estudiante.studentName}`);
                 entradaLog.status = 'SKIPPED';
                 entradaLog.reason = 'Ya se envió correo esta semana';
                 resultados.skipped++;
@@ -95,29 +120,27 @@ export async function runWeeklyNotification() {
                 continue;
             }
 
-            // 4. Construir y enviar correo
             const contenidoHtml = buildAbsenceEmailHTML({
-                studentName: estudiante.studentName,
+                studentName:   estudiante.studentName,
                 totalAbsences: estudiante.totalAbsences,
-                courses: estudiante.courses,
-                weekStart: estudiante.weekStart,
-                weekEnd: estudiante.weekEnd,
+                courses:       estudiante.courses,
+                weekStart:     estudiante.weekStart,
+                weekEnd:       estudiante.weekEnd,
             });
 
             const resultadoCorreo = await sendEmail({
-                to: estudiante.email,
-                toName: estudiante.studentName,
-                subject: 'Reporte semanal de inasistencias',
+                to:          estudiante.email,
+                toName:      estudiante.studentName,
+                subject:     'Reporte semanal de inasistencias',
                 htmlContent: contenidoHtml,
             });
 
-            // 5. Registrar en NotificationLog
             if (resultadoCorreo.success) {
                 await prisma.notificationLog.create({
                     data: {
                         studentId: estudiante.studentId,
                         weekStart: estudiante.weekStart,
-                        status: 'SUCCESS',
+                        status:    'SUCCESS',
                     },
                 });
                 console.log(`[notification-job] ✅ Enviado a: ${estudiante.email} (${estudiante.studentName})`);
@@ -128,8 +151,8 @@ export async function runWeeklyNotification() {
                     data: {
                         studentId: estudiante.studentId,
                         weekStart: estudiante.weekStart,
-                        status: 'ERROR',
-                        error: resultadoCorreo.error,
+                        status:    'ERROR',
+                        error:     resultadoCorreo.error,
                     },
                 });
                 console.error(`[notification-job] ❌ Error enviando a: ${estudiante.email} — ${resultadoCorreo.error}`);
@@ -141,7 +164,7 @@ export async function runWeeklyNotification() {
             resultados.details.push(entradaLog);
         }
     } catch (err) {
-        console.error('[notification-job] Error crítico:', err.message);
+        console.error('[notification-job] Error en notificaciones de estudiantes:', err.message);
         resultados.errors++;
     }
 
