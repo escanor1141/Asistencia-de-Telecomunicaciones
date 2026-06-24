@@ -159,22 +159,51 @@ export async function GET(request) {
             .filter(est => estudiantesConFallas.has(est.documento))
             .sort((a, b) => a.name.localeCompare(b.name))
 
-        // Registro de auditoría
-        const { registrarAccion } = await import('@/lib/auditService');
-        registrarAccion({
-            usuario,
-            accion: 'EXPORTAR_REPORTE',
-            target: 'REPORT',
-            detalles: { 
-                courseId: idCurso, 
-                codigo, 
-                grupo, 
-                fechaInicio, 
-                fechaFin,
-                totalEstudiantes: resumen.length
-            },
-            ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
-        });
+        // Enriquecer detalles con información del docente (si está disponible)
+        let docenteInfo = null;
+        let courseName = null;
+        try {
+            // Solo incluir docente cuando la petición explícita incluya `docenteId`
+            if (docenteId) {
+                const d = await prisma.user.findUnique({ where: { id: docenteId } });
+                if (d) docenteInfo = { id: d.id, name: d.name, email: d.email };
+            }
+
+            // Obtener nombre del curso cuando se pasó `courseId` (no implica incluir docente)
+            if (idCurso) {
+                const curso = await prisma.course.findUnique({ where: { id: idCurso } });
+                if (curso) {
+                    courseName = curso.name || null;
+                }
+            }
+        } catch (e) {
+            // No bloquear el proceso si falla la búsqueda del docente
+            console.error('[Audit] Error al obtener info de docente para auditoría:', e);
+        }
+
+        // Registro de auditoría (opcional: puede suprimirse con ?suppressAudit=1)
+        const rawSuppressAudit = (searchParams.get('suppressAudit') || '').toString().toLowerCase();
+        const rawSuppressAuditHeader = (request.headers.get('x-suppress-audit') || '').toString().toLowerCase();
+        const suppressAudit = ['1', 'true', 'yes'].includes(rawSuppressAudit) || ['1', 'true', 'yes'].includes(rawSuppressAuditHeader);
+        if (!suppressAudit) {
+            const { registrarAccion } = await import('@/lib/auditService');
+            await registrarAccion({
+                usuario,
+                accion: 'EXPORTAR_REPORTE',
+                target: 'REPORT',
+                detalles: {
+                    courseId: idCurso,
+                    courseName,
+                    codigo,
+                    grupo,
+                    fechaInicio,
+                    fechaFin,
+                    docente: docenteInfo,
+                    totalEstudiantes: resumen.length
+                },
+                ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
+            });
+        }
 
         return Response.json({
             resumen,

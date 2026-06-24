@@ -128,13 +128,14 @@ export const obtenerReportes = (idCurso, params = {}, filtros = {}) =>
 /**
  * Obtiene la data detallada para exportar a Excel.
  */
-export const obtenerDataExportacion = (idCurso, params = {}, filtros = {}) =>
+export const obtenerDataExportacion = (idCurso, params = {}, filtros = {}, options = {}) =>
     api.get('/reports/export', {
         params: {
             ...(idCurso ? { courseId: idCurso } : {}),
             ...params,
             ...filtrosGlobales({ ...filtros }),
         },
+        ...options,
     }).then(res => res.data);
 
 /**

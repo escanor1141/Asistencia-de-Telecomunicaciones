@@ -21,6 +21,7 @@ const AuditLogs = () => {
     const [total, setTotal] = useState(0);
     const [page, setPage] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
+    const [modalLog, setModalLog] = useState(null);
     const limit = 20;
 
     const fetchLogs = async () => {
@@ -56,6 +57,131 @@ const AuditLogs = () => {
             hour: '2-digit',
             minute: '2-digit'
         });
+    };
+
+    const etiquetaDetalle = (key) => {
+        const mapeo = {
+            courseId: 'Materia',
+            courseName: 'Materia',
+            courseNames: 'Materias',
+            courseCount: 'Cantidad de materias',
+            codigo: 'Código',
+            code: 'Código',
+            grupo: 'Grupo',
+            group: 'Grupo',
+            targetId: 'ID de entidad',
+            userId: 'ID de usuario',
+            name: 'Nombre',
+            docente: 'Docente',
+            teacher: 'Docente',
+            teacherName: 'Docente',
+            docenteNombre: 'Docente',
+            email: 'Email',
+            phone: 'Teléfono',
+            details: 'Detalles',
+            sent: 'Enviados',
+            skipped: 'Omitidos',
+            errors: 'Errores',
+            status: 'Estado'
+        };
+        return mapeo[key] || key.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (c) => c.toUpperCase());
+    };
+
+    const renderDetailValue = (value) => {
+        if (value === null || value === undefined || value === '') return '—';
+        if (Array.isArray(value)) return value.length === 0 ? '—' : value.join(', ');
+        if (typeof value === 'object') return <pre className="whitespace-pre-wrap text-xs text-gray-600">{JSON.stringify(value, null, 2)}</pre>;
+        return String(value);
+    };
+
+    const renderDetalles = (log) => {
+        let detalles = log.details;
+        if (!detalles) {
+            return <span className="text-gray-400">Sin detalles</span>;
+        }
+
+        if (typeof detalles === 'string') {
+            try {
+                detalles = JSON.parse(detalles);
+            } catch {
+                return <span className="whitespace-pre-wrap text-sm text-gray-600">{detalles}</span>;
+            }
+        }
+
+        if (typeof detalles !== 'object' || Object.keys(detalles).length === 0) {
+            return <span className="text-gray-400">Sin detalles</span>;
+        }
+
+        const filasTodas = [...Object.entries(detalles)];
+        // Si ya existe courseName, ocultar courseId para evitar mostrar el ID crudo
+        const tieneCourseName = Object.prototype.hasOwnProperty.call(detalles, 'courseName') && detalles.courseName;
+        if (tieneCourseName) {
+            for (let i = filasTodas.length - 1; i >= 0; i--) {
+                if (filasTodas[i][0] === 'courseId') filasTodas.splice(i, 1);
+            }
+        }
+        if (log.targetId && !Object.prototype.hasOwnProperty.call(detalles, 'targetId')) {
+            filasTodas.unshift(['targetId', log.targetId]);
+        }
+
+        // Filtrar claves que no aportan información (null, "", [], {})
+        const filas = filasTodas.filter(([k, v]) => {
+            if (v === null || v === undefined) return false;
+            if (typeof v === 'string' && v.trim() === '') return false;
+            if (Array.isArray(v) && v.length === 0) return false;
+            if (typeof v === 'object' && Object.keys(v).length === 0) return false;
+            return true;
+        });
+
+        if (filas.length === 0) {
+            return (
+                <div className="text-sm text-gray-600">No se registraron cambios relevantes.</div>
+            );
+        }
+
+        return (
+            <div className="space-y-1 text-sm text-gray-700">
+                {filas.map(([key, value]) => {
+                    // Frases más naturales para claves específicas
+                    if (key === 'sent' || key === 'enviados') {
+                        return (
+                            <div key={key} className="flex items-start gap-2">
+                                <span className="min-w-[85px] text-[11px] uppercase tracking-[0.08em] text-gray-400">Envíos:</span>
+                                <span>{Number(value)} mensaje{Number(value) !== 1 ? 's' : ''} enviados</span>
+                            </div>
+                        );
+                    }
+
+                    if (key === 'skipped') {
+                        return (
+                            <div key={key} className="flex items-start gap-2">
+                                <span className="min-w-[85px] text-[11px] uppercase tracking-[0.08em] text-gray-400">Omitidos:</span>
+                                <span>{Number(value)}</span>
+                            </div>
+                        );
+                    }
+
+                    if (key === 'errors') {
+                        return (
+                            <div key={key} className="flex items-start gap-2">
+                                <span className="min-w-[85px] text-[11px] uppercase tracking-[0.08em] text-gray-400">Errores:</span>
+                                <span className="text-red-600">{Number(value)}</span>
+                            </div>
+                        );
+                    }
+
+                    // Valores de tipo objeto se muestran de forma legible
+                    return (
+                        <div key={key} className="flex items-start gap-2">
+                            <span className="min-w-[85px] text-[11px] uppercase tracking-[0.08em] text-gray-400">{etiquetaDetalle(key)}:</span>
+                            <span className="break-words">{renderDetailValue(value)}</span>
+                        </div>
+                    );
+                })}
+
+                
+            </div>
+        );
     };
 
     const filteredLogs = logs.filter(log => 
@@ -118,6 +244,25 @@ const AuditLogs = () => {
                     </div>
                 </div>
 
+                {/* Modal de detalles */}
+                {modalLog && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/40" onClick={() => setModalLog(null)} />
+                        <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full p-6 z-10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold">Detalles de auditoría</h3>
+                                <button onClick={() => setModalLog(null)} className="text-sm text-texto-secundario">Cerrar</button>
+                            </div>
+                            <div className="text-sm text-gray-700">
+                                <div className="mb-2 text-xs text-gray-500">{modalLog.userName} · {formatDate(modalLog.createdAt)}</div>
+                                <div className="border-t pt-3">
+                                    {renderDetalles(modalLog)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
@@ -126,7 +271,7 @@ const AuditLogs = () => {
                                 <th className="px-6 py-4">Usuario</th>
                                 <th className="px-6 py-4">Acción</th>
                                 <th className="px-6 py-4">Entidad</th>
-                                <th className="px-6 py-4">Detalles</th>
+                                <th className="px-6 py-4">Acciones</th>
                                 <th className="px-6 py-4">IP</th>
                             </tr>
                         </thead>
@@ -175,8 +320,13 @@ const AuditLogs = () => {
                                             {log.target}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                                        {JSON.stringify(log.details)}
+                                    <td className="px-6 py-4">
+                                        <button
+                                            onClick={() => setModalLog(log)}
+                                            className="text-sm text-purple-600 hover:underline"
+                                        >
+                                            Ver más
+                                        </button>
                                     </td>
                                     <td className="px-6 py-4 text-xs font-mono text-gray-400">
                                         {log.ip || '—'}

@@ -5,7 +5,7 @@ import { useCurso } from '../context/ContextoCurso';
 import api from '../services/api';
 import { enviarNotificacionesSemanal, obtenerEstadoNotificaciones, obtenerEstadoWhatsApp } from '../services/api';
 import toast from 'react-hot-toast';
-import { UserPlus, Eye, EyeOff, Trash2, Loader2, X, Mail, Send, CheckCircle2, AlertCircle, Clock, MessageSquare, Smartphone, Pencil } from 'lucide-react';
+import { UserPlus, Eye, EyeOff, Trash2, Loader2, X, Mail, Send, CheckCircle2, AlertCircle, Clock, MessageSquare, Smartphone, Pencil, Key } from 'lucide-react';
 
 export default function Configuracion() {
     const { usuario } = useAutenticacion();
@@ -18,6 +18,7 @@ export default function Configuracion() {
     const [eliminandoId, setEliminandoId] = useState(null);
     const [editandoId, setEditandoId] = useState(null);
     const [modalFormularioVisible, setModalFormularioVisible] = useState(false);
+    const [modoCambioContrasena, setModoCambioContrasena] = useState(false);
 
     // Estado panel de notificaciones
 
@@ -79,10 +80,10 @@ export default function Configuracion() {
         setGuardando(true);
         try {
             if (editandoId) {
-                // Actualizar usuario existente
-                const res = await api.put(`/teachers/${editandoId}`, formulario);
+                const payload = modoCambioContrasena ? { password: formulario.password } : formulario;
+                const res = await api.put(`/teachers/${editandoId}`, payload);
                 setDocentes(prev => prev.map(p => p.id === editandoId ? res.data : p));
-                toast.success('Usuario actualizado exitosamente');
+                toast.success(modoCambioContrasena ? 'Contraseña actualizada exitosamente' : 'Usuario actualizado exitosamente');
                 cancelarEdicion();
             } else {
                 // Crear nuevo usuario
@@ -108,11 +109,26 @@ export default function Configuracion() {
             password: '', // Password opcional en edición
             role: docente.role === 'DOCENTE' || docente.role === 'TEACHER' ? 'TEACHER' : docente.role
         });
+        setModoCambioContrasena(false);
+        setModalFormularioVisible(true);
+    };
+
+    const iniciarCambioContrasena = (docente) => {
+        setEditandoId(docente.id);
+        setFormulario({
+            documento: docente.id,
+            name: docente.name,
+            email: docente.email,
+            password: '',
+            role: docente.role === 'DOCENTE' || docente.role === 'TEACHER' ? 'TEACHER' : docente.role
+        });
+        setModoCambioContrasena(true);
         setModalFormularioVisible(true);
     };
 
     const cancelarEdicion = () => {
         setEditandoId(null);
+        setModoCambioContrasena(false);
         setFormulario({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
         setModalFormularioVisible(false);
     };
@@ -384,7 +400,12 @@ export default function Configuracion() {
                         <h3 className="text-lg font-medium">Usuarios Registrados</h3>
                         <button
                             type="button"
-                            onClick={() => setModalFormularioVisible(true)}
+                            onClick={() => {
+                                setEditandoId(null);
+                                setModoCambioContrasena(false);
+                                setFormulario({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
+                                setModalFormularioVisible(true);
+                            }}
                             className="boton-primario inline-flex items-center gap-2 h-[38px]"
                             aria-label="Nuevo usuario"
                         >
@@ -431,6 +452,14 @@ export default function Configuracion() {
                                                     >
                                                         <Pencil size={16} aria-label="Editar usuario" />
                                                     </button>
+                                                    <button
+                                                        onClick={() => iniciarCambioContrasena(docente)}
+                                                        className="p-1.5 text-texto-secundario hover:text-primario hover:bg-primario-light rounded-md transition-colors"
+                                                        title="Cambiar contraseña"
+                                                        aria-label={`Cambiar contraseña de ${docente.name}`}
+                                                    >
+                                                        <Key size={16} aria-label="Cambiar contraseña" />
+                                                    </button>
                                                     {docente.id !== usuario?.id && (
                                                         <button
                                                             onClick={() => manejarEliminacion(docente.id, docente.name)}
@@ -465,8 +494,8 @@ export default function Configuracion() {
                         <div className="modal-panel w-full max-w-4xl rounded-[var(--card-radius)] border flex flex-col" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', maxHeight: '90vh' }}>
                             <div className="flex items-center justify-between px-6 py-4 border-b shrink-0" style={{ borderColor: 'var(--color-border)' }}>
                                 <h3 className="text-lg font-semibold flex items-center gap-2">
-                                    {editandoId ? <Pencil size={20} className="text-primario" /> : <UserPlus size={20} className="text-primario" />}
-                                    {editandoId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
+                                    {modoCambioContrasena ? <Key size={20} className="text-primario" /> : editandoId ? <Pencil size={20} className="text-primario" /> : <UserPlus size={20} className="text-primario" />}
+                                    {modoCambioContrasena ? 'Cambiar contraseña' : editandoId ? 'Editar Usuario' : 'Crear Nuevo Usuario'}
                                 </h3>
                                 <button type="button" onClick={cancelarEdicion} disabled={guardando} className="p-1.5 rounded-md disabled:opacity-50" style={{ color: 'var(--color-muted)' }} aria-label="Cerrar modal">
                                     <X size={20} aria-label="Cerrar" />
@@ -475,7 +504,7 @@ export default function Configuracion() {
                             <div className="overflow-auto flex-1 px-6 py-4">
                                 <form onSubmit={manejarEnvio} className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 items-start">
                                     <div className="space-y-4">
-                                        {!editandoId && (
+                                        {!modoCambioContrasena && !editandoId && (
                                             <div>
                                                 <label className="mb-1 block text-sm font-medium text-texto-secundario">Documento</label>
                                                 <input
@@ -492,37 +521,46 @@ export default function Configuracion() {
                                                 />
                                             </div>
                                         )}
-                                        <div>
-                                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre completo</label>
-                                            <input
-                                                type="text"
-                                                required
-                                                placeholder="Ej. Juan Pérez"
-                                                className="campo w-full"
-                                                value={formulario.name}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    const capitalized = val ? val.charAt(0).toUpperCase() + val.slice(1) : '';
-                                                    setFormulario({ ...formulario, name: capitalized });
-                                                }}
-                                            />
-                                        </div>
+                                        {!modoCambioContrasena && (
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Nombre completo</label>
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    placeholder="Ej. Juan Pérez"
+                                                    className="campo w-full"
+                                                    value={formulario.name}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const capitalized = val ? val.charAt(0).toUpperCase() + val.slice(1) : '';
+                                                        setFormulario({ ...formulario, name: capitalized });
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                        {modoCambioContrasena && (
+                                            <div className="rounded-md border border-border bg-surface/80 p-4">
+                                                <p className="text-sm text-texto-secundario">Este formulario sólo actualizará la contraseña del usuario seleccionado.</p>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="space-y-4">
-                                        <div>
-                                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Correo electrónico</label>
-                                            <input
-                                                type="email"
-                                                required
-                                                placeholder="correo@ejemplo.com"
-                                                className="campo w-full"
-                                                value={formulario.email}
-                                                onChange={(e) => setFormulario({ ...formulario, email: e.target.value })}
-                                            />
-                                        </div>
-                                        {!editandoId && (
+                                        {!modoCambioContrasena && (
                                             <div>
-                                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Contraseña</label>
+                                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Correo electrónico</label>
+                                                <input
+                                                    type="email"
+                                                    required
+                                                    placeholder="correo@ejemplo.com"
+                                                    className="campo w-full"
+                                                    value={formulario.email}
+                                                    onChange={(e) => setFormulario({ ...formulario, email: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
+                                        {(modoCambioContrasena || !editandoId) && (
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-texto-secundario">{modoCambioContrasena ? 'Nueva contraseña' : 'Contraseña'}</label>
                                                 <div className="relative">
                                                     <input
                                                         type={mostrarContrasena ? 'text' : 'password'}
@@ -560,24 +598,26 @@ export default function Configuracion() {
                                         )}
                                     </div>
                                     <div className="flex flex-col justify-end gap-4">
-                                        <div>
-                                            <label className="mb-1 block text-sm font-medium text-texto-secundario">Rol del Sistema</label>
-                                            <select
-                                                className="campo w-full"
-                                                value={formulario.role}
-                                                onChange={(e) => setFormulario({ ...formulario, role: e.target.value })}
-                                            >
-                                                <option value="TEACHER">Docente</option>
-                                                <option value="ADMIN">Administrador</option>
-                                            </select>
-                                        </div>
+                                        {!modoCambioContrasena && (
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-texto-secundario">Rol del Sistema</label>
+                                                <select
+                                                    className="campo w-full"
+                                                    value={formulario.role}
+                                                    onChange={(e) => setFormulario({ ...formulario, role: e.target.value })}
+                                                >
+                                                    <option value="TEACHER">Docente</option>
+                                                    <option value="ADMIN">Administrador</option>
+                                                </select>
+                                            </div>
+                                        )}
                                         <button
                                             type="submit"
-                                            disabled={guardando || (!editandoId && !isPasswordValid) || (editandoId && formulario.password && !isPasswordValid)}
+                                            disabled={guardando || (modoCambioContrasena ? !isPasswordValid : (!editandoId && !isPasswordValid) || (editandoId && formulario.password && !isPasswordValid))}
                                             className="boton-primario w-full h-11 flex justify-center items-center gap-2 rounded-md transition-all active:scale-95"
                                         >
-                                            {guardando ? <Loader2 size={16} className="animate-spin" /> : (editandoId ? <Pencil size={16} /> : <UserPlus size={16} />)}
-                                            {guardando ? 'Guardando...' : (editandoId ? 'Actualizar Usuario' : 'Crear Usuario')}
+                                            {guardando ? <Loader2 size={16} className="animate-spin" /> : modoCambioContrasena ? <Key size={16} /> : (editandoId ? <Pencil size={16} /> : <UserPlus size={16} />)}
+                                            {guardando ? 'Guardando...' : modoCambioContrasena ? 'Cambiar contraseña' : (editandoId ? 'Actualizar Usuario' : 'Crear Usuario')}
                                         </button>
                                     </div>
                                 </form>

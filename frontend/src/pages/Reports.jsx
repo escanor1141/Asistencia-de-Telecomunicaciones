@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { obtenerReportes, obtenerReportesSemanal, obtenerDocentes, obtenerDataExportacion, obtenerAsistencia, obtenerEstudiantes } from '../services/api';
-import { Download, TrendingUp, LayoutGrid, PieChart as PieIcon, Clock, Users, Loader2 } from 'lucide-react';
+import api, { obtenerReportes, obtenerReportesSemanal, obtenerDocentes, obtenerDataExportacion, obtenerAsistencia, obtenerEstudiantes } from '../services/api';
+import { Download, TrendingUp, LayoutGrid, PieChart as PieIcon, Users, Loader2 } from 'lucide-react';
 import * as xlsx from 'xlsx-js-style';
 import toast from 'react-hot-toast';
 import { useCurso } from '../context/ContextoCurso';
@@ -61,139 +61,6 @@ function mergeSemanales(series) {
 
 function TooltipSemanal({ active, payload, label }) {
     if (!active || !payload?.length) return null;
-
-    // Exporta el reporte de la semana ACTUAL para todas las materias del docente
-    // Esta función es llamada por el cron job del backend (domingos 9:00 AM)
-    // pero también se puede invocar manualmente para testing
-    const exportarReporteSemanal = async () => {
-        const cursosDisponibles = (cursos || []).filter(Boolean);
-        if (!cursosDisponibles.length) {
-            toast.error('No hay materias disponibles para exportar');
-            return;
-        }
-        setExportandoSemanal(true);
-        try {
-            const hoy = new Date();
-            const diff = hoy.getDay() === 0 ? -6 : 1 - hoy.getDay();
-            const lunes = new Date(hoy);
-            lunes.setDate(hoy.getDate() + diff);
-
-            const diasSemana = Array.from({ length: 6 }, (_, i) => {
-                const d = new Date(lunes);
-                d.setDate(lunes.getDate() + i);
-                return d;
-            });
-
-            const fmtISO = (d) => {
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                return y + '-' + m + '-' + day;
-            };
-            const fmtCab = (d) => d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-            const fechasISO = diasSemana.map(fmtISO);
-            const fechasCab = diasSemana.map(fmtCab);
-
-            const border = { top: { style: 'thin', color: { rgb: 'E2E6EF' } }, bottom: { style: 'thin', color: { rgb: 'E2E6EF' } }, left: { style: 'thin', color: { rgb: 'E2E6EF' } }, right: { style: 'thin', color: { rgb: 'E2E6EF' } } };
-            const sH = { fill: { fgColor: { rgb: '6B2D8B' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
-            const sL = { fill: { fgColor: { rgb: '6B2D8B' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center' }, border };
-            const sV = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' }, border };
-            const sN = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'left', vertical: 'center' }, border };
-            const sC = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border };
-            const sP = { fill: { fgColor: { rgb: 'F2F9E7' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: '8DC63F' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
-            const sA = { fill: { fgColor: { rgb: 'FEF2F2' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
-            const sJ = { fill: { fgColor: { rgb: 'F3EBF8' } }, font: { name: 'Arial', sz: 10, bold: true, color: { rgb: '6B2D8B' } }, alignment: { horizontal: 'center', vertical: 'center' }, border };
-            const sSin = { font: { name: 'Arial', sz: 10 }, alignment: { horizontal: 'center', vertical: 'center' }, border };
-
-            const wb = xlsx.utils.book_new();
-
-            for (const curso of cursosDisponibles) {
-                const [resultados, estudiantes] = await Promise.all([
-                    Promise.all(fechasISO.map(f => obtenerAsistencia(curso.id, f, {}).catch(() => []))),
-                    obtenerEstudiantes(curso.id, {}).catch(() => [])
-                ]);
-
-                const ordenados = [...estudiantes].sort((a, b) => compararPorApellido(a.name, b.name));
-                const mapa = {};
-                resultados.forEach((regs, idx) => {
-                    const f = fechasISO[idx];
-                    (Array.isArray(regs) ? regs : []).forEach(reg => {
-                        if (!mapa[reg.studentId]) mapa[reg.studentId] = {};
-                        mapa[reg.studentId][f] = reg;
-                    });
-                });
-
-                const ws = {};
-                const rowsMeta = [];
-                let r = 0;
-                const cell = (row, col, val, sty) => {
-                    ws[xlsx.utils.encode_cell({ r: row, c: col })] = { v: val ?? '', t: typeof val === 'number' ? 'n' : 's', s: sty };
-                };
-
-                [
-                    ['Docente:', curso.teacher?.name || ''],
-                    ['Materia:', curso.name || ''],
-                    ['Codigo:',  curso.code || ''],
-                    ['Grupo:',   curso.groupCode || ''],
-                    ['Semana:', fechasCab[0] + ' - ' + fechasCab[5]],
-                ].forEach(([lbl, val]) => {
-                    cell(r, 0, lbl, sL); cell(r, 1, val, sV);
-                    rowsMeta.push({ hpt: 20 }); r++;
-                });
-                rowsMeta.push({ hpt: 10 }); r++;
-
-                ['Documento', 'Nombre del Alumno', ...fechasCab].forEach((t, c) => cell(r, c, t, sH));
-                rowsMeta.push({ hpt: 30 }); r++;
-
-                ordenados.forEach(est => {
-                    cell(r, 0, est.id, sC);
-                    cell(r, 1, formatearNombre(est.name), sN);
-                    fechasISO.forEach((f, c) => {
-                        const reg = mapa[est.id]?.[f];
-                        let v = '-', s = sSin;
-                        if (reg) {
-                            const estado = reg.status || (reg.present ? 'Presente' : 'Ausente');
-                            if (estado === 'Presente')    { v = 'P'; s = sP; }
-                            else if (estado === 'Ausente')     { v = 'A'; s = sA; }
-                            else if (estado === 'Justificado') { v = 'J'; s = sJ; }
-                        }
-                        cell(r, 2 + c, v, s);
-                    });
-                    rowsMeta.push({ hpt: 20 }); r++;
-                });
-
-                ws['!ref'] = xlsx.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: 7 } });
-                ws['!rows'] = rowsMeta;
-                ws['!cols'] = [{ wch: 15 }, { wch: 30 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
-
-                const base = (curso.name || 'Materia').trim();
-                const suf = curso.groupCode ? ' (' + curso.groupCode + ')' : '';
-                xlsx.utils.book_append_sheet(wb, ws, (base + suf).substring(0, 31));
-            }
-
-            const inicioAnio = new Date(lunes.getFullYear(), 0, 1);
-            const nSem = Math.ceil((((lunes - inicioAnio) / 86400000) + 1) / 7);
-            const nombre = 'Asistencia_Semanal_Semana' + nSem + '_' + lunes.getFullYear() + '.xlsx';
-
-            const wbOut = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
-            const blobSem = new Blob([wbOut], { type: 'application/octet-stream' });
-            const urlSem = URL.createObjectURL(blobSem);
-            const linkSem = document.createElement('a');
-            linkSem.href = urlSem;
-            linkSem.download = nombre;
-            linkSem.click();
-            setTimeout(() => URL.revokeObjectURL(urlSem), 1000);
-
-            toast.success('Reporte semanal exportado correctamente');
-        } catch (error) {
-            console.error('[exportarReporteSemanal]', error);
-            toast.error('Error: ' + (error?.message || 'Error desconocido'));
-        } finally {
-            setExportandoSemanal(false);
-        }
-    };
-
 
     return (
         <div style={{
@@ -377,8 +244,6 @@ export default function Reportes() {
         setRangoSeleccionado('personalizado');
     };
 
-
-
     const [modoGrupo, setModoGrupo] = useState('materia');
     const [datosLineChart, setDatosLineChart] = useState([]);  // merged weeks
     const [seriesNombres, setSeriesNombres] = useState([]);    // series keys for <Line>
@@ -555,76 +420,225 @@ export default function Reportes() {
     const exportarExcel = async () => {
         setExportando(true);
         try {
+            const teacherId = esDocente ? usuario?.id : docenteSeleccionado;
+            const exportarBackend = teacherId && (esDocente || usuario?.role === 'ADMIN');
+
+            if (exportarBackend) {
+                const params = { teacherId };
+                const response = await api.get('/reports/download', {
+                    params,
+                    responseType: 'blob',
+                });
+
+                const contentDisposition = response.headers['content-disposition'] || '';
+                const match = /filename="?([^";]+)"?/.exec(contentDisposition);
+                const nombreArchivo = match ? match[1] : `reporte-${teacherId}-${new Date().toISOString().split('T')[0]}.xlsx`;
+                const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = nombreArchivo;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                toast.success('Reporte descargado correctamente');
+                return;
+            }
+
             const params = {};
             if (fechaInicio) params.startDate = fechaInicio;
             if (fechaFin) params.endDate = fechaFin;
 
-            const data = await obtenerDataExportacion(cursoSeleccionado?.id, params, filtros);
-
             const wb = xlsx.utils.book_new();
+            const cursosExportar = [];
+            let courseCount = 0;
+            let totalEstudiantes = 0;
 
-            // Hoja 1: Resumen
-            const wsResumen = xlsx.utils.json_to_sheet(data.resumen.map(e => ({
-                'Documento': e.documento,
-                'Estudiante': e.name,
-                'Clases Totales': e.total,
-                'Presentes': e.present,
-                'Ausentes': e.absent,
-                'Justificados': e.justified,
-                '% Asistencia': `${e.percentage}%`
-            })));
-            xlsx.utils.book_append_sheet(wb, wsResumen, 'Resumen General');
+            const normalizarNombreHoja = (nombre, usadas) => {
+                const base = (String(nombre || 'Materia'))
+                    .replace(/[\\/:*?\[\]]/g, '')
+                    .substring(0, 25)
+                    .trim() || 'Materia';
+                let nombreHoja = base;
+                let sufijo = 1;
+                while (usadas.has(nombreHoja)) {
+                    nombreHoja = `${base}-${sufijo++}`.substring(0, 31);
+                }
+                usadas.add(nombreHoja);
+                return nombreHoja;
+            };
 
-            // Hoja 2: En Riesgo (<=80)
-            const wsRiesgo = xlsx.utils.json_to_sheet(data.enRiesgo.map(e => ({
-                'Documento': e.documento,
-                'Estudiante': e.name,
-                'Clases Totales': e.total,
-                'Presentes': e.present,
-                'Ausentes': e.absent,
-                'Justificados': e.justified,
-                '% Asistencia': `${e.percentage}%`
-            })));
-            xlsx.utils.book_append_sheet(wb, wsRiesgo, 'Estudiantes en Riesgo');
+            // Si no hay curso seleccionado, es "Todas las materias"
+            if (!cursoSeleccionado) {
+                // Obtener todos los cursos del docente/filtros
+                cursosExportar.push(...(cursos.length > 0 ? cursos : []));
+                
+                if (cursosExportar.length === 0) {
+                    toast.error('No hay materias disponibles para exportar');
+                    return;
+                }
 
-            // Hoja 3: Faltas por Asignatura
-            const wsAsignatura = xlsx.utils.json_to_sheet(data.asignaturas.map(a => ({
-                'Documento': a.documento,
-                'Estudiante': a.estudiante,
-                'Asignatura': a.asignatura,
-                'Código': a.codigo,
-                'Grupo': a.grupo,
-                'Clases Totales': a.total,
-                'Presentes': a.present,
-                'Ausentes': a.absent,
-                'Justificados': a.justified,
-                '% Asistencia': `${a.percentage}%`
-            })));
-            xlsx.utils.book_append_sheet(wb, wsAsignatura, 'Faltas por Asignatura');
+                const nombresHojasUsadas = new Set();
+                const paramsConSuppress = { ...params, suppressAudit: true };
+                const resumenGeneral = [];
+                courseCount = cursosExportar.length;
 
-            // Hoja 4: Directorio de Contacto
-            const wsDirectorio = xlsx.utils.json_to_sheet(data.directorio.map(d => ({
-                'Documento': d.documento,
-                'Estudiante': d.name,
-                'Email Institucional': d.email,
-                'Email Secundario': d.correo2,
-                'WhatsApp': d.whatsapp,
-                'Teléfono 2': d.telefono2
-            })));
-            xlsx.utils.book_append_sheet(wb, wsDirectorio, 'Directorio de Contacto');
+                for (const curso of cursosExportar) {
+                    if (!curso?.id) {
+                        console.warn('Curso sin ID ignorado en exportación', curso);
+                        continue;
+                    }
+
+                    try {
+                        const data = await obtenerDataExportacion(curso.id, paramsConSuppress, filtros, {
+                            headers: { 'x-suppress-audit': '1' }
+                        });
+
+                        const filasCurso = (data.asignaturas || []).map(a => ({
+                            'Documento': a.documento,
+                            'Estudiante': a.estudiante,
+                            'Clases Totales': a.total,
+                            'Presentes': a.present,
+                            'Ausentes': a.absent,
+                            'Justificados': a.justified,
+                            '% Asistencia': `${a.percentage}%`
+                        }));
+
+                        if (filasCurso.length > 0) {
+                            const ws = xlsx.utils.json_to_sheet(filasCurso);
+                            const nombreHoja = normalizarNombreHoja(
+                                `${curso.name || 'Materia'}${curso.groupCode ? ` - ${curso.groupCode}` : ''}`,
+                                nombresHojasUsadas
+                            );
+                            xlsx.utils.book_append_sheet(wb, ws, nombreHoja);
+                        }
+
+                        const datosMateria = (data.resumen || []).map(e => ({
+                            'Materia': curso.name,
+                            'Código': curso.code,
+                            'Grupo': curso.groupCode,
+                            'Documento': e.documento,
+                            'Estudiante': e.name,
+                            'Clases Totales': e.total,
+                            'Presentes': e.present,
+                            'Ausentes': e.absent,
+                            'Justificados': e.justified,
+                            '% Asistencia': `${e.percentage}%`
+                        }));
+                        resumenGeneral.push(...datosMateria);
+                    } catch (err) {
+                        console.error(`Error al exportar materia ${curso.name}:`, err);
+                        const mensaje = err.response?.data?.error || err.message || 'Error desconocido';
+                        toast.error(`Error al exportar materia ${curso.name}: ${mensaje}`);
+                    }
+                }
+
+                if (resumenGeneral.length > 0) {
+                    const wsResumenGeneral = xlsx.utils.json_to_sheet(resumenGeneral);
+                    xlsx.utils.book_append_sheet(wb, wsResumenGeneral, 'Resumen General');
+                    totalEstudiantes = resumenGeneral.length;
+                }
+            } else {
+                // Curso individual seleccionado (comportamiento original)
+                cursosExportar.push(cursoSeleccionado);
+                courseCount = 1;
+
+                const data = await obtenerDataExportacion(cursoSeleccionado?.id, { ...params, suppressAudit: true }, filtros, {
+                    headers: { 'x-suppress-audit': '1' }
+                });
+                totalEstudiantes = (data.resumen || []).length;
+
+                // Hoja 1: Resumen
+                const wsResumen = xlsx.utils.json_to_sheet(data.resumen.map(e => ({
+                    'Documento': e.documento,
+                    'Estudiante': e.name,
+                    'Clases Totales': e.total,
+                    'Presentes': e.present,
+                    'Ausentes': e.absent,
+                    'Justificados': e.justified,
+                    '% Asistencia': `${e.percentage}%`
+                })));
+                xlsx.utils.book_append_sheet(wb, wsResumen, 'Resumen General');
+
+                // Hoja 2: En Riesgo (<=80)
+                const wsRiesgo = xlsx.utils.json_to_sheet(data.enRiesgo.map(e => ({
+                    'Documento': e.documento,
+                    'Estudiante': e.name,
+                    'Clases Totales': e.total,
+                    'Presentes': e.present,
+                    'Ausentes': e.absent,
+                    'Justificados': e.justified,
+                    '% Asistencia': `${e.percentage}%`
+                })));
+                xlsx.utils.book_append_sheet(wb, wsRiesgo, 'Estudiantes en Riesgo');
+
+                // Hoja 3: Faltas por Asignatura
+                const wsAsignatura = xlsx.utils.json_to_sheet(data.asignaturas.map(a => ({
+                    'Documento': a.documento,
+                    'Estudiante': a.estudiante,
+                    'Asignatura': a.asignatura,
+                    'Código': a.codigo,
+                    'Grupo': a.grupo,
+                    'Clases Totales': a.total,
+                    'Presentes': a.present,
+                    'Ausentes': a.absent,
+                    'Justificados': a.justified,
+                    '% Asistencia': `${a.percentage}%`
+                })));
+                xlsx.utils.book_append_sheet(wb, wsAsignatura, 'Faltas por Asignatura');
+
+                // Hoja 4: Directorio de Contacto
+                const wsDirectorio = xlsx.utils.json_to_sheet(data.directorio.map(d => ({
+                    'Documento': d.documento,
+                    'Estudiante': d.name,
+                    'Email Institucional': d.email,
+                    'Email Secundario': d.correo2,
+                    'WhatsApp': d.whatsapp,
+                    'Teléfono 2': d.telefono2
+                })));
+                xlsx.utils.book_append_sheet(wb, wsDirectorio, 'Directorio de Contacto');
+            }
+
+            if (wb.SheetNames.length === 0) {
+                toast.error('No hay datos para exportar en las materias seleccionadas');
+                return;
+            }
 
             const _nombre = `Reporte_Asistencia_${new Date().toISOString().split('T')[0]}.xlsx`;
-                        const _wbOut = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
-                        const _blob = new Blob([_wbOut], { type: 'application/octet-stream' });
-                        const _url = URL.createObjectURL(_blob);
-                        const _link = document.createElement('a');
-                        _link.href = _url;
-                        _link.download = _nombre;
-                        _link.click();
-                        setTimeout(() => URL.revokeObjectURL(_url), 1000);
+            const _wbOut = xlsx.write(wb, { bookType: 'xlsx', type: 'array' });
+            const _blob = new Blob([_wbOut], { type: 'application/octet-stream' });
+            const _url = URL.createObjectURL(_blob);
+            const _link = document.createElement('a');
+            _link.href = _url;
+            _link.download = _nombre;
+            _link.click();
+            setTimeout(() => URL.revokeObjectURL(_url), 1000);
 
+            // Registrar un único log de auditoría con las materias exportadas
+            try {
+                const courseNames = cursosExportar.map(c => c.name || c.nombre || c.code || c.id);
+                await api.post('/audit/log', {
+                    action: 'EXPORTAR_REPORTE',
+                    target: 'REPORT',
+                    details: {
+                        courseNames,
+                        courseCount,
+                        fechaInicio: fechaInicio || null,
+                        fechaFin: fechaFin || null,
+                        totalEstudiantes: totalEstudiantes || 0
+                    }
+                });
+            } catch (e) {
+                console.warn('No se pudo registrar el log combinado de auditoría:', e?.message || e);
+            }
+
+            toast.success('Reporte exportado correctamente');
         } catch (error) {
             console.error('Error al exportar Excel:', error);
+            const mensaje = error?.response?.data?.error || error?.message || 'Error desconocido';
+            toast.error('Error al exportar: ' + mensaje);
         } finally {
             setExportando(false);
         }
@@ -678,37 +692,17 @@ export default function Reportes() {
                         onChange={manejarCambioFechaManual(setFechaFin)}
                     />
                     <div className="flex flex-col items-start gap-2">
-                        <button
-                            type="button"
-                            onClick={async () => {
-                                if (!cursoSeleccionado) return;
-                                setCargandoPreviewSemanal(true);
-                                try {
-                                    const res = await obtenerReportesSemanal({ courseId: cursoSeleccionado.id });
-                                    setPreviewSemanalData(res);
-                                    setMostrarPreviewSemanal(true);
-                                } catch (err) {
-                                    console.error('Error cargando preview semanal:', err);
-                                } finally {
-                                    setCargandoPreviewSemanal(false);
-                                }
-                            }}
-                            disabled={!cursoSeleccionado || cargandoPreviewSemanal}
-                            className="boton-secundario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
-                        >
-                            {cargandoPreviewSemanal ? <Loader2 size={15} className="animate-spin" /> : <Clock size={15} />}
-                            {cargandoPreviewSemanal ? 'Cargando...' : 'Visualizar reporte semanal'}
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={exportarExcel}
-                            disabled={datos.length === 0 || exportando}
-                            className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
-                        >
-                            {exportando ? <Loader2 size={15} className="animate-spin" aria-label="Exportando" /> : <Download size={15} aria-label="Descargar reporte" />}
-                            {exportando ? 'Generando...' : esDocente ? 'Descargar reporte' : 'Exportar Excel'}
-                        </button>
+                        {(!esDocente || !cursoSeleccionado) && (
+                            <button
+                                type="button"
+                                onClick={exportarExcel}
+                                disabled={(datos.length === 0 && cursoSeleccionado) || exportando || (!cursoSeleccionado && cursos.length === 0)}
+                                className="boton-primario inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px]"
+                            >
+                                {exportando ? <Loader2 size={15} className="animate-spin" aria-label="Exportando" /> : <Download size={15} aria-label="Descargar reporte" />}
+                                {exportando ? 'Generando...' : esDocente ? 'Descargar reporte' : 'Exportar Excel'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </header>
@@ -1081,46 +1075,6 @@ export default function Reportes() {
                 )}
             </section>
 
-            {/* Modal de previsualización semanal */}
-            {mostrarPreviewSemanal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/40" onClick={cerrarPreview} />
-                    <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full p-6 z-10">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-semibold">Previsualización - Reporte Semanal</h3>
-                            <button onClick={cerrarPreview} className="text-sm text-texto-secundario">Cerrar</button>
-                        </div>
-                        {!previewSemanalData ? (
-                            <p className="text-sm text-texto-secundario">Sin datos disponibles.</p>
-                        ) : (
-                            <div className="space-y-3">
-                                {(previewSemanalData.semanas || []).length === 0 ? (
-                                    <p className="text-sm text-texto-secundario">No hay registros semanales.</p>
-                                ) : (
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="text-left text-texto-secundario">
-                                                <th className="pb-2">Semana</th>
-                                                <th className="pb-2">Presentes</th>
-                                                <th className="pb-2">Ausentes</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {previewSemanalData.semanas.map((s) => (
-                                                <tr key={s.semana} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
-                                                    <td className="py-2">{s.semana}</td>
-                                                    <td className="py-2">{s.presente ?? '-'}</td>
-                                                    <td className="py-2">{s.ausente ?? '-'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
         </section>
     );
 }

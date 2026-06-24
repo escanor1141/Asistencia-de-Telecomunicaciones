@@ -98,17 +98,26 @@ function crearEstilos() {
         right:  { style: 'thin', color: { rgb: 'E2E6EF' } },
     };
     const baseFont = { name: 'Arial', sz: 10 };
+    const fillAlt = { fill: { fgColor: { rgb: 'F7F4FB' } } };
     return {
-        sLabel:    { fill: { fgColor: { rgb: '6B2D8B' } }, font: { ...baseFont, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left',   vertical: 'center' }, border },
-        sValor:    { font: baseFont, alignment: { horizontal: 'left',   vertical: 'center' }, border },
-        sEnc:      { fill: { fgColor: { rgb: '6B2D8B' } }, font: { ...baseFont, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
-        sEncLeft:  { fill: { fgColor: { rgb: '6B2D8B' } }, font: { ...baseFont, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left',   vertical: 'center' }, border },
-        sNormal:   { font: baseFont, alignment: { horizontal: 'left',   vertical: 'center' }, border },
-        sCentrado: { font: baseFont, alignment: { horizontal: 'center', vertical: 'center' }, border },
-        sP:        { fill: { fgColor: { rgb: 'F2F9E7' } }, font: { ...baseFont, bold: true, color: { rgb: '8DC63F' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
-        sA:        { fill: { fgColor: { rgb: 'FEF2F2' } }, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
-        sJ:        { fill: { fgColor: { rgb: 'F3EBF8' } }, font: { ...baseFont, bold: true, color: { rgb: '6B2D8B' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
-        sSin:      { font: baseFont, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sTitulo:      { fill: { fgColor: { rgb: '6B2D8B' } }, font: { name: 'Arial', sz: 14, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sSubtitulo:   { fill: { fgColor: { rgb: '8DC63F' } }, font: { name: 'Arial', sz: 11, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sSeccion:     { fill: { fgColor: { rgb: 'F3EBF8' } }, font: { ...baseFont, bold: true, color: { rgb: '6B2D8B' } }, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sLabel:       { fill: { fgColor: { rgb: '6B2D8B' } }, font: { ...baseFont, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sPerfil:      { fill: { fgColor: { rgb: 'F3EBF8' } }, font: baseFont, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sValor:       { font: baseFont, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sEnc:         { fill: { fgColor: { rgb: '6B2D8B' } }, font: { ...baseFont, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sEncLeft:     { fill: { fgColor: { rgb: '6B2D8B' } }, font: { ...baseFont, bold: true, color: { rgb: 'FFFFFF' } }, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sNormal:      { font: baseFont, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sNormalAlt:   { ...fillAlt, font: baseFont, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sCentrado:    { font: baseFont, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sCentradoAlt: { ...fillAlt, font: baseFont, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sNota:        { font: { name: 'Arial', sz: 9, italic: true, color: { rgb: '4B5563' } }, alignment: { horizontal: 'left', vertical: 'center' }, border },
+        sP:           { fill: { fgColor: { rgb: 'F2F9E7' } }, font: { ...baseFont, bold: true, color: { rgb: '8DC63F' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sA:           { fill: { fgColor: { rgb: 'FEF2F2' } }, font: { ...baseFont, bold: true, color: { rgb: 'DC2626' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sJ:           { fill: { fgColor: { rgb: 'F3EBF8' } }, font: { ...baseFont, bold: true, color: { rgb: '6B2D8B' } }, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sSin:         { font: baseFont, alignment: { horizontal: 'center', vertical: 'center' }, border },
+        sSinAlt:      { ...fillAlt, font: baseFont, alignment: { horizontal: 'center', vertical: 'center' }, border },
     };
 }
 
@@ -134,7 +143,7 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
     const courses = await prisma.course.findMany({
         where: { teacherId },
         orderBy: [{ name: 'asc' }, { groupCode: 'asc' }],
-        include: { teacher: { select: { name: true } } },
+        include: { teacher: { select: { name: true, email: true } } },
     });
 
     if (courses.length === 0) return null;
@@ -189,19 +198,43 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
         };
 
         // ── Perfil del curso ──────────────────────────────────────────────
+        const reportTitle = `Reporte de Asistencia - ${curso.name || 'Materia'} ${curso.groupCode ? `(${curso.groupCode})` : ''}`.trim();
+        const reportSubtitle = `Semana del ${fechasCab[0]} al ${fechasCab[5]}`;
+        const reportOrg = 'UTS - Sistema de Asistencia de Telecomunicaciones';
+        const generatedAt = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+        const merges = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+        ];
+
+        addCell(r, 0, reportTitle, estilos.sTitulo);
+        for (let c = 1; c < 8; c++) addCell(r, c, '', estilos.sTitulo);
+        rowsMeta.push({ hpt: 26 });
+        r++;
+
+        addCell(r, 0, reportSubtitle, estilos.sSubtitulo);
+        for (let c = 1; c < 8; c++) addCell(r, c, '', estilos.sSubtitulo);
+        rowsMeta.push({ hpt: 20 });
+        r++;
+
+        addCell(r, 0, reportOrg, estilos.sLabel);
+        for (let c = 1; c < 8; c++) addCell(r, c, '', estilos.sLabel);
+        rowsMeta.push({ hpt: 18 });
+        r++;
+
         const perfil = [
             ['Docente:',  curso.teacher?.name || ''],
-            ['Correo:',   ''],  // email del docente no está en modelo Teacher; se puede agregar
+            ['Correo:',   curso.teacher?.email || ''],
             ['Materia:',  curso.name || ''],
             ['Código:',   curso.code || ''],
             ['Grupo:',    curso.groupCode || ''],
             ['Período:',  curso.academicPeriod || ''],
             ['Año:',      curso.academicYear || ''],
-            ['Semana:',   `${fechasCab[0]} – ${fechasCab[5]}`],
+            ['Semana:',   reportSubtitle],
         ];
         for (const [lbl, val] of perfil) {
             addCell(r, 0, lbl, estilos.sLabel);
-            addCell(r, 1, val, estilos.sValor);
+            addCell(r, 1, val, estilos.sPerfil);
             rowsMeta.push({ hpt: 20 }); r++;
         }
         rowsMeta.push({ hpt: 8 }); r++;
@@ -212,12 +245,15 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
         );
         rowsMeta.push({ hpt: 28 }); r++;
 
+        let filaAsistencia = 0;
         for (const est of estudiantes) {
-            addCell(r, 0, est.documento,             estilos.sCentrado);
-            addCell(r, 1, formatearNombre(est.name), estilos.sNormal);
+            const rowStyle = filaAsistencia % 2 === 0 ? estilos.sNormal : estilos.sNormalAlt;
+            const centerStyle = filaAsistencia % 2 === 0 ? estilos.sCentrado : estilos.sCentradoAlt;
+            addCell(r, 0, est.documento,             centerStyle);
+            addCell(r, 1, formatearNombre(est.name), rowStyle);
             dates.forEach((fecha, c) => {
                 const reg = mapa[est.documento]?.[fecha];
-                let v = '–', s = estilos.sSin;
+                let v = '–', s = filaAsistencia % 2 === 0 ? estilos.sSin : estilos.sSinAlt;
                 if (reg) {
                     const estado = reg.status || (reg.present ? 'Presente' : 'Ausente');
                     if (estado === 'Presente')    { v = 'P'; s = estilos.sP; }
@@ -227,31 +263,52 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
                 addCell(r, 2 + c, v, s);
             });
             rowsMeta.push({ hpt: 20 }); r++;
+            filaAsistencia++;
         }
 
         rowsMeta.push({ hpt: 8 }); r++;
 
         // ── TABLA 2: Directorio de contacto ──────────────────────────────
+        addCell(r, 0, 'Directorio de contacto', estilos.sSeccion);
+        for (let c = 1; c < 8; c++) addCell(r, c, '', estilos.sSeccion);
+        merges.push({ s: { r, c: 0 }, e: { r, c: 7 } });
+        rowsMeta.push({ hpt: 24 }); r++;
+
         ['Documento', 'Nombre del Alumno', 'Correo Institucional', 'Correo Adicional', 'Número WhatsApp', 'Número Adicional']
             .forEach((t, c) => addCell(r, c, t, estilos.sEncLeft));
+        const directoryHeaderRow = r;
         rowsMeta.push({ hpt: 28 }); r++;
 
+        let filaDirectorio = 0;
         for (const est of estudiantes) {
-            addCell(r, 0, est.documento,             estilos.sCentrado);
-            addCell(r, 1, formatearNombre(est.name), estilos.sNormal);
-            addCell(r, 2, est.email     || '',       estilos.sNormal);
-            addCell(r, 3, est.correo2   || '',       estilos.sNormal);
-            addCell(r, 4, est.whatsapp  || '',       estilos.sNormal);
-            addCell(r, 5, est.telefono2 || '',       estilos.sNormal);
+            const rowStyle = filaDirectorio % 2 === 0 ? estilos.sNormal : estilos.sNormalAlt;
+            const centerStyle = filaDirectorio % 2 === 0 ? estilos.sCentrado : estilos.sCentradoAlt;
+            addCell(r, 0, est.documento,             centerStyle);
+            addCell(r, 1, formatearNombre(est.name), rowStyle);
+            addCell(r, 2, est.email     || '',       rowStyle);
+            addCell(r, 3, est.correo2   || '',       rowStyle);
+            addCell(r, 4, est.whatsapp  || '',       rowStyle);
+            addCell(r, 5, est.telefono2 || '',       rowStyle);
             rowsMeta.push({ hpt: 20 }); r++;
+            filaDirectorio++;
         }
 
+        rowsMeta.push({ hpt: 18 });
+        addCell(r, 0, `Informe generado: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`, estilos.sNota);
+        for (let c = 1; c < 8; c++) addCell(r, c, '', estilos.sNota);
+        merges.push({ s: { r, c: 0 }, e: { r, c: 7 } });
+        r++;
+
         // ── Metadatos de hoja ─────────────────────────────────────────────
+        ws['!merges'] = merges;
+        ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: directoryHeaderRow, c: 0 }, e: { r: directoryHeaderRow, c: 5 } }) };
+        ws['!freeze'] = { xSplit: 0, ySplit: 8 };
         ws['!ref']  = XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r - 1, c: 7 } });
         ws['!rows'] = rowsMeta;
         ws['!cols'] = [
-            { wch: 15 }, { wch: 30 },
-            { wch: 18 }, { wch: 18 }, { wch: 16 }, { wch: 16 },
+            { wch: 16 }, { wch: 34 },
+            { wch: 20 }, { wch: 20 }, { wch: 18 }, { wch: 18 },
+            { wch: 14 }, { wch: 14 },
         ];
 
         const base = (curso.name || 'Materia').replace(/[\\/?*[\]:]/g, '').trim();
@@ -333,6 +390,44 @@ export async function createWeeklyReportsByTeacher({ referenceDate } = {}) {
     }
 
     return reportes;
+}
+
+export async function createWeeklyReportForTeacher({ teacherId, referenceDate } = {}) {
+    if (!teacherId) return null;
+    const { weekStart, weekEnd } = getPreviousWeekRange(referenceDate);
+
+    const teacher = await prisma.teacher.findUnique({
+        where: { id: teacherId },
+        select: { id: true, name: true, email: true },
+    });
+    if (!teacher) return null;
+
+    const dates = [];
+    const [sy, sm, sd] = weekStart.split('-').map(Number);
+    const [ey, em, ed] = weekEnd.split('-').map(Number);
+    const start = new Date(sy, sm - 1, sd);
+    const end = new Date(ey, em - 1, ed);
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(fmtBogota(d));
+    }
+
+    const buffer = await generarExcelDocente({
+        teacherId,
+        weekStart,
+        weekEnd,
+        dates,
+    });
+    if (!buffer) return null;
+
+    const courseCount = await prisma.course.count({ where: { teacherId } });
+    return {
+        teacherName: teacher.name,
+        teacherEmail: teacher.email,
+        buffer,
+        weekStart,
+        weekEnd,
+        courseCount,
+    };
 }
 
 /**

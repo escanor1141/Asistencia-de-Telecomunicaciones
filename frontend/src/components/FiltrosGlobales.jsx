@@ -177,7 +177,6 @@ export default function FiltrosGlobales({
             if (!isSelectedValid) {
                 const debeSeleccionarPrimero = !(
                     cursoSeleccionado === null &&
-                    isAdmin &&
                     mostrarTodas
                 );
 
@@ -321,13 +320,13 @@ export default function FiltrosGlobales({
                             value={
                                 cursoSeleccionado
                                     ? cursoSeleccionado.name
-                                    : isAdmin && mostrarTodas
+                                    : mostrarTodas
                                     ? 'TODAS'
                                     : ''
                             }
                             onChange={handleCambioMateria}
                         >
-                            {isAdmin && mostrarTodas && (
+                                            {mostrarTodas && (
                                 <option value="TODAS">
                                     Todas las materias
                                 </option>
