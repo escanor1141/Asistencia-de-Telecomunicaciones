@@ -75,7 +75,7 @@ export async function GET(request) {
             condicion.course = filtroCurso
         }
 
-        const asistencias = await prisma.attendance.findMany({
+        const asistencias = await prisma.asistencia.findMany({
             where: condicion,
             include: { student: true }
         })

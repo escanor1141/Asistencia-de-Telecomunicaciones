@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 
 const SECRETO = process.env.JWT_SECRET || 'telecom_secret_key_2024'
 
-// GET /api/auth/me — retorna los datos del docente autenticado
+// GET /api/auth/me — devuelve los datos del docente autenticado
 export async function GET(request) {
     try {
         const encabezadoAuth = request.headers.get('authorization')

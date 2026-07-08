@@ -14,13 +14,13 @@ export async function GET(request) {
         const limit = parseInt(searchParams.get('limit') || '100')
         const offset = parseInt(searchParams.get('offset') || '0')
 
-        const logs = await prisma.auditLog.findMany({
+        const logs = await prisma.registroAuditoria.findMany({
             take: limit,
             skip: offset,
             orderBy: { createdAt: 'desc' }
         })
 
-        const total = await prisma.auditLog.count()
+        const total = await prisma.registroAuditoria.count()
 
         return Response.json({ logs, total })
     } catch (error) {

@@ -61,7 +61,7 @@ export async function GET(request) {
 
         if (!fecha) {
             // Sin fecha: devuelve historial agrupado por día
-            const cursosFiltrados = await prisma.course.findMany({
+            const cursosFiltrados = await prisma.curso.findMany({
                 where: whereFiltros.course || { name: cursoBase.name },
                 select: { id: true },
             })
@@ -91,7 +91,7 @@ export async function GET(request) {
         }
 
         // Con fecha: registros individuales incluyendo datos del estudiante
-        const asistencias = await prisma.attendance.findMany({
+        const asistencias = await prisma.asistencia.findMany({
             where: { ...whereFiltros, date: fecha },
             include: { student: true }
         })
@@ -128,7 +128,7 @@ export async function POST(request) {
         const operaciones = records.map(registro => {
             // present = true solo para 'Presente'. 'Justificado' y 'Ausente' = false
             const isPresent = registro.status === 'Presente';
-            return prisma.attendance.upsert({
+            return prisma.asistencia.upsert({
                 where: {
                     studentId_courseId_date: {
                         studentId: registro.studentId,

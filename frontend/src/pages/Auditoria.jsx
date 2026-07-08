@@ -15,31 +15,31 @@ import {
     ChevronRight
 } from 'lucide-react';
 
-const AuditLogs = () => {
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
+const Auditoria = () => {
+    const [registros, setRegistros] = useState([]);
+    const [cargando, setCargando] = useState(true);
     const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(0);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [pagina, setPagina] = useState(0);
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
     const [modalLog, setModalLog] = useState(null);
-    const limit = 20;
+    const limite = 20;
 
-    const fetchLogs = async () => {
+    const obtenerLogs = async () => {
         try {
-            setLoading(true);
-            const res = await api.get(`/audit?limit=${limit}&offset=${page * limit}`);
-            setLogs(res.data.logs);
+            setCargando(true);
+            const res = await api.get(`/audit?limit=${limite}&offset=${pagina * limite}`);
+            setRegistros(res.data.logs);
             setTotal(res.data.total);
         } catch (error) {
             console.error('Error al cargar logs:', error);
         } finally {
-            setLoading(false);
+            setCargando(false);
         }
     };
 
     useEffect(() => {
-        fetchLogs();
-    }, [page]);
+        obtenerLogs();
+    }, [pagina]);
 
     const getActionIcon = (action) => {
         if (action.includes('LOGIN')) return <Key className="text-purple-500" size={18} />;
@@ -65,6 +65,10 @@ const AuditLogs = () => {
             courseName: 'Materia',
             courseNames: 'Materias',
             courseCount: 'Cantidad de materias',
+            cursoId: 'Materia',
+            nombreCurso: 'Materia',
+            nombresCursos: 'Materias',
+            cantidadCursos: 'Cantidad de materias',
             codigo: 'Código',
             code: 'Código',
             grupo: 'Grupo',
@@ -76,6 +80,15 @@ const AuditLogs = () => {
             teacher: 'Docente',
             teacherName: 'Docente',
             docenteNombre: 'Docente',
+            idDocente: 'Docente',
+            nombreDocente: 'Docente',
+            cantidadMaterias: 'Cantidad de materias',
+            totalEstudiantes: 'Total de estudiantes',
+            totalRegistros: 'Total de registros',
+            semanaInicio: 'Inicio de semana',
+            semanaFin: 'Fin de semana',
+            fechaInicio: 'Fecha de inicio',
+            fechaFin: 'Fecha de fin',
             email: 'Email',
             phone: 'Teléfono',
             details: 'Detalles',
@@ -113,11 +126,14 @@ const AuditLogs = () => {
         }
 
         const filasTodas = [...Object.entries(detalles)];
-        // Si ya existe courseName, ocultar courseId para evitar mostrar el ID crudo
-        const tieneCourseName = Object.prototype.hasOwnProperty.call(detalles, 'courseName') && detalles.courseName;
-        if (tieneCourseName) {
+        // Si ya existe el nombre del curso, ocultar el identificador crudo para evitar repetir información
+        const tieneNombreCurso = (Object.prototype.hasOwnProperty.call(detalles, 'nombreCurso') && detalles.nombreCurso)
+            || (Object.prototype.hasOwnProperty.call(detalles, 'courseName') && detalles.courseName);
+        if (tieneNombreCurso) {
             for (let i = filasTodas.length - 1; i >= 0; i--) {
-                if (filasTodas[i][0] === 'courseId') filasTodas.splice(i, 1);
+                if (filasTodas[i][0] === 'courseId' || filasTodas[i][0] === 'cursoId') {
+                    filasTodas.splice(i, 1);
+                }
             }
         }
         if (log.targetId && !Object.prototype.hasOwnProperty.call(detalles, 'targetId')) {
@@ -184,10 +200,10 @@ const AuditLogs = () => {
         );
     };
 
-    const filteredLogs = logs.filter(log => 
-        log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.target.toLowerCase().includes(searchTerm.toLowerCase())
+    const logsFiltrados = registros.filter(log => 
+        log.userName.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+        log.action.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+        log.target.toLowerCase().includes(terminoBusqueda.toLowerCase())
     );
 
     return (
@@ -201,11 +217,11 @@ const AuditLogs = () => {
                     <p className="text-gray-500 mt-1">Registro histórico de acciones de los usuarios</p>
                 </div>
                 <button 
-                    onClick={fetchLogs}
+                    onClick={obtenerLogs}
                     className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                     title="Actualizar"
                 >
-                    <RefreshCcw size={20} className={loading ? 'animate-spin text-gray-400' : 'text-gray-600'} />
+                    <RefreshCcw size={20} className={cargando ? 'animate-spin text-gray-400' : 'text-gray-600'} />
                 </button>
             </div>
 
@@ -217,25 +233,25 @@ const AuditLogs = () => {
                             type="text"
                             placeholder="Buscar por usuario, acción o entidad..."
                             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all text-sm"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
+                            value={terminoBusqueda}
+                            onChange={(e) => setTerminoBusqueda(e.target.value)}
                         />
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span>Mostrando {filteredLogs.length} de {total} registros</span>
+                        <span>Mostrando {logsFiltrados.length} de {total} registros</span>
                         <div className="flex items-center gap-1 ml-4">
                             <button 
-                                onClick={() => setPage(p => Math.max(0, p - 1))}
-                                disabled={page === 0 || loading}
+                                onClick={() => setPagina(p => Math.max(0, p - 1))}
+                                disabled={pagina === 0 || cargando}
                                 className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
                             >
                                 <ChevronLeft size={18} />
                             </button>
-                            <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">Pág. {page + 1}</span>
+                            <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">Pág. {pagina + 1}</span>
                             <button 
-                                onClick={() => setPage(p => p + 1)}
-                                disabled={(page + 1) * limit >= total || loading}
+                                onClick={() => setPagina(p => p + 1)}
+                                disabled={(pagina + 1) * limite >= total || cargando}
                                 className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
                             >
                                 <ChevronRight size={18} />
@@ -276,7 +292,7 @@ const AuditLogs = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
-                            {loading && logs.length === 0 ? (
+                            {cargando && registros.length === 0 ? (
                                 Array(5).fill(0).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
                                         <td colSpan="6" className="px-6 py-4">
@@ -284,13 +300,13 @@ const AuditLogs = () => {
                                         </td>
                                     </tr>
                                 ))
-                            ) : filteredLogs.length === 0 ? (
+                            ) : logsFiltrados.length === 0 ? (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-12 text-center text-gray-400">
                                         No se encontraron registros.
                                     </td>
                                 </tr>
-                            ) : filteredLogs.map((log) => (
+                            ) : logsFiltrados.map((log) => (
                                 <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
                                     <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
@@ -341,4 +357,4 @@ const AuditLogs = () => {
     );
 };
 
-export default AuditLogs;
+export default Auditoria;

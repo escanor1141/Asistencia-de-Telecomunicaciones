@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { Loader2, ArrowLeft, Send } from 'lucide-react';
 
-export default function ForgotPassword() {
+export default function RecuperarContrasena() {
     const [correo, setCorreo] = useState('');
     const [error, setError] = useState('');
     const [exito, setExito] = useState(false);
@@ -34,7 +34,7 @@ export default function ForgotPassword() {
                         onClick={() => navegar('/login')}
                         className="flex items-center text-slate-500 hover:text-slate-700 transition mb-6"
                     >
-                        <ArrowLeft size={18} className="mr-1" /> Volver al Login
+                        <ArrowLeft size={18} className="mr-1" /> Volver al inicio de sesión
                     </button>
 
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Recuperar Contraseña</h2>

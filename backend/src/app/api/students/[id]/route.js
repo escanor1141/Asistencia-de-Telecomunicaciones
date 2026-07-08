@@ -13,7 +13,7 @@ export async function PUT(request, { params }) {
         if (!name || name.trim() === '') {
             return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
         }
-        const estudiante = await prisma.student.update({
+        const estudiante = await prisma.estudiante.update({
             where: { documento: params.id },
             data: {
                 name:      name.trim(),
@@ -46,7 +46,7 @@ export async function DELETE(request, { params }) {
         }
 
         // Primero verificamos el estudiante y sus cursos
-        const estudiante = await prisma.student.findUnique({
+        const estudiante = await prisma.estudiante.findUnique({
             where: { documento: params.id },
             include: { courses: true }
         });
@@ -57,10 +57,10 @@ export async function DELETE(request, { params }) {
 
         if (estudiante.courses.length <= 1) {
             // Si solo tiene este curso, borramos el estudiante completo
-            await prisma.student.delete({ where: { documento: params.id } });
+            await prisma.estudiante.delete({ where: { documento: params.id } });
         } else {
             // Si tiene otros cursos, solo lo desconectamos de este curso
-            await prisma.student.update({
+            await prisma.estudiante.update({
                 where: { documento: params.id },
                 data: {
                     courses: { disconnect: { id: idCurso } }

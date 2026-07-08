@@ -15,7 +15,7 @@ export async function PUT(request, { params }) {
             return Response.json({ error: 'Nombre y código son requeridos' }, { status: 400 })
         }
 
-        const cursoExistente = await prisma.course.findUnique({ where: { id } })
+        const cursoExistente = await prisma.curso.findUnique({ where: { id } })
         
         if (!cursoExistente) {
             return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
@@ -29,7 +29,7 @@ export async function PUT(request, { params }) {
             return Response.json({ error: 'No autorizado para editar esta materia' }, { status: 403 })
         }
 
-        const cursoActualizado = await prisma.course.update({
+        const cursoActualizado = await prisma.curso.update({
             where: { id },
             data: {
                 name: name.trim(),
@@ -62,7 +62,7 @@ export async function DELETE(request, { params }) {
 
         const { id } = params
 
-        const existing = await prisma.course.findUnique({ where: { id } })
+        const existing = await prisma.curso.findUnique({ where: { id } })
         if (!existing) {
             return Response.json({ error: 'Materia no encontrada' }, { status: 404 })
         }
@@ -75,7 +75,7 @@ export async function DELETE(request, { params }) {
             return Response.json({ error: 'No autorizado para eliminar esta materia' }, { status: 403 })
         }
 
-        await prisma.course.delete({ where: { id } })
+        await prisma.curso.delete({ where: { id } })
         return Response.json({ success: true })
     } catch (error) {
         console.error(error)

@@ -102,7 +102,7 @@ export async function runWeeklyNotification() {
             }
 
             // Evitar duplicados
-            const existente = await prisma.notificationLog.findUnique({
+            const existente = await prisma.registroNotificacion.findUnique({
                 where: {
                     studentId_weekStart: {
                         studentId: estudiante.studentId,
@@ -136,7 +136,7 @@ export async function runWeeklyNotification() {
             });
 
             if (resultadoCorreo.success) {
-                await prisma.notificationLog.create({
+                await prisma.registroNotificacion.create({
                     data: {
                         studentId: estudiante.studentId,
                         weekStart: estudiante.weekStart,
@@ -147,7 +147,7 @@ export async function runWeeklyNotification() {
                 entradaLog.status = 'SUCCESS';
                 resultados.sent++;
             } else {
-                await prisma.notificationLog.create({
+                await prisma.registroNotificacion.create({
                     data: {
                         studentId: estudiante.studentId,
                         weekStart: estudiante.weekStart,

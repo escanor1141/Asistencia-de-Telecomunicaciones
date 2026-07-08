@@ -16,7 +16,7 @@ export async function POST(request) {
         }
 
         // Buscar docente por email
-        const docente = await prisma.teacher.findUnique({ where: { email } })
+        const docente = await prisma.docente.findUnique({ where: { email } })
         if (!docente) {
             console.log(`[Login] Usuario no encontrado: ${email}`)
             return Response.json({ error: 'Credenciales incorrectas' }, { status: 401 })

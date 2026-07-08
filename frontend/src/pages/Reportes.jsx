@@ -623,8 +623,8 @@ export default function Reportes() {
                     action: 'EXPORTAR_REPORTE',
                     target: 'REPORT',
                     details: {
-                        courseNames,
-                        courseCount,
+                        nombresCursos: courseNames,
+                        cantidadCursos: courseCount,
                         fechaInicio: fechaInicio || null,
                         fechaFin: fechaFin || null,
                         totalEstudiantes: totalEstudiantes || 0

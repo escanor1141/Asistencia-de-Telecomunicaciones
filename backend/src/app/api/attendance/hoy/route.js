@@ -24,7 +24,7 @@ export async function GET(request) {
 
         // 1. Obtener todos los cursos (opcionalmente filtrados por docente)
         const cursosWhere = docenteId ? { teacherId: docenteId } : {}
-        const cursos = await prisma.course.findMany({
+        const cursos = await prisma.curso.findMany({
             where: cursosWhere,
             select: { id: true, name: true },
             orderBy: { name: 'asc' },
@@ -36,7 +36,7 @@ export async function GET(request) {
 
         // 2. Obtener registros de asistencia de hoy para todos esos cursos
         const cursoIds = cursos.map(c => c.id)
-        const registros = await prisma.attendance.findMany({
+        const registros = await prisma.asistencia.findMany({
             where: {
                 courseId: { in: cursoIds },
                 date: hoy,

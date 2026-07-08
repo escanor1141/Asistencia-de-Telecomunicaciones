@@ -10,17 +10,17 @@ export async function GET(request) {
         }
 
         const { searchParams } = new URL(request.url)
-        const teacherId = searchParams.get('teacherId')
+        const idDocente = searchParams.get('teacherId')
         
-        if (!teacherId) {
+        if (!idDocente) {
             return Response.json({ error: 'Falta teacherId' }, { status: 400 })
         }
 
-        if (usuario.role !== 'ADMIN' && usuario.id !== teacherId) {
+        if (usuario.role !== 'ADMIN' && usuario.id !== idDocente) {
             return Response.json({ error: 'No podés descargar el reporte de otro docente' }, { status: 403 })
         }
 
-        const reporte = await createWeeklyReportForTeacher({ teacherId })
+        const reporte = await createWeeklyReportForTeacher({ teacherId: idDocente })
         if (!reporte) {
             return Response.json({ error: 'No se encontró reporte para este docente' }, { status: 404 })
         }
@@ -32,12 +32,12 @@ export async function GET(request) {
                 accion: 'EXPORTAR_REPORTE',
                 target: 'REPORT',
                 detalles: {
-                    teacherId,
-                    teacherName: reporte.teacherName,
-                    courseCount: reporte.courseCount,
-                    weekStart: reporte.weekStart,
-                    weekEnd: reporte.weekEnd,
-                    totalRecords: reporte.totalRecords,
+                    idDocente,
+                    nombreDocente: reporte.teacherName,
+                    cantidadCursos: reporte.courseCount,
+                    semanaInicio: reporte.weekStart,
+                    semanaFin: reporte.weekEnd,
+                    totalRegistros: reporte.totalRecords,
                 },
                 ip: request.headers.get('x-forwarded-for') || '127.0.0.1'
             })

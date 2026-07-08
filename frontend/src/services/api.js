@@ -41,7 +41,7 @@ api.interceptors.response.use(
  * Construye el objeto de query params para filtros opcionales.
  * Omite claves con valor null / undefined / ''.
  *
- * Filtros globales (topbar):  codigo, grupo, docenteId
+ * Filtros globales (barra superior): codigo, grupo, docenteId
  * Filtros locales (Historial): anio, periodo, modalidad, docenteIdLocal
  */
 function filtrosGlobales({ cursoId, codigo, grupo, docenteId, anio, periodo, modalidad, docenteIdLocal } = {}) {
@@ -160,7 +160,7 @@ export const obtenerDocentes = () =>
  */
 export const obtenerAsistenciaHoyPorCurso = (docenteId) =>
     api.get('/attendance/hoy', { params: docenteId ? { docenteId } : {} })
-        .then(res => res.data.cursos);
+        .then(res => Array.isArray(res.data?.cursos) ? res.data.cursos : []);
 
 // Notificaciones
 

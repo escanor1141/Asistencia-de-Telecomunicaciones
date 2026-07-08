@@ -53,14 +53,14 @@ export async function GET(request) {
     }
 
     // Última ejecución registrada
-    const ultimoLog = await prisma.notificationLog.findFirst({
+    const ultimoLog = await prisma.registroNotificacion.findFirst({
         orderBy: { sentAt: 'desc' },
         select: { sentAt: true, weekStart: true, status: true },
     });
 
     // Conteo de la semana en curso
     const { weekStart } = obtenerSemanaActual();
-    const totalEstaSemana = await prisma.notificationLog.count({
+    const totalEstaSemana = await prisma.registroNotificacion.count({
         where: { weekStart, status: 'SUCCESS' },
     });
 

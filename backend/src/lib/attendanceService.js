@@ -27,7 +27,7 @@ export async function getWeeklyAbsences({ referenceDate } = {}) {
         dates.push(fmtBogota(d));
     }
 
-    const absences = await prisma.attendance.findMany({
+    const absences = await prisma.asistencia.findMany({
         where: {
             present: false,
             date: { in: dates },
@@ -140,7 +140,7 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
     const estilos   = crearEstilos();
 
     // Cursos del docente
-    const courses = await prisma.course.findMany({
+    const courses = await prisma.curso.findMany({
         where: { teacherId },
         orderBy: [{ name: 'asc' }, { groupCode: 'asc' }],
         include: { teacher: { select: { name: true, email: true } } },
@@ -154,7 +154,7 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
 
     for (const curso of courses) {
         // Estudiantes del curso (derivados de asistencias históricas)
-        const estudiantesRaw = await prisma.student.findMany({
+        const estudiantesRaw = await prisma.estudiante.findMany({
             where: { attendances: { some: { courseId: curso.id } } },
             select: {
                 documento: true,
@@ -173,7 +173,7 @@ async function generarExcelDocente({ teacherId, weekStart, weekEnd, dates }) {
         );
 
         // Asistencia de la semana para este curso
-        const asistencias = await prisma.attendance.findMany({
+        const asistencias = await prisma.asistencia.findMany({
             where: { courseId: curso.id, date: { in: dates } },
             select: { studentId: true, date: true, present: true, status: true },
         });
@@ -353,7 +353,7 @@ export async function createWeeklyReportsByTeacher({ referenceDate } = {}) {
     }
 
     // Obtener solo docentes que tienen cursos
-    const teachers = await prisma.teacher.findMany({
+    const teachers = await prisma.docente.findMany({
         where: { courses: { some: {} } },
         select: { id: true, name: true, email: true },
         orderBy: { name: 'asc' },
@@ -375,7 +375,7 @@ export async function createWeeklyReportsByTeacher({ referenceDate } = {}) {
         }
 
         // Contar cursos del docente
-        const courseCount = await prisma.course.count({ where: { teacherId: teacher.id } });
+        const courseCount = await prisma.curso.count({ where: { teacherId: teacher.id } });
 
         reportes.push({
             teacherName: teacher.name,
@@ -396,7 +396,7 @@ export async function createWeeklyReportForTeacher({ teacherId, referenceDate } 
     if (!teacherId) return null;
     const { weekStart, weekEnd } = getPreviousWeekRange(referenceDate);
 
-    const teacher = await prisma.teacher.findUnique({
+    const teacher = await prisma.docente.findUnique({
         where: { id: teacherId },
         select: { id: true, name: true, email: true },
     });
@@ -419,7 +419,7 @@ export async function createWeeklyReportForTeacher({ teacherId, referenceDate } 
     });
     if (!buffer) return null;
 
-    const courseCount = await prisma.course.count({ where: { teacherId } });
+    const courseCount = await prisma.curso.count({ where: { teacherId } });
     return {
         teacherName: teacher.name,
         teacherEmail: teacher.email,

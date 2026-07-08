@@ -11,7 +11,7 @@ export async function POST(request) {
         }
 
         // Buscar al usuario que tenga este token
-        const teacher = await prisma.teacher.findFirst({
+        const teacher = await prisma.docente.findFirst({
             where: {
                 resetToken: token,
             }
@@ -30,7 +30,7 @@ export async function POST(request) {
         const passwordHash = await bcrypt.hash(newPassword, 10);
 
         // Actualizar el profesor
-        await prisma.teacher.update({
+        await prisma.docente.update({
             where: { id: teacher.id },
             data: {
                 passwordHash,

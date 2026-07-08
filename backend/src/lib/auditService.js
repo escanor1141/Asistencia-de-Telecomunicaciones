@@ -15,7 +15,7 @@ export async function registrarAccion({ usuario, accion, target, targetId, detal
     try {
         if (!usuario) return; // No registrar si no hay usuario (peticiones anónimas fallidas)
 
-        await prisma.auditLog.create({
+        await prisma.registroAuditoria.create({
             data: {
                 userId: usuario.id,
                 userName: usuario.name || 'Usuario',

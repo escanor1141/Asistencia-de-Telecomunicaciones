@@ -55,7 +55,7 @@ export async function GET(request) {
             condicion.course = filtroCurso
         }
 
-        const asistencias = await prisma.attendance.findMany({
+        const asistencias = await prisma.asistencia.findMany({
             where: condicion,
             include: { 
                 student: true,
@@ -64,33 +64,33 @@ export async function GET(request) {
         })
 
         // Estructuras de datos para las hojas del Excel
-        const statsGeneral = {} 
-        const statsAsignatura = {}
+        const estadisticasGenerales = {}
+        const estadisticasPorAsignatura = {}
         const contactoEstudiantes = {}
 
         asistencias.forEach(reg => {
-            const idEst = reg.student.documento
-            const idCurso = reg.courseId
+            const documentoEstudiante = reg.student.documento
+            const idCursoActual = reg.courseId
             const estado = reg.status || (reg.present ? 'Presente' : 'Ausente')
 
             // 1. Resumen General
-            if (!statsGeneral[idEst]) {
-                statsGeneral[idEst] = {
-                    documento: idEst,
+            if (!estadisticasGenerales[documentoEstudiante]) {
+                estadisticasGenerales[documentoEstudiante] = {
+                    documento: documentoEstudiante,
                     name: reg.student.name,
                     total: 0, present: 0, absent: 0, justified: 0
                 }
             }
-            statsGeneral[idEst].total++
-            if (estado === 'Presente') statsGeneral[idEst].present++
-            else if (estado === 'Justificado') statsGeneral[idEst].justified++
-            else statsGeneral[idEst].absent++
+            estadisticasGenerales[documentoEstudiante].total++
+            if (estado === 'Presente') estadisticasGenerales[documentoEstudiante].present++
+            else if (estado === 'Justificado') estadisticasGenerales[documentoEstudiante].justified++
+            else estadisticasGenerales[documentoEstudiante].absent++
 
             // 2. Por Asignatura
-            const keyAsignatura = `${idEst}-${idCurso}`
-            if (!statsAsignatura[keyAsignatura]) {
-                statsAsignatura[keyAsignatura] = {
-                    documento: idEst,
+            const claveAsignatura = `${documentoEstudiante}-${idCursoActual}`
+            if (!estadisticasPorAsignatura[claveAsignatura]) {
+                estadisticasPorAsignatura[claveAsignatura] = {
+                    documento: documentoEstudiante,
                     estudiante: reg.student.name,
                     asignatura: reg.course.name,
                     codigo: reg.course.code,
@@ -98,15 +98,15 @@ export async function GET(request) {
                     total: 0, present: 0, absent: 0, justified: 0
                 }
             }
-            statsAsignatura[keyAsignatura].total++
-            if (estado === 'Presente') statsAsignatura[keyAsignatura].present++
-            else if (estado === 'Justificado') statsAsignatura[keyAsignatura].justified++
-            else statsAsignatura[keyAsignatura].absent++
+            estadisticasPorAsignatura[claveAsignatura].total++
+            if (estado === 'Presente') estadisticasPorAsignatura[claveAsignatura].present++
+            else if (estado === 'Justificado') estadisticasPorAsignatura[claveAsignatura].justified++
+            else estadisticasPorAsignatura[claveAsignatura].absent++
 
             // 3. Directorio de Contacto (incluir si alguna vez falló, no importando si es justificado o no, para asegurar tener su dato en la BD si entra en riesgo)
             // Se filtrará al final solo los que tengan porcentaje de la asignatura <= 80
-            contactoEstudiantes[idEst] = {
-                documento: idEst,
+            contactoEstudiantes[documentoEstudiante] = {
+                documento: documentoEstudiante,
                 name: reg.student.name,
                 email: reg.student.email || 'No registrado',
                 correo2: reg.student.correo2 || 'No registrado',
@@ -125,7 +125,7 @@ export async function GET(request) {
             return clasesQueCuentan > 0 ? Math.max(1, Math.ceil(clasesQueCuentan * 0.2)) : 0
         }
 
-        const asignaturas = Object.values(statsAsignatura).map(est => {
+        const asignaturas = Object.values(estadisticasPorAsignatura).map(est => {
             const absencesAllowed = calcFaltasPermitidas(est)
             return {
                 ...est,
@@ -139,7 +139,7 @@ export async function GET(request) {
             asignaturas.filter(est => est.failedByAbsence).map(est => est.documento)
         )
 
-        const resumen = Object.values(statsGeneral).map(est => ({
+        const resumen = Object.values(estadisticasGenerales).map(est => ({
             ...est,
             percentage: calcPorcentaje(est),
             failedByAbsence: estudiantesConPérdidaPorFalta.has(est.documento),
@@ -160,20 +160,20 @@ export async function GET(request) {
             .sort((a, b) => a.name.localeCompare(b.name))
 
         // Enriquecer detalles con información del docente (si está disponible)
-        let docenteInfo = null;
-        let courseName = null;
+        let informacionDocente = null;
+        let nombreCurso = null;
         try {
             // Solo incluir docente cuando la petición explícita incluya `docenteId`
             if (docenteId) {
                 const d = await prisma.user.findUnique({ where: { id: docenteId } });
-                if (d) docenteInfo = { id: d.id, name: d.name, email: d.email };
+                if (d) informacionDocente = { id: d.id, name: d.name, email: d.email };
             }
 
             // Obtener nombre del curso cuando se pasó `courseId` (no implica incluir docente)
             if (idCurso) {
-                const curso = await prisma.course.findUnique({ where: { id: idCurso } });
+                const curso = await prisma.curso.findUnique({ where: { id: idCurso } });
                 if (curso) {
-                    courseName = curso.name || null;
+                    nombreCurso = curso.name || null;
                 }
             }
         } catch (e) {
@@ -182,23 +182,23 @@ export async function GET(request) {
         }
 
         // Registro de auditoría (opcional: puede suprimirse con ?suppressAudit=1)
-        const rawSuppressAudit = (searchParams.get('suppressAudit') || '').toString().toLowerCase();
-        const rawSuppressAuditHeader = (request.headers.get('x-suppress-audit') || '').toString().toLowerCase();
-        const suppressAudit = ['1', 'true', 'yes'].includes(rawSuppressAudit) || ['1', 'true', 'yes'].includes(rawSuppressAuditHeader);
-        if (!suppressAudit) {
+        const valorSuppressAudit = (searchParams.get('suppressAudit') || '').toString().toLowerCase();
+        const valorSuppressAuditHeader = (request.headers.get('x-suppress-audit') || '').toString().toLowerCase();
+        const suprimirAuditoria = ['1', 'true', 'yes'].includes(valorSuppressAudit) || ['1', 'true', 'yes'].includes(valorSuppressAuditHeader);
+        if (!suprimirAuditoria) {
             const { registrarAccion } = await import('@/lib/auditService');
             await registrarAccion({
                 usuario,
                 accion: 'EXPORTAR_REPORTE',
                 target: 'REPORT',
                 detalles: {
-                    courseId: idCurso,
-                    courseName,
+                    cursoId: idCurso,
+                    nombreCurso,
                     codigo,
                     grupo,
                     fechaInicio,
                     fechaFin,
-                    docente: docenteInfo,
+                    docente: informacionDocente,
                     totalEstudiantes: resumen.length
                 },
                 ip: request.headers.get('x-forwarded-for') || '127.0.0.1'

@@ -2,8 +2,8 @@ import prisma from '@/lib/prisma'
 import { getLunesSemana } from '@/lib/dateUtils'
 
 // GET — reporte semanal agregado
-// Params: courseId?, codigo?, grupo?, docenteId?, anio?, periodo?, modalidad?,
-//         startDate?, endDate?
+// Parámetros: courseId?, codigo?, grupo?, docenteId?, anio?, periodo?, modalidad?,
+//             startDate?, endDate?
 // Requiere al menos: courseId | docenteId | modalidad
 export async function GET(request) {
     try {
@@ -47,7 +47,7 @@ export async function GET(request) {
         if (Object.keys(fc).length > 0) where.course = fc
 
         // ── Consulta ─────────────────────────────────────────────────────────
-        const registros = await prisma.attendance.findMany({
+        const registros = await prisma.asistencia.findMany({
             where,
             select: { date: true, present: true, status: true },
             orderBy: { date: 'asc' },

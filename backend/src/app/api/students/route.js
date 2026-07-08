@@ -75,7 +75,7 @@ export async function GET(request) {
             where.courses = { some: { ...where.courses.some, ...filtroCurso } }
         }
 
-        const estudiantes = await prisma.student.findMany({
+        const estudiantes = await prisma.estudiante.findMany({
             where,
             orderBy: { name: 'asc' }
         })
@@ -133,7 +133,7 @@ export async function POST(request) {
                 const docLimpio = limpiarTexto(e.documento);
                 
                 // Verificar si existe el estudiante con sus cursos actuales
-                const estudianteExistente = await prisma.student.findUnique({
+                const estudianteExistente = await prisma.estudiante.findUnique({
                     where: { documento: docLimpio },
                     include: { courses: true }
                 });
@@ -150,7 +150,7 @@ export async function POST(request) {
                     }
                 }
 
-                await prisma.student.upsert({
+                await prisma.estudiante.upsert({
                     where: { documento: docLimpio },
                     update: {
                         name: limpiarTexto(e.name),
@@ -189,7 +189,7 @@ export async function POST(request) {
             return Response.json({ error: `La materia es de franja ${curso.franja} pero el estudiante es de franja ${franjaLimpia}` }, { status: 400 })
         }
 
-        const estudianteExistente = await prisma.student.findUnique({
+        const estudianteExistente = await prisma.estudiante.findUnique({
             where: { documento: documentoLimpio },
             include: { courses: true }
         });
@@ -208,7 +208,7 @@ export async function POST(request) {
             }
         }
 
-        const estudiante = await prisma.student.upsert({
+        const estudiante = await prisma.estudiante.upsert({
             where: { documento: documentoLimpio },
             update: {
                 name: nombreLimpio,

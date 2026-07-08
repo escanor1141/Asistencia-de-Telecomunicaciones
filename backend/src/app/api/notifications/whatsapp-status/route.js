@@ -19,7 +19,7 @@ export async function GET(request) {
     const limite = Math.min(parseInt(searchParams.get('limite') || '50'), 100);
 
     // Últimos N registros de WhatsApp ordenados por envío más reciente
-    const logs = await prisma.whatsappNotificationLog.findMany({
+    const logs = await prisma.registroNotificacionWhatsapp.findMany({
         take: limite,
         orderBy: { sentAt: 'desc' },
         include: {
@@ -30,7 +30,7 @@ export async function GET(request) {
     // Obtener nombres de cursos para los logs (courseIds únicos)
     const courseIds = [...new Set(logs.map(l => l.courseId))];
     const cursos = courseIds.length > 0
-        ? await prisma.course.findMany({
+        ? await prisma.curso.findMany({
             where: { id: { in: courseIds } },
             select: { id: true, name: true },
         })
@@ -39,9 +39,9 @@ export async function GET(request) {
 
     // Resumen global
     const [totalEnviados, totalErrores, totalOmitidos] = await Promise.all([
-        prisma.whatsappNotificationLog.count({ where: { status: 'SUCCESS' } }),
-        prisma.whatsappNotificationLog.count({ where: { status: 'ERROR'   } }),
-        prisma.whatsappNotificationLog.count({ where: { status: 'SKIPPED' } }),
+        prisma.registroNotificacionWhatsapp.count({ where: { status: 'SUCCESS' } }),
+        prisma.registroNotificacionWhatsapp.count({ where: { status: 'ERROR'   } }),
+        prisma.registroNotificacionWhatsapp.count({ where: { status: 'SKIPPED' } }),
     ]);
 
     return Response.json({

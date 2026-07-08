@@ -65,11 +65,11 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
 
         // 2. Obtener datos de estudiantes + nombre del curso en un solo query
         const [estudiantes, curso] = await Promise.all([
-            prisma.student.findMany({
+            prisma.estudiante.findMany({
                 where: { documento: { in: idsAusentes } },
                 select: { documento: true, name: true, whatsapp: true },
             }),
-            prisma.course.findUnique({
+            prisma.curso.findUnique({
                 where: { id: idCurso },
                 select: { name: true },
             }),
@@ -87,7 +87,7 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
             // --- Sin número registrado ---
             if (!estudiante.whatsapp) {
                 console.warn(`[whatsapp-job] Sin WhatsApp: ${estudiante.name} (${estudiante.documento})`);
-                await prisma.whatsappNotificationLog.upsert({
+                await prisma.registroNotificacionWhatsapp.upsert({
                     where: { studentId_courseId_date: claveLog },
                     update: { status: 'SKIPPED', error: 'Sin número de WhatsApp', sentAt: new Date() },
                     create: { ...claveLog, status: 'SKIPPED', error: 'Sin número de WhatsApp' },
@@ -97,7 +97,7 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
             }
 
             // --- Verificar duplicado: solo omitir si YA fue enviado con éxito ---
-            const existente = await prisma.whatsappNotificationLog.findUnique({
+            const existente = await prisma.registroNotificacionWhatsapp.findUnique({
                 where: { studentId_courseId_date: claveLog },
             });
 
@@ -120,7 +120,7 @@ export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) 
             });
 
             // --- Registrar / actualizar en log ---
-            await prisma.whatsappNotificationLog.upsert({
+            await prisma.registroNotificacionWhatsapp.upsert({
                 where: { studentId_courseId_date: claveLog },
                 update: {
                     status: resultado.success ? 'SUCCESS' : 'ERROR',

@@ -20,7 +20,7 @@ export async function PUT(request) {
         const { name, currentPassword, newPassword } = body;
 
         // Fetch user from DB
-        const teacher = await prisma.teacher.findUnique({
+        const teacher = await prisma.docente.findUnique({
             where: { id: userId },
         });
 
@@ -52,7 +52,7 @@ export async function PUT(request) {
 
         // Apply changes
         if (Object.keys(updateData).length > 0) {
-            await prisma.teacher.update({
+            await prisma.docente.update({
                 where: { id: userId },
                 data: updateData,
             });

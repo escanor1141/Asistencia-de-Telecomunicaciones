@@ -16,7 +16,7 @@ export async function PUT(request, { params }) {
 
         // Validar si el email ya existe en otro usuario
         if (email) {
-            const existente = await prisma.teacher.findFirst({
+            const existente = await prisma.docente.findFirst({
                 where: { 
                     email,
                     NOT: { id }
@@ -42,7 +42,7 @@ export async function PUT(request, { params }) {
             data.passwordHash = await bcrypt.hash(password, 10)
         }
 
-        const profesorActualizado = await prisma.teacher.update({
+        const profesorActualizado = await prisma.docente.update({
             where: { id },
             data,
             select: { id: true, name: true, email: true, createdAt: true, role: true }
@@ -68,7 +68,7 @@ export async function DELETE(request, { params }) {
             return Response.json({ error: 'No puedes eliminar tu propia cuenta' }, { status: 400 })
         }
 
-        await prisma.teacher.delete({ where: { id } })
+        await prisma.docente.delete({ where: { id } })
         return Response.json({ success: true })
     } catch (error) {
         console.error('[Delete Teacher Error]', error)

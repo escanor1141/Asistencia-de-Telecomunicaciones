@@ -24,7 +24,7 @@ export async function GET(request) {
             whereClause = { teacherId: usuario.id }
         }
 
-        const cursos = await prisma.course.findMany({
+        const cursos = await prisma.curso.findMany({
             where: whereClause,
             include: {
                 teacher: {
@@ -56,7 +56,7 @@ export async function POST(request) {
             return Response.json({ error: 'Nombre y código son requeridos' }, { status: 400 })
         }
 
-        const course = await prisma.course.create({
+        const course = await prisma.curso.create({
             data: {
                 name: name.trim(),
                 code: code.trim(),

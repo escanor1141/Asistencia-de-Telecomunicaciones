@@ -37,7 +37,7 @@ export function obtenerUsuarioDePeticion(request) {
  * @returns {{ permitido: boolean, curso: object|null, error: string|null, status: number }}
  */
 export async function verificarAccesoCurso(idCurso, usuario) {
-    const curso = await prisma.course.findUnique({ where: { id: idCurso } })
+    const curso = await prisma.curso.findUnique({ where: { id: idCurso } })
 
     if (!curso) {
         return { permitido: false, curso: null, error: 'Materia no encontrada', status: 404 }

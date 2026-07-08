@@ -11,7 +11,7 @@
  * Si tiene 2 tokens se tratan como "Apellido Nombre" → "Apellido, Nombre".
  * Si tiene 3+ tokens → últimos 2 = apellidos, resto = nombres.
  *
- * @param {string} nombre - Nombre completo en el orden nombre→apellidos
+ * @param {string} nombre - Nombre completo en el orden nombre → apellidos
  * @returns {string}      - "Apellido1 Apellido2, Nombres"
  */
 export function formatearNombre(nombre = '') {

@@ -7,109 +7,119 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Student {
-  documento        String            @id
-  name             String
-  email            String?
-  correo2          String?
-  whatsapp         String?
-  telefono2        String?
-  franja           String?
-  programa         String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  attendances      Attendance[]
-  notificationLogs NotificationLog[]
-  whatsappLogs     WhatsappNotificationLog[]
-  courses          Course[]
+model Estudiante {
+  documento        String                     @id @map("documento")
+  name             String                     @map("nombre")
+  email            String?                    @map("email")
+  correo2          String?                    @map("correo2")
+  whatsapp         String?                    @map("whatsapp")
+  telefono2        String?                    @map("telefono2")
+  franja           String?                    @map("franja")
+  programa         String?                    @map("programa")
+  createdAt        DateTime                   @default(now()) @map("fecha_creacion")
+  updatedAt        DateTime                   @updatedAt @map("fecha_actualizacion")
+  attendances      Asistencia[]
+  notificationLogs RegistroNotificacion[]
+  whatsappLogs     RegistroNotificacionWhatsapp[]
+  courses          Curso[]                    @relation("CourseToStudent")
+
+  @@map("estudiantes")
 }
 
-model Course {
-  id          String       @id @default(cuid())
-  name        String
-  code        String
-  teacherId      String
-  groupCode      String       @default("A")
-  academicPeriod String       @default("1")
-  academicYear   String       @default("2024")
-  dia            String?
-  horaInicio     String?
-  horaFin        String?
-  dia2           String?
-  horaInicio2    String?
-  horaFin2       String?
-  franja         String?
-  programa       String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  attendances    Attendance[]
-  teacher        Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  students       Student[]
+model Curso {
+  id              String        @id @default(cuid()) @map("id")
+  name            String        @map("nombre")
+  code            String        @map("codigo")
+  teacherId       String        @map("docente_id")
+  groupCode       String        @default("A") @map("grupo")
+  academicPeriod String        @default("1") @map("periodo_academico")
+  academicYear   String        @default("2024") @map("anio_academico")
+  dia             String?       @map("dia")
+  horaInicio      String?       @map("hora_inicio")
+  horaFin         String?       @map("hora_fin")
+  dia2            String?       @map("dia2")
+  horaInicio2     String?       @map("hora_inicio2")
+  horaFin2        String?       @map("hora_fin2")
+  franja          String?       @map("franja")
+  programa        String?       @map("programa")
+  createdAt       DateTime      @default(now()) @map("fecha_creacion")
+  updatedAt       DateTime      @updatedAt @map("fecha_actualizacion")
+  attendances     Asistencia[]
+  teacher         Docente       @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students        Estudiante[] @relation("CourseToStudent")
 
   @@unique([code, groupCode, academicPeriod, academicYear, teacherId])
+  @@map("cursos")
 }
 
-model Attendance {
-  id        String   @id @default(cuid())
-  studentId String
-  courseId  String
-  date      String
-  present   Boolean  @default(false)
-  status    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  student   Student  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
+model Asistencia {
+  id        String   @id @default(cuid()) @map("id")
+  studentId String   @map("estudiante_id")
+  courseId  String   @map("curso_id")
+  date      String   @map("fecha")
+  present   Boolean  @default(false) @map("presente")
+  status    String?  @map("estado")
+  createdAt DateTime @default(now()) @map("fecha_creacion")
+  updatedAt DateTime @updatedAt @map("fecha_actualizacion")
+  course    Curso    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student   Estudiante @relation(fields: [studentId], references: [documento], onDelete: Cascade)
 
   @@unique([studentId, courseId, date])
+  @@map("asistencias")
 }
 
-model Teacher {
-  id           String   @id @default(cuid()) @map("id_docente")
-  email        String   @unique @map("correo")
-  passwordHash String   @map("contraseña")
-  name         String   @map("nombre")
-  role             String   @default("TEACHER") @map("rol")
-  resetToken       String?  @map("token_recuperacion")
-  resetTokenExpiry DateTime? @map("expiracion_token")
-  createdAt        DateTime @default(now()) @map("fecha_creacion")
-  courses      Course[]
+model Docente {
+  id                String                  @id @default(cuid()) @map("id_docente")
+  email             String                  @unique @map("correo")
+  passwordHash      String                  @map("contraseña")
+  name              String                  @map("nombre")
+  role              String                  @default("TEACHER") @map("rol")
+  resetToken        String?                 @map("token_recuperacion")
+  resetTokenExpiry  DateTime?               @map("expiracion_token")
+  createdAt         DateTime                @default(now()) @map("fecha_creacion")
+  courses           Curso[]
+
+  @@map("docentes")
 }
 
-model NotificationLog {
-  id        String   @id @default(cuid())
-  studentId String
-  weekStart String
-  sentAt    DateTime @default(now())
-  status    String   @default("SUCCESS")
-  error     String?
-  student   Student  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
+model RegistroNotificacion {
+  id        String      @id @default(cuid()) @map("id")
+  studentId String      @map("estudiante_id")
+  weekStart String      @map("semana_inicio")
+  sentAt    DateTime    @default(now()) @map("enviado_en")
+  status    String      @default("SUCCESS") @map("estado")
+  error     String?     @map("error")
+  student   Estudiante  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
 
   @@unique([studentId, weekStart])
+  @@map("registro_notificaciones")
 }
 
-model WhatsappNotificationLog {
-  id        String   @id @default(cuid())
-  studentId String
-  courseId  String
-  date      String
-  sentAt    DateTime @default(now())
-  status    String   @default("SUCCESS")
-  error     String?
-  student   Student  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
+model RegistroNotificacionWhatsapp {
+  id        String      @id @default(cuid()) @map("id")
+  studentId String      @map("estudiante_id")
+  courseId  String      @map("curso_id")
+  date      String      @map("fecha")
+  sentAt    DateTime    @default(now()) @map("enviado_en")
+  status    String      @default("SUCCESS") @map("estado")
+  error     String?     @map("error")
+  student   Estudiante  @relation(fields: [studentId], references: [documento], onDelete: Cascade)
 
   @@unique([studentId, courseId, date])
+  @@map("registro_notificaciones_whatsapp")
 }
 
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String
-  userName  String
-  userRole  String
-  action    String
-  target    String
-  targetId  String?
-  details   Json?
-  ip        String?
-  createdAt DateTime @default(now())
+model RegistroAuditoria {
+  id        String    @id @default(cuid()) @map("id")
+  userId    String    @map("usuario_id")
+  userName  String    @map("nombre_usuario")
+  userRole  String    @map("rol_usuario")
+  action    String    @map("accion")
+  target    String    @map("objetivo")
+  targetId  String?   @map("objetivo_id")
+  details   Json?     @map("detalles")
+  ip        String?   @map("ip")
+  createdAt DateTime  @default(now()) @map("fecha_creacion")
+
+  @@map("registro_auditoria")
 }

@@ -6,13 +6,13 @@ import { useAutenticacion } from '../context/ContextoAutenticacion';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-export default function Profesores() {
+export default function Docentes() {
     const { usuario } = useAutenticacion();
     const [profesores, setProfesores] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
     const [mostrarContrasena, setMostrarContrasena] = useState(false);
-    const [formulario, setFormulario] = useState({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
+    const [formulario, setFormulario] = useState({ documento: '', nombre: '', correo: '', password: '', role: 'TEACHER' });
     const [eliminandoId, setEliminandoId] = useState(null);
     const [editandoId, setEditandoId] = useState(null);
     const [enviandoNotificaciones, setEnviandoNotificaciones] = useState(false);
@@ -58,20 +58,20 @@ export default function Profesores() {
         setGuardando(true);
         try {
             if (editandoId) {
-                // Actualizar profesor existente
+                // Actualizar docente existente
                 const res = await api.put(`/teachers/${editandoId}`, formulario);
                 setProfesores(prev => prev.map(p => p.id === editandoId ? res.data : p));
-                toast.success('Profesor actualizado exitosamente');
+                toast.success('Docente actualizado correctamente');
                 cancelarEdicion();
             } else {
-                // Crear nuevo profesor
+                // Crear nuevo docente
                 const nuevoProfesor = await api.post('/teachers', formulario).then(r => r.data);
                 setProfesores(prev => [...prev, nuevoProfesor]);
-                setFormulario({ documento: '', name: '', email: '', password: '', role: 'TEACHER' });
-                toast.success('Profesor creado exitosamente');
+                setFormulario({ documento: '', nombre: '', correo: '', password: '', role: 'TEACHER' });
+                toast.success('Docente creado correctamente');
             }
         } catch (err) {
-            toast.error(err.response?.data?.error || `Error al ${editandoId ? 'actualizar' : 'crear'} profesor`);
+            toast.error(err.response?.data?.error || `Error al ${editandoId ? 'actualizar' : 'crear'} docente`);
         } finally {
             setGuardando(false);
         }
@@ -81,9 +81,9 @@ export default function Profesores() {
         setEditandoId(profesor.id);
         setFormulario({
             documento: profesor.id,
-            name: profesor.name,
-            email: profesor.email,
-            password: '', // Password opcional en edición
+            nombre: profesor.name,
+            correo: profesor.email,
+            password: '', // Contraseña opcional en edición
             role: profesor.role
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -99,14 +99,14 @@ export default function Profesores() {
             toast.error('No puedes eliminar tu propia cuenta');
             return;
         }
-        if (!confirm(`¿Eliminar al profesor "${nombre}"? Esta acción no se puede deshacer.`)) return;
+        if (!confirm(`¿Eliminar al docente "${nombre}"? Esta acción no se puede deshacer.`)) return;
         setEliminandoId(id);
         try {
             await api.delete(`/teachers/${id}`);
             setProfesores(prev => prev.filter(p => p.id !== id));
-            toast.success('Profesor eliminado');
+            toast.success('Docente eliminado');
         } catch {
-            toast.error('Error al eliminar profesor');
+            toast.error('Error al eliminar docente');
         } finally {
             setEliminandoId(null);
         }
@@ -115,7 +115,7 @@ export default function Profesores() {
     return (
         <div className="space-y-6 animate-in fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Gestión de Profesores</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Gestión de Docentes</h1>
                 <p className="text-gray-500 mt-1">Administra las cuentas de acceso al sistema</p>
             </div>
 
@@ -124,7 +124,7 @@ export default function Profesores() {
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 self-start">
                     <h2 className="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
                         {editandoId ? <Pencil size={20} className="text-amber-600" /> : <UserPlus size={20} className="text-brand-purple" />}
-                        {editandoId ? 'Editar Profesor' : 'Crear Nuevo Profesor'}
+                        {editandoId ? 'Editar Docente' : 'Crear Nuevo Docente'}
                     </h2>
                     <form onSubmit={manejarEnvio} className="space-y-4">
                         {!editandoId && (
@@ -144,8 +144,8 @@ export default function Profesores() {
                             <label className="block text-sm font-semibold text-gray-600 mb-1.5">Nombre completo</label>
                             <input
                                 type="text"
-                                value={formulario.name}
-                                onChange={e => setFormulario(p => ({ ...p, name: e.target.value }))}
+                                value={formulario.nombre}
+                                onChange={e => setFormulario(p => ({ ...p, nombre: e.target.value }))}
                                 placeholder="Ej. Juan Pérez"
                                 required
                                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent transition"
@@ -155,8 +155,8 @@ export default function Profesores() {
                             <label className="block text-sm font-semibold text-gray-600 mb-1.5">Correo Electrónico</label>
                             <input
                                 type="email"
-                                value={formulario.email}
-                                onChange={e => setFormulario(p => ({ ...p, email: e.target.value }))}
+                                value={formulario.correo}
+                                onChange={e => setFormulario(p => ({ ...p, correo: e.target.value }))}
                                 placeholder="correo@ejemplo.com"
                                 required
                                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-brand-purple focus:border-transparent transition"
@@ -213,7 +213,7 @@ export default function Profesores() {
                                 className={`flex-[2] flex items-center justify-center gap-2 ${editandoId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-purple hover:bg-purple-700'} text-white font-bold py-3 rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 transform hover:-translate-y-0.5`}
                             >
                                 {guardando ? <Loader2 size={18} className="animate-spin" /> : (editandoId ? <Pencil size={18} /> : <UserPlus size={18} />)}
-                                {guardando ? (editandoId ? 'Actualizando...' : 'Creando...') : (editandoId ? 'Actualizar Profesor' : 'Crear Profesor')}
+                                {guardando ? (editandoId ? 'Actualizando...' : 'Creando...') : (editandoId ? 'Actualizar Docente' : 'Crear Docente')}
                             </button>
                         </div>
                     </form>
@@ -250,7 +250,7 @@ export default function Profesores() {
                 <div className="lg:col-span-3 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-4 bg-gray-50 font-bold text-gray-700 border-b flex items-center gap-2">
                         <Users size={18} />
-                        Profesores Registrados
+                        Docentes Registrados
                         <span className="ml-auto bg-brand-purple/10 text-brand-purple text-xs font-bold px-2.5 py-1 rounded-full">
                             {profesores.length}
                         </span>

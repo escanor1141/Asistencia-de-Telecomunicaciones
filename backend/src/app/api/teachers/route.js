@@ -13,7 +13,7 @@ export async function GET(request) {
 
         const whereClause = usuario.role === 'ADMIN' ? {} : { id: usuario.id }
 
-        const profesores = await prisma.teacher.findMany({
+        const profesores = await prisma.docente.findMany({
             where: whereClause,
             select: { id: true, name: true, email: true, createdAt: true, role: true },
             orderBy: { createdAt: 'asc' }
@@ -51,12 +51,12 @@ export async function POST(request) {
             return Response.json({ error: 'La contraseña debe contener mayúsculas, minúsculas, números y caracteres especiales' }, { status: 400 })
         }
 
-        const existentePorDocumento = await prisma.teacher.findUnique({ where: { id: String(documento) } })
+        const existentePorDocumento = await prisma.docente.findUnique({ where: { id: String(documento) } })
         if (existentePorDocumento) {
             return Response.json({ error: 'Ya existe un usuario con ese documento' }, { status: 409 })
         }
 
-        const existente = await prisma.teacher.findUnique({ where: { email } })
+        const existente = await prisma.docente.findUnique({ where: { email } })
         if (existente) {
             return Response.json({ error: 'Ya existe un profesor con ese email' }, { status: 409 })
         }
@@ -64,7 +64,7 @@ export async function POST(request) {
         const hashContrasena = await bcrypt.hash(password, 10)
         const rolFinal = role === 'ADMIN' ? 'ADMIN' : 'TEACHER'
 
-        const profesor = await prisma.teacher.create({
+        const profesor = await prisma.docente.create({
             data: { id: String(documento), name, email, passwordHash: hashContrasena, role: rolFinal },
             select: { id: true, name: true, email: true, createdAt: true, role: true }
         })

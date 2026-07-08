@@ -7,7 +7,7 @@ import { useAutenticacion } from '../context/ContextoAutenticacion';
 import * as XLSX from 'xlsx';
 import FiltrosGlobales from '../components/FiltrosGlobales';
 
-export default function Cursos() {
+export default function Materias() {
     const { cursos, cargandoCursos, cargarCursos } = useCurso();
     const { usuario } = useAutenticacion();
     const isAdmin = usuario?.role === 'ADMIN';

@@ -23,7 +23,7 @@ function v(variable) {
 const _COLORES_FALLBACK = ['#6B2D8B', '#8DC63F', '#D97706', '#4E1F68', '#DC2626', '#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 const COLORES_CURSOS = _COLORES_FALLBACK.map((f, i) => v(`--color-course-${i + 1}`) || f);
 
-export default function PanelPrincipal() {
+export default function Inicio() {
     const { usuario } = useAutenticacion();
     const {
         cursoSeleccionado,
@@ -61,19 +61,53 @@ export default function PanelPrincipal() {
             try {
                 if (!cursoSeleccionado && isAdmin) {
                     // Modo "Todas las materias" — solo disponible para ADMIN
-                    const datosHoy = await obtenerAsistenciaHoyPorCurso();
-                    setAsistenciaTodas(datosHoy);
+                    try {
+                        const datosHoy = await obtenerAsistenciaHoyPorCurso();
+                        setAsistenciaTodas(Array.isArray(datosHoy) ? datosHoy : []);
+                    } catch (errorAsistenciaTodas) {
+                        console.error('[Inicio] No se pudo cargar asistencia de hoy (todas las materias):', errorAsistenciaTodas);
+                        // Para admin en vista global no bloqueamos toda la pantalla.
+                        setAsistenciaTodas([]);
+                    }
                 } else if (cursoSeleccionado) {
                     // Modo "Materia Específica"
                     const hoy = new Intl.DateTimeFormat('en-CA', {
                         timeZone: 'America/Bogota',
                         year: 'numeric', month: '2-digit', day: '2-digit',
                     }).format(new Date());
-                    const [estudiantes, asistenciaHoy, historial] = await Promise.all([
+
+                    const [estudiantesRes, asistenciaHoyRes, historialRes] = await Promise.allSettled([
                         obtenerEstudiantes(cursoSeleccionado.id, filtros),
                         obtenerAsistencia(cursoSeleccionado.id, hoy, filtros),
                         obtenerAsistencia(cursoSeleccionado.id, undefined, filtros),
                     ]);
+
+                    const estudiantes = estudiantesRes.status === 'fulfilled' && Array.isArray(estudiantesRes.value)
+                        ? estudiantesRes.value
+                        : [];
+                    const asistenciaHoy = asistenciaHoyRes.status === 'fulfilled' && Array.isArray(asistenciaHoyRes.value)
+                        ? asistenciaHoyRes.value
+                        : [];
+                    const historial = historialRes.status === 'fulfilled' && Array.isArray(historialRes.value)
+                        ? historialRes.value
+                        : [];
+
+                    const totalFallos = [estudiantesRes, asistenciaHoyRes, historialRes]
+                        .filter((resultado) => resultado.status === 'rejected').length;
+
+                    if (totalFallos > 0) {
+                        console.error('[Inicio] Fallas parciales al cargar panel:', {
+                            estudiantes: estudiantesRes.status === 'rejected' ? estudiantesRes.reason : null,
+                            asistenciaHoy: asistenciaHoyRes.status === 'rejected' ? asistenciaHoyRes.reason : null,
+                            historial: historialRes.status === 'rejected' ? historialRes.reason : null,
+                        });
+                    }
+
+                    // Solo mostrar error global si TODAS las fuentes fallan.
+                    if (totalFallos === 3) {
+                        setErrorCarga(true);
+                        return;
+                    }
 
                     const presentes = asistenciaHoy.filter((registro) => registro.present).length;
                     const total = estudiantes.length;
@@ -106,6 +140,7 @@ export default function PanelPrincipal() {
                     setActividadReciente([]);
                     setAsistenciaTodas([]);
                 } else {
+                    console.error('[Inicio] Error al cargar panel:', err);
                     setErrorCarga(true);
                 }
             } finally {
@@ -119,13 +154,13 @@ export default function PanelPrincipal() {
     const kpis = useMemo(
         () => [
             {
-                titulo: 'Total estudiantes',
+                titulo: 'Total de estudiantes',
                 valor: totalEstudiantes.toLocaleString('es-CO'),
                 icono: Users,
                 colorValor: undefined,
             },
             {
-                titulo: '% asistencia hoy',
+                titulo: '% de asistencia hoy',
                 valor: huboClaseHoy ? `${porcentajeHoy.toLocaleString('es-CO')}%` : '—',
                 subtitulo: !huboClaseHoy && cursoSeleccionado ? 'Sin clase registrada hoy' : undefined,
                 icono: Percent,
@@ -171,7 +206,7 @@ export default function PanelPrincipal() {
                 // Vista: Todas las materias (Admin)
 
                 <section className="tarjeta">
-                    <h3 className="mb-4 text-lg font-medium">% de Asistencia Hoy (Todas las materias)</h3>
+                    <h3 className="mb-4 text-lg font-medium">% de asistencia hoy (todas las materias)</h3>
                     {asistenciaTodas.length === 0 ? (
                         <p className="text-sm text-texto-secundario">No hay registros de asistencia para el día de hoy.</p>
                     ) : (

@@ -4,7 +4,7 @@ import { useAutenticacion } from '../context/ContextoAutenticacion';
 import api from '../services/api';
 import { Loader2, LogIn } from 'lucide-react';
 
-export default function Login() {
+export default function InicioSesion() {
     const [correo, setCorreo] = useState('');
     const [contrasena, setContrasena] = useState('');
     const [error, setError] = useState('');
@@ -49,7 +49,7 @@ export default function Login() {
                         Control de Asistencia<br/>Telecomunicaciones
                     </h1>
                     <p className="text-texto-secundario mt-2 font-medium text-sm">
-                        Portal para Profesores
+                        Portal para docentes
                     </p>
                 </div>
 

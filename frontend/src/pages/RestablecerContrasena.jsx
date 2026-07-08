@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { Loader2, KeyRound } from 'lucide-react';
 
-export default function ResetPassword() {
+export default function RestablecerContrasena() {
     const [nuevaContrasena, setNuevaContrasena] = useState('');
     const [confirmarContrasena, setConfirmarContrasena] = useState('');
     const [error, setError] = useState('');
@@ -56,7 +56,7 @@ export default function ResetPassword() {
                             <KeyRound size={28} />
                         </div>
                     </div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">Crear Nueva Contraseña</h2>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">Crear nueva contraseña</h2>
                     <p className="text-slate-600 mb-6 text-sm text-center">
                         Ingresa tu nueva contraseña para el sistema.
                     </p>
@@ -114,7 +114,7 @@ export default function ResetPassword() {
                                 ) : (
                                     <KeyRound size={20} />
                                 )}
-                                {cargando ? 'Guardando...' : 'Restablecer Contraseña'}
+                                {cargando ? 'Guardando...' : 'Restablecer contraseña'}
                             </button>
                         </form>
                     )}

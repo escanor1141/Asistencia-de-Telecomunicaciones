@@ -144,8 +144,8 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                                 <th className="px-4 py-3 font-medium">Nombre del Programa</th>
                                 <th className="px-4 py-3 font-medium">Correo</th>
                                 <th className="px-4 py-3 font-medium">Correo 2</th>
-                                <th className="px-4 py-3 font-medium">Telefono</th>
-                                <th className="px-4 py-3 font-medium">Telefono 2</th>
+                                <th className="px-4 py-3 font-medium">Teléfono</th>
+                                <th className="px-4 py-3 font-medium">Teléfono 2</th>
                                 <th className="px-4 py-3 font-medium">Estado</th>
                             </tr>
                         </thead>

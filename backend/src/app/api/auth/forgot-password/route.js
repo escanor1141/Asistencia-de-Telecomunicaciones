@@ -11,7 +11,7 @@ export async function POST(request) {
             return Response.json({ error: 'El correo es requerido' }, { status: 400 });
         }
 
-        const teacher = await prisma.teacher.findUnique({
+        const teacher = await prisma.docente.findUnique({
             where: { email }
         });
 
@@ -27,7 +27,7 @@ export async function POST(request) {
         // Expiración: 15 minutos desde ahora
         const tokenExpiry = new Date(Date.now() + 15 * 60 * 1000);
 
-        await prisma.teacher.update({
+        await prisma.docente.update({
             where: { email },
             data: {
                 resetToken: token,
