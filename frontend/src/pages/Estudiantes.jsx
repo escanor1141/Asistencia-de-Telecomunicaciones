@@ -12,6 +12,11 @@ import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 // Modal de edición de estudiante
 
 function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
+    const programasPermitidos = [
+        'Ingeniería de Telecomunicaciones',
+        'Tecnología en Gestión de Sistemas de Telecomunicaciones',
+    ];
+
     const [form, setForm] = useState({
         name:      estudiante.nombre  || '',
         email:     estudiante.correo  || '',
@@ -53,6 +58,9 @@ function ModalEdicion({ estudiante, onGuardar, onCancelar, guardando }) {
                             <label className="mb-1 block text-sm font-medium text-texto-secundario">Programa</label>
                             <select className="campo w-full" value={form.programa} onChange={set('programa')}>
                                 <option value="">Selecciona un programa</option>
+                                {!programasPermitidos.includes(form.programa) && form.programa && (
+                                    <option value={form.programa}>{form.programa}</option>
+                                )}
                                 <option value="Ingeniería de Telecomunicaciones">Ingeniería de Telecomunicaciones</option>
                                 <option value="Tecnología en Gestión de Sistemas de Telecomunicaciones">Tecnología en Gestión</option>
                             </select>
@@ -182,9 +190,20 @@ function ModalImportacion({ filas, onConfirmar, onCancelar, importando }) {
                                                 Ya existe
                                             </span>
                                         ) : fila.error ? (
-                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
-                                                style={{ background: 'var(--color-absent-bg)', color: 'var(--color-absent)' }}>
-                                                Error fila {i + 1}
+                                            <span className="inline-flex items-start px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold max-w-[260px]"
+                                                style={{ background: 'var(--color-absent-bg)', color: 'var(--color-absent)' }}
+                                                title={fila.errorMensaje || ''}>
+                                                <span
+                                                    className="text-left leading-tight break-words"
+                                                    style={{
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                    }}
+                                                >
+                                                    {fila.errorMensaje || `Error fila ${i + 1}`}
+                                                </span>
                                             </span>
                                         ) : fila.importado ? (
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[var(--badge-radius)] text-xs font-semibold"
@@ -307,7 +326,11 @@ export default function Estudiantes() {
                         nombreFormateado: formatearNombre(est.name),
                         curso: cursoSeleccionado.name,
                         correo: est.email || '',
+                        correo2: est.correo2 || '',
                         telefono: est.whatsapp || '',
+                        telefono2: est.telefono2 || '',
+                        franja: est.franja || cursoSeleccionado.franja || '',
+                        programa: est.programa || cursoSeleccionado.programa || '',
                         porcentaje: porcentajePorId.get(est.id) ?? 0,
                     }))
                     .sort((a, b) => compararPorApellido(a.nombre, b.nombre));
@@ -522,6 +545,7 @@ export default function Estudiantes() {
         setImportando(true);
 
         let exitosos = 0;
+        let otrosErrores = 0;
         const filasActualizadas = [...filasImport];
 
                 for (let i = 0; i < filasActualizadas.length; i++) {
@@ -546,8 +570,11 @@ export default function Estudiantes() {
                         exitosos++;
                     } catch (err) {
                         const msgError = err.response?.data?.error || err.message || 'Error desconocido';
-                        filasActualizadas[i] = { ...fila, importado: false, error: true };
-                        toast.error(`Error fila ${i + 1} (${fila.name}): ${msgError}`, { duration: 7000 });
+                        filasActualizadas[i] = { ...fila, importado: false, error: true, errorMensaje: msgError };
+                        // No mostrar toast por fila: el detalle queda en el modal para evitar mensajes duplicados.
+                        if (!String(msgError).toLowerCase().includes('ya está inscrito en esta materia')) {
+                            otrosErrores++;
+                        }
                     }
                     setFilasImport([...filasActualizadas]);
                 }
@@ -557,6 +584,10 @@ export default function Estudiantes() {
         if (exitosos > 0) {
             toast.success(`${exitosos} estudiante${exitosos !== 1 ? 's' : ''} importado${exitosos !== 1 ? 's' : ''} correctamente`);
             setRefrescar((p) => p + 1);
+        }
+
+        if (otrosErrores > 0) {
+            toast.error(`${otrosErrores} estudiante${otrosErrores !== 1 ? 's' : ''} no pudieron importarse. Revisa la columna Estado.`);
         }
 
         // Cerrar solo si todos fueron exitosos

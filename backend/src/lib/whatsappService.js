@@ -56,11 +56,23 @@ export async function sendWhatsAppMessage({ phone, message }) {
 
     const number = normalizePhoneNumber(phone);
 
+    const textoLimpio = String(message ?? '').trim();
+    if (!textoLimpio) {
+        const msg = 'El mensaje de WhatsApp está vacío';
+        console.error('[whatsappService]', msg);
+        return { success: false, error: msg };
+    }
+
     const url = `${baseUrl}/message/sendText/${instance}`;
 
+    // Compatibilidad entre versiones de Evolution API:
+    // algunas aceptan `text` y otras leen `textMessage.text`.
     const payload = {
         number,
-        text: message,
+        text: textoLimpio,
+        textMessage: {
+            text: textoLimpio,
+        },
     };
 
     try {

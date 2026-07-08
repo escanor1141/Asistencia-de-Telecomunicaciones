@@ -14,5 +14,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  evolution_api:
+    image: evoapicloud/evolution-api:latest
+    container_name: evolution_api
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      - SERVER_URL=http://localhost:5000
+      - AUTHENTICATION_API_KEY=123456
+      - DATABASE_ENABLED=false
+      - CACHE_REDIS_ENABLED=false
+    volumes:
+      - evolution_instances:/evolution/instances
+
 volumes:
   postgres_data:
+  evolution_instances:

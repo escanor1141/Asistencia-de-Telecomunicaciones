@@ -9,7 +9,7 @@ import FiltrosGlobales from '../components/FiltrosGlobales';
 import { formatearNombre, compararPorApellido } from '../utils/formatearNombre';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, PieChart, Pie, Cell, Legend,
+    ResponsiveContainer, PieChart, Pie, Cell,
     AreaChart, Area
 } from 'recharts';
 
@@ -364,6 +364,10 @@ export default function Reportes() {
         () => datos.filter((i) => i.percentage < 80 || i.failedByAbsence).length,
         [datos]
     );
+    const totalFallasActuales = useMemo(
+        () => datos.reduce((acc, item) => acc + (item.absent ?? 0), 0),
+        [datos]
+    );
     const tieneUmbralFaltas = useMemo(
         () => datos.some((i) => typeof i.absencesAllowed === 'number'),
         [datos]
@@ -707,7 +711,7 @@ export default function Reportes() {
                 </div>
             </header>
 
-            <section className="grid gap-4 sm:grid-cols-3">
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <article className="tarjeta">
                     <p className="text-sm text-texto-secundario">Estudiantes reportados</p>
                     <p className="mt-2 font-mono text-2xl">{datos.length.toLocaleString('es-CO')}</p>
@@ -734,6 +738,12 @@ export default function Reportes() {
                         style={{ color: estudiantesEnRiesgo > 0 ? 'var(--color-absent)' : 'var(--color-text-primary)' }}
                     >
                         {estudiantesEnRiesgo.toLocaleString('es-CO')}
+                    </p>
+                </article>
+                <article className="tarjeta">
+                    <p className="text-sm text-texto-secundario">Fallas actuales (no justificadas)</p>
+                    <p className="mt-2 font-mono text-2xl" style={{ color: 'var(--color-absent)' }}>
+                        {totalFallasActuales.toLocaleString('es-CO')}
                     </p>
                 </article>
             </section>
@@ -781,63 +791,78 @@ export default function Reportes() {
                         {vistaActiva === 'distribucion' && (
                             <div className="p-4 pt-6">
                                 <p
-                                    className="mb-4 text-xs font-semibold uppercase tracking-wider text-center"
+                                    className="mb-2 text-xs font-semibold uppercase tracking-wider text-center"
                                     style={{ color: 'var(--color-muted)' }}
                                 >
                                     Distribuci&oacute;n de estudiantes por rango de asistencia
                                 </p>
-                                <p className="mb-4 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
+                                <p className="mb-6 text-sm text-center" style={{ color: 'var(--color-text-secondary)' }}>
                                     Las inasistencias justificadas se registran como <strong>Justificados</strong> y no inciden en el umbral de pérdida por faltas.
                                 </p>
-                                <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-6">
-                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
                                         <p className="text-xs text-texto-secundario">Presentes</p>
                                         <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-present)' }}>{totalesEstados.present.toLocaleString('es-CO')}</p>
                                     </div>
-                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-                                        <p className="text-xs text-texto-secundario">Ausentes no justificadas</p>
+                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
+                                        <p className="text-xs text-texto-secundario">Fallas actuales</p>
                                         <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-absent)' }}>{totalesEstados.absent.toLocaleString('es-CO')}</p>
                                     </div>
-                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+                                    <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
                                         <p className="text-xs text-texto-secundario">Justificados</p>
                                         <p className="mt-2 font-mono text-lg" style={{ color: 'var(--color-excused)' }}>{totalesEstados.justified.toLocaleString('es-CO')}</p>
                                     </div>
                                 </div>
-                                <div className="flex flex-col md:flex-row items-center justify-center gap-8">
-                                    <ResponsiveContainer width={280} height={280}>
-                                        <PieChart>
-                                            <Pie
-                                                data={datosTorta}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={58}
-                                                outerRadius={104}
-                                                startAngle={90}
-                                                endAngle={-270}
-                                                paddingAngle={4}
-                                                cornerRadius={8}
-                                                dataKey="value"
-                                                stroke="none"
-                                                label={etiquetaTorta}
-                                                labelLine={false}
-                                            >
-                                                {datosTorta.map((entry) => {
-                                                    const colorIdx = ETIQUETAS_BRACKETS.indexOf(entry.name);
-                                                    return (
-                                                        <Cell
-                                                            key={entry.name}
-                                                            fill={getColoresBrackets()[colorIdx]}
-                                                            style={{ outline: 'none' }}
-                                                        />
-                                                    );
-                                                })}
-                                            </Pie>
-                                            <Tooltip content={<TooltipTorta />} cursor={false} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
+                                <div className="grid grid-cols-1 xl:grid-cols-[minmax(320px,440px)_minmax(260px,1fr)] items-center gap-6">
+                                    <div
+                                        className="rounded-xl border p-4"
+                                        style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                                    >
+                                        <div className="h-[340px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={datosTorta}
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={74}
+                                                        outerRadius={118}
+                                                        startAngle={90}
+                                                        endAngle={-270}
+                                                        paddingAngle={3}
+                                                        cornerRadius={10}
+                                                        dataKey="value"
+                                                        stroke="none"
+                                                        label={false}
+                                                        labelLine={false}
+                                                    >
+                                                        {datosTorta.map((entry) => {
+                                                            const colorIdx = ETIQUETAS_BRACKETS.indexOf(entry.name);
+                                                            return (
+                                                                <Cell
+                                                                    key={entry.name}
+                                                                    fill={getColoresBrackets()[colorIdx]}
+                                                                    style={{ outline: 'none' }}
+                                                                />
+                                                            );
+                                                        })}
+                                                    </Pie>
+                                                    <Tooltip content={<TooltipTorta />} cursor={false} />
+                                                    <text x="50%" y="46%" textAnchor="middle" style={{ fill: 'var(--color-muted)', fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.04em' }}>
+                                                        TOTAL
+                                                    </text>
+                                                    <text x="50%" y="56%" textAnchor="middle" style={{ fill: 'var(--color-text-primary)', fontSize: '1.65rem', fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                                                        {datos.length.toLocaleString('es-CO')}
+                                                    </text>
+                                                    <text x="50%" y="65%" textAnchor="middle" style={{ fill: 'var(--color-text-secondary)', fontSize: '0.8rem', fontWeight: 500 }}>
+                                                        estudiantes
+                                                    </text>
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </div>
 
-                                    {/* Leyenda manual */}
-                                    <div style={{ minWidth: 200 }}>
+                                    <div className="rounded-xl border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}>
                                         <p className="mb-3 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
                                             Detalle por rangos
                                         </p>
@@ -850,7 +875,7 @@ export default function Reportes() {
                                                 return (
                                                     <div key={entry.name}
                                                         className="flex items-center justify-between gap-4 rounded-lg border px-4 py-3"
-                                                        style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                                                        style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
                                                     >
                                                         <div className="flex items-center gap-3">
                                                             <span
@@ -890,25 +915,62 @@ export default function Reportes() {
                         {/* Tab: Tiempo — LineChart semanal */}
                         {vistaActiva === 'tiempo' && (
                             <div className="p-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
-                                        Presentes por semana
-                                    </p>
-                                    <select
-                                        value={modoGrupo}
-                                        onChange={(e) => setModoGrupo(e.target.value)}
-                                        style={{
-                                            height: 34, border: '1px solid var(--color-border)',
-                                            borderRadius: 'var(--input-radius)', padding: '0 12px',
-                                            fontSize: '0.8125rem', fontWeight: 500,
-                                            color: 'var(--color-text-primary)', background: 'var(--color-surface)',
-                                            cursor: 'pointer', outline: 'none',
-                                        }}
-                                    >
-                                        {MODOS_GRUPO.map((m) => (
-                                            <option key={m.id} value={m.id}>{m.label}</option>
-                                        ))}
-                                    </select>
+                                <div
+                                    className="mb-4 flex flex-col gap-3 rounded-xl border p-4"
+                                    style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                                >
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted)' }}>
+                                                Tendencia semanal
+                                            </p>
+                                            <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                                                Evolución de presentes por semana según el agrupamiento seleccionado.
+                                            </p>
+                                        </div>
+                                        <select
+                                            value={modoGrupo}
+                                            onChange={(e) => setModoGrupo(e.target.value)}
+                                            style={{
+                                                height: 36, border: '1px solid var(--color-border)',
+                                                borderRadius: 'var(--input-radius)', padding: '0 12px',
+                                                fontSize: '0.8125rem', fontWeight: 600,
+                                                color: 'var(--color-text-primary)', background: 'var(--color-surface)',
+                                                cursor: 'pointer', outline: 'none', minWidth: 220,
+                                            }}
+                                        >
+                                            {MODOS_GRUPO.map((m) => (
+                                                <option key={m.id} value={m.id}>{m.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {seriesNombres.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {seriesNombres.map((nombre, i) => (
+                                                <span
+                                                    key={`chip-${nombre}`}
+                                                    className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium"
+                                                    style={{
+                                                        borderColor: 'var(--color-border)',
+                                                        background: 'var(--color-surface)',
+                                                        color: 'var(--color-text-primary)',
+                                                    }}
+                                                >
+                                                    <span
+                                                        style={{
+                                                            width: 8,
+                                                            height: 8,
+                                                            borderRadius: 999,
+                                                            background: getColoresLineas()[i % 6],
+                                                            display: 'inline-block',
+                                                        }}
+                                                    />
+                                                    {nombre}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                                 {cargandoSemanal ? (
                                     <p className="py-10 text-center text-sm" style={{ color: 'var(--color-muted)' }}>Cargando...</p>
@@ -939,58 +1001,53 @@ export default function Reportes() {
                                         <p className="mb-4 text-sm text-texto-secundario">
                                             La serie de asistencia en el tiempo separa las ausencias justificadas y no justificadas: las justificadas no implican pérdida de materia.
                                         </p>
-                                        <ResponsiveContainer width="100%" height={300}>
-                                        <AreaChart data={datosLineChart} margin={{ top: 12, right: 24, left: -10, bottom: 0 }}>
-                                            <defs>
-                                                {seriesNombres.map((nombre, i) => {
-                                                    const color = getColoresLineas()[i % 6];
-                                                    return (
-                                                        <linearGradient key={`colorUv${i}`} id={`colorUv${i}`} x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="5%" stopColor={color} stopOpacity={0.4} />
-                                                            <stop offset="95%" stopColor={color} stopOpacity={0} />
-                                                        </linearGradient>
-                                                    );
-                                                })}
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="4 4" stroke="var(--color-border)" vertical={false} opacity={0.45} />
-                                            <XAxis
-                                                dataKey="semana"
-                                                tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}
-                                                axisLine={false} tickLine={false}
-                                                dy={12}
-                                            />
-                                            <YAxis
-                                                allowDecimals={false}
-                                                tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
-                                                axisLine={false} tickLine={false}
-                                                dx={-10}
-                                            />
-                                            <Tooltip content={<TooltipSemanal />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                            <Legend
-                                                wrapperStyle={{
-                                                    fontSize: '0.8125rem',
-                                                    paddingTop: 20,
-                                                    fontWeight: 500,
-                                                    color: 'var(--color-text-secondary)',
-                                                }}
-                                                iconType="circle"
-                                                formatter={(value) => <span style={{ color: 'var(--color-text-primary)' }}>{value}</span>}
-                                            />
-                                            {seriesNombres.map((nombre, i) => (
-                                                <Area
-                                                    key={nombre}
-                                                    type="monotone"
-                                                    dataKey={nombre}
-                                                    stroke={getColoresLineas()[i % 6]}
-                                                    fillOpacity={1}
-                                                    fill={`url(#colorUv${i})`}
-                                                    strokeWidth={3}
-                                                    activeDot={{ r: 6, strokeWidth: 0, fill: getColoresLineas()[i % 6] }}
-                                                    dot={{ r: 0 }} // Clean lines without overwhelming dots
-                                                />
-                                            ))}
-                                        </AreaChart>
-                                    </ResponsiveContainer>
+                                        <div
+                                            className="rounded-xl border p-3"
+                                            style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                                        >
+                                            <ResponsiveContainer width="100%" height={340}>
+                                                <AreaChart data={datosLineChart} margin={{ top: 18, right: 24, left: -10, bottom: 4 }}>
+                                                    <defs>
+                                                        {seriesNombres.map((nombre, i) => {
+                                                            const color = getColoresLineas()[i % 6];
+                                                            return (
+                                                                <linearGradient key={`colorUv${i}`} id={`colorUv${i}`} x1="0" y1="0" x2="0" y2="1">
+                                                                    <stop offset="5%" stopColor={color} stopOpacity={0.34} />
+                                                                    <stop offset="95%" stopColor={color} stopOpacity={0} />
+                                                                </linearGradient>
+                                                            );
+                                                        })}
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 4" stroke="var(--color-border)" vertical={false} opacity={0.6} />
+                                                    <XAxis
+                                                        dataKey="semana"
+                                                        tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-sans)', fontWeight: 600 }}
+                                                        axisLine={false} tickLine={false}
+                                                        dy={12}
+                                                    />
+                                                    <YAxis
+                                                        allowDecimals={false}
+                                                        tick={{ fontSize: 11, fill: 'var(--color-muted)', fontFamily: 'var(--font-mono)' }}
+                                                        axisLine={false} tickLine={false}
+                                                        dx={-8}
+                                                    />
+                                                    <Tooltip content={<TooltipSemanal />} cursor={{ stroke: 'var(--color-border)', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                                                    {seriesNombres.map((nombre, i) => (
+                                                        <Area
+                                                            key={nombre}
+                                                            type="monotone"
+                                                            dataKey={nombre}
+                                                            stroke={getColoresLineas()[i % 6]}
+                                                            fillOpacity={1}
+                                                            fill={`url(#colorUv${i})`}
+                                                            strokeWidth={2.8}
+                                                            activeDot={{ r: 5, strokeWidth: 0, fill: getColoresLineas()[i % 6] }}
+                                                            dot={false}
+                                                        />
+                                                    ))}
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -1006,7 +1063,7 @@ export default function Reportes() {
                                             <th className="px-4 py-3 font-medium">Estudiante</th>
                                             <th className="px-4 py-3 font-medium">Clases</th>
                                             <th className="px-4 py-3 font-medium">Presentes</th>
-                                            <th className="px-4 py-3 font-medium">Ausentes</th>
+                                            <th className="px-4 py-3 font-medium">Fallas actuales</th>
                                             <th className="px-4 py-3 font-medium">Justificados</th>
                                             {tieneUmbralFaltas && (
                                                 <th className="px-4 py-3 font-medium text-center">Límite faltas</th>

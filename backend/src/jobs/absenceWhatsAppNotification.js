@@ -43,7 +43,11 @@ function construirMensajeAusencia({ studentName, date, courseName }) {
  * @param {string} fecha  - Formato YYYY-MM-DD
  */
 export async function runAbsenceWhatsAppNotification(registros, idCurso, fecha) {
-    const delayEnvioMs = Number(process.env.WHATSAPP_SEND_DELAY_MS ?? 5000);
+    const delayConfigurado = Number(process.env.WHATSAPP_SEND_DELAY_MS ?? 10000);
+    // Evita ráfagas muy rápidas que suelen afectar la entregabilidad en WhatsApp.
+    const delayEnvioMs = Number.isFinite(delayConfigurado)
+        ? Math.max(delayConfigurado, 8000)
+        : 10000;
 
     console.log('\n════════════════════════════════════════');
     console.log('[whatsapp-job] Iniciando notificaciones de ausencia por WhatsApp...');

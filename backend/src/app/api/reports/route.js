@@ -2,6 +2,73 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion, verificarAccesoCurso } from '@/lib/auth'
 
+const SEMANAS_PERIODO = 16
+const MINUTOS_HORA_ACADEMICA = 45
+
+const parseHora = (valor) => {
+    if (!valor || typeof valor !== 'string') return null
+    const [h, m] = valor.split(':').map(Number)
+    if (Number.isNaN(h) || Number.isNaN(m)) return null
+    return h * 60 + m
+}
+
+const minutosSesion = (inicio, fin) => {
+    const ini = parseHora(inicio)
+    const fn = parseHora(fin)
+    if (ini === null || fn === null || fn <= ini) return 0
+    return fn - ini
+}
+
+const clasesPeriodoCurso = (curso) => {
+    if (!curso) return 0
+    const minutosSemana =
+        minutosSesion(curso.horaInicio, curso.horaFin) +
+        minutosSesion(curso.horaInicio2, curso.horaFin2)
+
+    if (minutosSemana <= 0) return 0
+
+    const horasAcademicasSemana = Math.round(minutosSemana / MINUTOS_HORA_ACADEMICA)
+    return horasAcademicasSemana * SEMANAS_PERIODO
+}
+
+const calcularUmbralPerdida = (totalClasesPeriodo) => {
+    if (!totalClasesPeriodo || totalClasesPeriodo <= 0) return 0
+    return Math.ceil(totalClasesPeriodo * 0.2)
+}
+
+const normalizarDia = (dia) => {
+    if (!dia || typeof dia !== 'string') return null
+    return dia
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+}
+
+const diaSemanaDesdeFecha = (fecha) => {
+    if (!fecha || typeof fecha !== 'string') return null
+    const d = new Date(`${fecha}T00:00:00`)
+    if (Number.isNaN(d.getTime())) return null
+    const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado']
+    return dias[d.getDay()]
+}
+
+const unidadesRegistro = (curso, fecha) => {
+    if (!curso) return 1
+
+    const duracionDia1 = Math.max(1, Math.round(minutosSesion(curso.horaInicio, curso.horaFin) / MINUTOS_HORA_ACADEMICA))
+    const duracionDia2 = Math.max(0, Math.round(minutosSesion(curso.horaInicio2, curso.horaFin2) / MINUTOS_HORA_ACADEMICA))
+    const diaRegistro = diaSemanaDesdeFecha(fecha)
+    const dia1 = normalizarDia(curso.dia)
+    const dia2 = normalizarDia(curso.dia2)
+
+    if (diaRegistro && dia1 && diaRegistro === dia1) return duracionDia1
+    if (diaRegistro && dia2 && diaRegistro === dia2) return duracionDia2 > 0 ? duracionDia2 : 1
+
+    if (duracionDia2 > 0) return Math.max(duracionDia1, duracionDia2)
+    return duracionDia1 > 0 ? duracionDia1 : 1
+}
+
 // GET — reporte de asistencia por porcentaje de presencia con filtros opcionales
 export async function GET(request) {
     try {
@@ -77,11 +144,25 @@ export async function GET(request) {
 
         const asistencias = await prisma.asistencia.findMany({
             where: condicion,
-            include: { student: true }
+            include: {
+                student: true,
+                course: {
+                    select: {
+                        id: true,
+                        dia: true,
+                        dia2: true,
+                        horaInicio: true,
+                        horaFin: true,
+                        horaInicio2: true,
+                        horaFin2: true,
+                    }
+                }
+            }
         })
 
         // Agrupar por estudiante
         const estadisticasPorEstudiante = {}
+        const cursosPorId = {}
 
         asistencias.forEach(reg => {
             const idEst = reg.student.documento
@@ -89,38 +170,60 @@ export async function GET(request) {
                 estadisticasPorEstudiante[idEst] = {
                     id:          idEst,
                     name:        reg.student.name,
-                    total:       0,   // todas las clases registradas
-                    present:     0,   // Presente
-                    absent:      0,   // Ausente (falla)
-                    justified:   0,   // Justificado
+                    total:       0,   // días registrados
+                    present:     0,   // días presentes
+                    absent:      0,   // fallas ponderadas por horas académicas
+                    justified:   0,   // días justificados
+                    presentUnits: 0,  // unidades (45 min) presentes
+                    absentUnits:  0,  // unidades (45 min) ausentes
+                    cursos:      new Set(),
                 }
             }
+            if (reg.course?.id) {
+                estadisticasPorEstudiante[idEst].cursos.add(reg.course.id)
+                if (!cursosPorId[reg.course.id]) cursosPorId[reg.course.id] = reg.course
+            }
+            const unidades = unidadesRegistro(reg.course, reg.date)
             const estado = reg.status || (reg.present ? 'Presente' : 'Ausente');
             estadisticasPorEstudiante[idEst].total += 1
-            if (estado === 'Presente')    estadisticasPorEstudiante[idEst].present++
-            else if (estado === 'Justificado') estadisticasPorEstudiante[idEst].justified++
-            else                          estadisticasPorEstudiante[idEst].absent++
+            if (estado === 'Presente') {
+                estadisticasPorEstudiante[idEst].present += 1
+                estadisticasPorEstudiante[idEst].presentUnits += unidades
+            }
+            else if (estado === 'Justificado') {
+                estadisticasPorEstudiante[idEst].justified += 1
+            }
+            else {
+                estadisticasPorEstudiante[idEst].absent += unidades
+                estadisticasPorEstudiante[idEst].absentUnits += unidades
+            }
         })
-
-        const calcularFaltasPermitidas = (present, absent) => {
-            const clasesQueCuentan = present + absent;
-            return clasesQueCuentan > 0
-                ? Math.max(1, Math.ceil(clasesQueCuentan * 0.2))
-                : 0;
-        };
 
         const resultado = Object.values(estadisticasPorEstudiante).map(est => {
             // El porcentaje se calcula sobre las clases que cuentan (no justificadas)
-            const clasesQueCountan = est.present + est.absent;
-            const percentage = clasesQueCountan > 0
-                ? Math.round((est.present / clasesQueCountan) * 100)
+            const clasesQueCuentanUnidades = est.presentUnits + est.absentUnits;
+            const percentage = clasesQueCuentanUnidades > 0
+                ? Math.round((est.presentUnits / clasesQueCuentanUnidades) * 100)
                 : 100; // si todo es justificado, no hay fallas
-            const absencesAllowed = calcularFaltasPermitidas(est.present, est.absent);
+
+            const totalClasesPeriodo = Array.from(est.cursos)
+                .reduce((acc, idCursoEst) => acc + clasesPeriodoCurso(cursosPorId[idCursoEst]), 0)
+
+            const umbralPerdida = totalClasesPeriodo > 0
+                ? calcularUmbralPerdida(totalClasesPeriodo)
+                : calcularUmbralPerdida(clasesQueCuentanUnidades)
+
+            // Máximo de fallas sin perder. Se pierde al alcanzar el umbral del 20%.
+            const absencesAllowed = umbralPerdida > 0 ? umbralPerdida - 1 : 0
+
             return {
                 ...est,
+                cursos: undefined,
+                presentUnits: undefined,
+                absentUnits: undefined,
                 percentage,
                 absencesAllowed,
-                failedByAbsence: est.absent >= absencesAllowed,
+                failedByAbsence: umbralPerdida > 0 ? est.absent >= umbralPerdida : false,
             };
         }).sort((a, b) => b.percentage - a.percentage)
 

@@ -9,21 +9,39 @@ export async function PUT(request, { params }) {
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 401 })
         if (usuario.role === 'ADMIN') return Response.json({ error: 'El administrador no puede modificar estudiantes' }, { status: 403 })
 
-        const { name, email, correo2, whatsapp, telefono2, franja, programa } = await request.json()
+        const payload = await request.json()
+        const { name, email, correo2, whatsapp, telefono2 } = payload
         if (!name || name.trim() === '') {
             return Response.json({ error: 'El nombre es requerido' }, { status: 400 })
         }
+
+        const datosActualizacion = {
+            name:      name.trim(),
+            email:     email     ? email.trim()     : null,
+            correo2:   correo2   ? correo2.trim()   : null,
+            whatsapp:  whatsapp  ? whatsapp.trim()  : null,
+            telefono2: telefono2 ? telefono2.trim() : null,
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'franja')) {
+            const franjaLimpia = payload.franja ? payload.franja.trim() : null
+            // Si llega vacio desde UI, conserva el valor actual registrado.
+            if (franjaLimpia) {
+                datosActualizacion.franja = franjaLimpia
+            }
+        }
+
+        if (Object.prototype.hasOwnProperty.call(payload, 'programa')) {
+            const programaLimpio = payload.programa ? payload.programa.trim() : null
+            // Si llega vacio desde UI, conserva el valor actual registrado.
+            if (programaLimpio) {
+                datosActualizacion.programa = programaLimpio
+            }
+        }
+
         const estudiante = await prisma.estudiante.update({
             where: { documento: params.id },
-            data: {
-                name:      name.trim(),
-                email:     email     ? email.trim()     : null,
-                correo2:   correo2   ? correo2.trim()   : null,
-                whatsapp:  whatsapp  ? whatsapp.trim()  : null,
-                telefono2: telefono2 ? telefono2.trim() : null,
-                franja:    franja    ? franja.trim()    : null,
-                programa:  programa  ? programa.trim()  : null,
-            }
+            data: datosActualizacion
         })
         return Response.json({ ...estudiante, id: estudiante.documento })
     } catch (error) {

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
 import { obtenerUsuarioDePeticion, verificarAccesoCurso } from '@/lib/auth'
 
 // Helper: construye la condición WHERE para los filtros opcionales
@@ -71,21 +70,28 @@ export async function GET(request) {
                 return Response.json([])
             }
 
-            const historialBruto = await prisma.$queryRaw`
-        SELECT 
-          date, 
-          COUNT(id) as "total", 
-          SUM(CASE WHEN present THEN 1 ELSE 0 END) as "presentCount" 
-        FROM "Attendance" 
-        WHERE "courseId" IN (${Prisma.join(courseIds)})
-        GROUP BY date 
-        ORDER BY date DESC
-      `
-            const historial = historialBruto.map(fila => ({
-                date: fila.date,
-                total: Number(fila.total),
-                presentCount: Number(fila.presentCount || 0)
-            }))
+            const registros = await prisma.asistencia.findMany({
+                where: { courseId: { in: courseIds } },
+                select: { date: true, present: true },
+                orderBy: { date: 'desc' },
+            })
+
+            const mapaHistorial = new Map()
+            for (const registro of registros) {
+                if (!mapaHistorial.has(registro.date)) {
+                    mapaHistorial.set(registro.date, {
+                        date: registro.date,
+                        total: 0,
+                        presentCount: 0,
+                    })
+                }
+
+                const fila = mapaHistorial.get(registro.date)
+                fila.total += 1
+                if (registro.present) fila.presentCount += 1
+            }
+
+            const historial = Array.from(mapaHistorial.values())
 
             return Response.json(historial)
         }
