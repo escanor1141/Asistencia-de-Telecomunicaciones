@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, Plus, Trash2, Loader2, Upload, X, CheckCircle2, Pencil, Square, CheckSquare } from 'lucide-react';
+import { Search, Plus, Trash2, Loader2, Upload, X, CheckCircle2, Pencil, Square, CheckSquare, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { obtenerReportes, obtenerEstudiantes, crearEstudiante, actualizarEstudiante, eliminarEstudiante } from '../services/api';
@@ -604,6 +604,16 @@ export default function Estudiantes() {
         setFilasImport([]);
     };
 
+    const descargarPlantilla = () => {
+        const columnas = [
+            ['No', 'Documento', 'Nombre', 'Franja', 'Nombre del Programa', 'Correo', 'Correo 2', 'Telefono', 'Telefono 2'],
+        ];
+        const hoja = XLSX.utils.aoa_to_sheet(columnas);
+        const libro = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(libro, hoja, 'Plantilla');
+        XLSX.writeFile(libro, 'plantilla_estudiantes.xlsx');
+    };
+
     // Filtro local de búsqueda
 
     const filtrados = useMemo(
@@ -672,6 +682,15 @@ export default function Estudiantes() {
                                 >
                                     <Upload size={16} />
                                     Importar Excel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={descargarPlantilla}
+                                    className="boton-secundario inline-flex items-center gap-2 h-[38px]"
+                                    title="Descargar plantilla Excel para importar estudiantes"
+                                >
+                                    <FileDown size={16} />
+                                    Plantilla
                                 </button>
                             </div>
                         )}
