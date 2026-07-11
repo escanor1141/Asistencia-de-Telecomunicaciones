@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { obtenerAsistencia, obtenerDocentes } from '../services/api';
+import { obtenerAsistencia } from '../services/api';
 import { Calendar as IconoCalendario, CheckCircle2, XCircle, Loader2, Filter } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -46,8 +46,7 @@ export default function Historial() {
     const [anio, setAnio] = useState('');
     const [periodo, setPeriodo] = useState('');
     const [modalidad, setModalidad] = useState('');
-    const [docenteIdLocal, setDocenteIdLocal] = useState('');
-    const [docentes, setDocentes] = useState([]);
+
 
     // Estado de datos
 
@@ -57,24 +56,12 @@ export default function Historial() {
     const [detallesFecha, setDetallesFecha] = useState([]);
     const [cargandoDetalles, setCargandoDetalles] = useState(false);
 
-    // Carga de docentes para el dropdown local
-
-    useEffect(() => {
-        obtenerDocentes()
-            .then(data => {
-                console.log('DEBUG: docentes en History:', data);
-                setDocentes(data);
-            })
-            .catch(() => setDocentes([]));
-    }, []);
-
     // Filtros combinados (globales + locales)
 
     const filtrosCombinados = {
         codigo:       codigoSeleccionado,
         grupo:        grupoSeleccionado,
-        // docenteIdLocal overrides global docenteId when set
-        docenteId:    docenteIdLocal || docenteSeleccionado,
+        docenteId:    docenteSeleccionado,
         anio:         anio     || null,
         periodo:      periodo  || null,
         modalidad:    modalidad|| null,
@@ -98,7 +85,6 @@ export default function Historial() {
         anio,
         periodo,
         modalidad,
-        docenteIdLocal,
     ]);
 
     const obtenerHistorial = async () => {
@@ -225,30 +211,7 @@ export default function Historial() {
                     </select>
                 </div>
 
-                {/* Docente local */}
-                {usuario?.role === 'ADMIN' && (
-                    <div className="flex flex-col gap-1">
-                        <label
-                            htmlFor="hist-docente"
-                            style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-secondary)' }}
-                        >
-                            Docente
-                        </label>
-                        <select
-                            id="hist-docente"
-                            value={docenteIdLocal}
-                            onChange={(e) => setDocenteIdLocal(e.target.value)}
-                            style={{ ...estiloSelectLocal, minWidth: '180px' }}
-                            onFocus={(e) => { e.target.style.borderColor = 'var(--color-primary)'; }}
-                            onBlur={(e) => { e.target.style.borderColor = 'var(--color-border)'; }}
-                        >
-                            <option value="">Todos</option>
-                            {docentes.map((d) => (
-                                <option key={d.id} value={d.id}>{d.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
+
             </div>
 
             {/* Sin materia seleccionada */}
