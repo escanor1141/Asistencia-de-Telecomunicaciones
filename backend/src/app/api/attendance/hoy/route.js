@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic';
 
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
@@ -16,12 +16,12 @@ export async function GET(request) {
             return Response.json({ error: 'No autorizado' }, { status: 401 })
         }
 
-        const sp        = new URL(request.url).searchParams
+        const sp = new URL(request.url).searchParams
         // TEACHER: solo ve sus propias materias. ADMIN: puede filtrar por docenteId o ver todo.
         const docenteId = usuario.role === 'ADMIN'
             ? (sp.get('docenteId') || null)
             : usuario.id
-            
+
         const hoy = fmtBogota(new Date())
 
         // 1. Obtener todos los cursos (opcionalmente filtrados por docente)
