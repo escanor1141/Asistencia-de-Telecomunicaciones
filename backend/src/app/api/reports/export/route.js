@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
@@ -71,6 +73,7 @@ const unidadesRegistro = (curso, fecha) => {
 
 // GET — endpoint dedicado para generar la data del Excel de reportes con filtros
 export async function GET(request) {
+    await headers();
     try {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) {

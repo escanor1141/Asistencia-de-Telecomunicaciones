@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion, verificarAccesoCurso } from '@/lib/auth'
@@ -71,6 +73,7 @@ const unidadesRegistro = (curso, fecha) => {
 
 // GET — reporte de asistencia por porcentaje de presencia con filtros opcionales
 export async function GET(request) {
+    await headers();
     try {
         // Verificar autenticación
         const usuario = obtenerUsuarioDePeticion(request)

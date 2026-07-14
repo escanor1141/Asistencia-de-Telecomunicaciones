@@ -11,6 +11,7 @@ import { headers } from 'next/headers';
 // Params opcionales: docenteId (para filtrar solo sus materias)
 // Response: { cursos: [{ id, nombre, porcentaje, presentes, total }] }
 export async function GET(request) {
+    await headers();
     try {
         // Al llamar a headers(), Next.js aborta de inmediato cualquier intento de pre-renderizar estáticamente esta ruta
         const headersList = await headers();

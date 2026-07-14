@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic';
+
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
 
 // POST /api/audit/log
 export async function POST(request) {
+    await headers();
     try {
         const usuario = obtenerUsuarioDePeticion(request)
         if (!usuario) return Response.json({ error: 'No autorizado' }, { status: 403 })

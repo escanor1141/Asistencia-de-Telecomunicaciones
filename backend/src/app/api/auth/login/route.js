@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
@@ -7,6 +9,7 @@ const SECRETO = process.env.JWT_SECRET || 'telecom_secret_key_2024'
 
 // POST /api/auth/login — autenticación de docentes
 export async function POST(request) {
+    await headers();
     try {
         console.log('[Login] Intento de inicio de sesión recibido')
         const { email, password } = await request.json()
