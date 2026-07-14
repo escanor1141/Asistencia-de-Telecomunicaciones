@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import prisma from '@/lib/prisma'
 import { obtenerUsuarioDePeticion } from '@/lib/auth'
 import { fmtBogota } from '@/lib/dateUtils'
